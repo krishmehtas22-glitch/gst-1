@@ -62,6 +62,8 @@ def validate(raw, config):
     """Return normalized invoice and errors. Uncertainty never becomes a voucher."""
     inv = dict(raw)
     errors = list(inv.pop('extraction_warnings', []))
+    if bool(inv.get('demo_only')) != bool(config.get('demo_only')):
+        errors.append('Demo invoices require a demo client; real invoices require a separate production client')
     required = ('number','date','seller_name','seller_gstin','buyer_name','buyer_registration','place_of_supply','classification','taxable','total','items')
     for field in required:
         if inv.get(field) is None or inv.get(field) == '' or inv.get(field) == []:

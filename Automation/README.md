@@ -19,8 +19,10 @@ and Sales_Vouchers.xml without Excel templates, using Tally's documented
 import envelope and item-invoice structure. See [XML import instructions](docs/TALLY_XML.md).
 The official XML documentation is now accessible and was inspected. Automated
 tests verify generated structures and accounting; a live dummy-company Tally
-import has not been run here. The user's 25 actual PDFs have not been supplied
-or tested. Validate GST reports against your TallyPrime release before production.
+import has not been run here. The supplied 25 marked dummy PDFs were extracted
+and generated as 25 vouchers in explicit demo mode; their printed totals sum to
+Rs 255,054.79. They are not valid production invoice data. Validate GST reports
+against your TallyPrime release before production.
 
 The optional Excel adapter remains guarded behind verified source workbooks
 and mappings; set output_format to excel only after completing that separate
@@ -28,7 +30,8 @@ mapping. XML does not depend on those Excel files.
 
 This is an initial engine, not universal invoice OCR. Supported automatic layouts
 use explicit labelled fields and a table separated by pipes, tabs or two or more
-spaces. Other layouts, scanned/encrypted PDFs and uncertain values go to review.
+spaces. The supplied banner/BILL TO/invoice-grid layout is also supported.
+Other layouts, scanned/encrypted PDFs and uncertain values go to review.
 No OCR guesses or silent exemption classification are made. Discounts, cess,
 exports/SEZ, reverse charge and mixed taxable/exempt invoice rules need separate
 implementation; they must not be forced through this phase's ordinary domestic
@@ -53,6 +56,53 @@ python -m venv .venv
 .venv/bin/python Automation/main.py run
 .venv/bin/python -m pytest Automation/tests -q
 ```
+
+## Run the supplied dummy PDFs in company abc (Windows CMD)
+
+The supplied PDFs print seller GSTIN `NOT ASSIGNED`, omit units, use synthetic
+customer GSTINs (17 fail checksum), and repeat products with varying illustrative
+GST rates. Normal `init-client` intentionally requires a valid seller GSTIN.
+Use the explicit demo command below for these test documents, with the user's
+selected unit `Nos` and printed seller state Maharashtra:
+
+```bat
+cd /d "F:\Downloads\dummy sales invoice"
+.venv\Scripts\python.exe main.py init-demo-client "client 1" --company "abc" --state "Maharashtra" --unit "Nos"
+.venv\Scripts\python.exe main.py run
+```
+
+Install dependencies once using the steps above. To update an existing extracted
+program, close any running automation command and replace its program files from
+the new ZIP. Keep `.venv`, client folders, PDFs, configuration and history. Do not
+repeat `init-demo-client` after a successful setup; it refuses to overwrite an
+existing client configuration. If you already initialized a real client, create
+a separate demo client folder instead of reusing its history.
+
+This profile accepts only the marked synthetic, single-item B2B/B2C layout with
+seller GSTIN `NOT ASSIGNED`. It supplies a synthetic checksum-valid seller
+identifier, adjusts synthetic buyer checksums where needed, assumes Regular for
+dummy B2B customers and buyer state equal to place of supply for dummy B2C
+customers, and supplies zero for omitted tax components. It uses the explicitly
+selected `Nos` unit and separates stock names by HSN/GST rate to avoid conflicts
+between illustrative test rates. Every changed value and the extracted original
+are retained in `client 1/reports/demo_adjustments.json`, bound to each PDF digest.
+It still validates quantities, amounts, tax rates and state treatment.
+
+XML comments, voucher narration, configuration and the manifest identify the
+data as **DEMO ONLY**. Use a disposable Tally company named `abc`; these test
+identifiers do not establish registration and must never be used for GST filing.
+Normal clients keep strict validation, and cannot accept demo invoices. Use a
+separate client configuration and history for real invoices.
+
+To inspect PDFs before any setup, without generating XML:
+
+```bat
+.venv\Scripts\python.exe main.py inspect-invoices "client 1"
+```
+
+This writes extracted invoice fields and findings to
+`client 1/reports/inspection.json`. It requires no GSTIN or client.json and does
+not change existing import files or transaction history.
 
 Your existing invoice folder is supported directly:
 

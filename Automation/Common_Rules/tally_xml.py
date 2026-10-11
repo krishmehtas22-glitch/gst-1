@@ -74,6 +74,8 @@ def gst_details(stock, master, effective_date):
 
 def masters_document(config, masters, invoices):
     root, data = envelope(config['company_name'],'All Masters')
+    if config.get('demo_only'):
+        root.insert(0,ET.Comment(' DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. '))
     priority = {'unit':0,'stock_group':1,'ledger':2,'stock_item':3}
     for master in sorted(masters,key=lambda m:(priority[m['kind']],m['name'].casefold())):
         kind = master['kind']
@@ -143,6 +145,8 @@ def allocation(parent, entry, number, party=False):
 
 def sales_document(config, invoices):
     root, data = envelope(config['company_name'],'Vouchers')
+    if config.get('demo_only'):
+        root.insert(0,ET.Comment(' DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. '))
     for key, inv in sorted(invoices.items(),key=lambda entry:(entry[1]['date'],entry[0])):
         remote_id = str(uuid.uuid5(uuid.NAMESPACE_URL,config['company_id'] + '|' + key))
         voucher = ET.SubElement(message(data),'VOUCHER',{'REMOTEID':remote_id,'VCHTYPE':'Sales','ACTION':'Create','OBJVIEW':'Invoice Voucher View'})
@@ -156,7 +160,7 @@ def sales_document(config, invoices):
             'GSTREGISTRATIONTYPE':inv['buyer_registration'],
             'PLACEOFSUPPLY':STATES[inv['place_of_supply']],
             'STATENAME':STATES[inv['buyer_state']],'COUNTRYOFRESIDENCE':'India',
-            'NARRATION':f"Sales invoice {inv['number']}; source {inv['source']}",
+            'NARRATION':('DEMO ONLY; synthetic GSTINs and assumed fields. ' if config.get('demo_only') else '') + f"Sales invoice {inv['number']}; source {inv['source']}",
         }.items():
             text(voucher,name,value)
         if inv['buyer_gstin']:

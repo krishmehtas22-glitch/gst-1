@@ -46,6 +46,12 @@ profile. Do not use goods inventory XML for services.
 1. Create/select the correct dummy company in TallyPrime. Its name must match
    client.json exactly. Enable inventory/accounts and the correct Indian GST
    company registration. Company creation itself is not performed by this tool.
+   For the explicit demo profile, use a disposable company `abc`, state
+   Maharashtra, and the synthetic seller GSTIN shown in that client's
+   `client.json`. It is test data, not verified registration. Keep the company
+   financial year/period open for the October 2026 invoice dates. All demo
+   substitutions are listed in reports/demo_adjustments.json; never use this
+   company or these files for GST filing.
 2. Configure Sales voucher numbering to preserve the source invoice number
    (for example, Manual numbering), and confirm the numbering configuration.
 3. Use the TallyPrime Import menu for **Masters**, selecting that client's

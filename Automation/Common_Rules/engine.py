@@ -7,7 +7,8 @@ from pathlib import Path
 import shutil
 import uuid
 
-from .accounting import accounting_entries, fingerprint, gstin_valid, invoice_key, validate, sales_ledger
+from .accounting import accounting_entries, cents, fingerprint, gstin_valid, invoice_key, state_code, validate, sales_ledger
+from .demo import prepare_demo_invoice, test_gstin
 from .extraction import parse_text, text_from_pdf
 from .history import History
 from .masters import plan_masters, required_masters, identity
@@ -30,11 +31,13 @@ def write_json(path, data):
     temp.replace(path)
 
 
-def init_client(root, name, company, seller_gstin, mode='new'):
+def init_client(root, name, company, seller_gstin, mode='new', demo_profile=None):
     if Path(name).name != name or name.startswith('.') or name in ('Common_Rules','tests'):
         raise ValueError('Client name must be a single non-reserved folder name')
     if not company.strip() or not gstin_valid(seller_gstin.upper()):
-        raise ValueError('Supply a company name and valid seller GSTIN (including checksum)')
+        raise ValueError('Supply a company name and a valid seller GSTIN (including checksum). '
+                         'SELLER_GSTIN and NOT ASSIGNED are placeholders. To check PDFs before '
+                         'setup, run: python main.py inspect-invoices "' + name + '"')
     client = root / name
     if client.is_symlink():
         raise ValueError('Client folder must not be a symbolic link')
@@ -44,10 +47,21 @@ def init_client(root, name, company, seller_gstin, mode='new'):
               'company_mode':mode,'ledgers':dict(DEFAULT_LEDGERS),'stock_group':'Primary',
               'output_format':'xml',
               'units':{'Nos':{'formal_name':'Numbers','uqc':'NOS','decimal_places':0}}}
+    if demo_profile:
+        config.update(demo_only=True, demo_profile=demo_profile,
+                      warning='DEMO ONLY: synthetic GSTINs and assumed fields. Use a disposable Tally test company. Never use for filing.')
     write_json(client / 'client.json', config)
     (client / INBOX).mkdir(exist_ok=True)
     (client / 'reviews').mkdir(exist_ok=True)
     return client
+
+
+def init_demo_client(root, name, company, seller_state, unit):
+    if unit != 'Nos':
+        raise ValueError('This dummy profile currently supports the explicitly selected Nos unit only')
+    code = state_code(seller_state)
+    profile = {'version':1, 'seller_state':code, 'unit':unit}
+    return init_client(root,name,company,test_gstin(code + 'DEMCO0000A1Z'),demo_profile=profile)
 
 
 def discover(root):
@@ -67,6 +81,62 @@ def invoice_paths(client):
     if inbox.is_dir():
         paths.update(p for p in inbox.rglob('*') if p.is_file() and p.suffix.lower() == '.pdf')
     return sorted(paths, key=str)
+
+
+def inspect_invoices(client):
+    """Extract and report without initializing a company or generating imports."""
+    if not client.is_dir() or client.is_symlink():
+        raise ValueError('Invoice folder must exist and must not be a symbolic link')
+    records = []
+    totals = []
+    balanced = 0
+    for path in invoice_paths(client):
+        digest = None
+        raw = {}
+        try:
+            if path.is_symlink() or not path.resolve().is_relative_to(client.resolve()):
+                raise ValueError('Invoice path escapes the client folder')
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            raw = parse_text(text_from_pdf(path))
+            _, issues = validate(raw, {'seller_gstin':raw.get('seller_gstin')})
+            seller = str(raw.get('seller_gstin') or '').upper()
+            buyer = str(raw.get('buyer_gstin') or '').upper()
+            if not gstin_valid(seller):
+                issues.append('Seller GSTIN is missing, unassigned or invalid')
+            if buyer and not gstin_valid(buyer):
+                issues.append('Invalid buyer GSTIN (format, state or checksum)')
+            for index, item in enumerate(raw.get('items', []), 1):
+                if not item.get('unit'):
+                    issues.append(f'Item {index}: missing unit')
+            for tax in ('cgst','sgst','igst'):
+                if tax not in raw:
+                    issues.append(f'Missing explicit {tax} amount (enter 0 if absent after review)')
+            if not raw.get('buyer_state') and not buyer:
+                issues.append('Buyer state required for master creation; place of supply is a separate field')
+            try:
+                total = cents(raw['total'])
+                expected = cents(raw['taxable']) + sum(cents(raw.get(tax, 0)) for tax in ('cgst','sgst','igst')) + cents(raw.get('round_off',0))
+                # This check only reconciles displayed totals, not import readiness.
+                if expected == total:
+                    balanced += 1
+                else:
+                    issues.append('Printed invoice totals do not balance')
+                totals.append(total)
+            except (ValueError, ArithmeticError, KeyError, TypeError):
+                issues.append('Printed totals could not be reconciled')
+        except Exception as exc:
+            issues = [f'PDF extraction failed: {exc}']
+        records.append({'source':str(path.relative_to(client)), 'source_sha256':digest,
+                        'invoice':raw, 'issues':list(dict.fromkeys(issues))})
+    report = client / 'reports' / 'inspection.json'
+    summary = {'client':client.name,'pdf_count':len(records),
+               'extracted_invoice_count':sum(bool(r['invoice'].get('number') and r['invoice'].get('items')) for r in records),
+               'printed_totals_balanced':balanced,
+               'invoice_total_sum':str(sum(totals)) if len(totals) == len(records) and records else None,
+               'needs_review':sum(bool(r['issues']) for r in records),
+               'xml_generated':False, 'report':str(report)}
+    write_json(report, {'summary':summary, 'invoices':records})
+    return summary
 
 
 @contextmanager
@@ -97,6 +167,12 @@ def load_config(client):
         raise ValueError('company_mode must be new or existing')
     if config.get('output_format','xml') not in ('xml','excel'):
         raise ValueError('output_format must be xml or excel')
+    if config.get('demo_only'):
+        profile = config.get('demo_profile', {})
+        if (profile.get('version') != 1 or profile.get('unit') != 'Nos' or
+                config['company_mode'] != 'new' or config.get('output_format','xml') != 'xml' or
+                config['seller_gstin'] != test_gstin(profile.get('seller_state','') + 'DEMCO0000A1Z')):
+            raise ValueError('Invalid demo configuration; use a separate new XML test company')
     if not set(DEFAULT_LEDGERS).issubset(config['ledgers']):
         raise ValueError('Missing sales/tax ledger mapping')
     ledger_names = [v.casefold().strip() for v in config['ledgers'].values()]
@@ -184,12 +260,13 @@ def export_xml_imports(client, config, invoices, masters, history):
         save_document(sales_document(config,invoices),staging / 'Sales_Vouchers.xml')
         files.append('Sales_Vouchers.xml')
         write_json(staging / 'manifest.json', {'valid_for_import':True,'output_format':'xml',
+             'demo_only':bool(config.get('demo_only')),
              'company_id':config['company_id'],'company_name':config['company_name'],
              'generated_at':datetime.now(timezone.utc).isoformat(),'invoice_keys':list(invoices),
              'masters':masters,'files':files,'import_order':files,
              'file_sha256':{name:hashlib.sha256((staging / name).read_bytes()).hexdigest() for name in files},
              'order':['unit','stock_group','ledger','stock_item','sales'],
-             'warning':'Import Masters.xml successfully before Sales_Vouchers.xml. Generation is not import confirmation. Verify GST in a dummy Tally company first.'})
+             'warning':('DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. ' if config.get('demo_only') else '') + 'Import Masters.xml successfully before Sales_Vouchers.xml. Generation is not import confirmation. Verify GST in a dummy Tally company first.'})
         folder.mkdir(exist_ok=True)
         for file in staging.iterdir():
             if file.name != 'manifest.json':
@@ -298,6 +375,8 @@ def _process_client(root, client):
                     text_file.parent.mkdir(exist_ok=True)
                     text_file.write_text(text, encoding='utf-8')
                     raw = parse_text(text)
+                if config.get('demo_only'):
+                    raw = prepare_demo_invoice(raw,config)
                 raw = {**raw, 'sha256':digest, 'source':str(path.relative_to(client))}
                 inv, errors = validate(raw, config)
                 if errors:
@@ -361,11 +440,18 @@ def _process_client(root, client):
                 export_status = f'BLOCKED: {exc}'
                 issues.append({'status':'export_blocked','errors':[str(exc)]})
         report = {'client':client.name,'company_id':config['company_id'],'output_format':config.get('output_format','xml'),'counts':counts,
+                  'demo_only':bool(config.get('demo_only')),
                   'pending_validated':len(eligible),'export':export_status,'issues':issues,'history':history.statuses()}
         write_json(client / 'reports' / 'validation.json', report)
         write_json(client / 'reports' / 'master_plan.json', masters)
         write_json(client / 'reports' / 'validated_invoices.json', [
             {'invoice_key':key,'invoice':inv,'accounting':accounting_entries(inv,config)} for key,inv in eligible.items()])
+        if config.get('demo_only'):
+            write_json(client / 'reports' / 'demo_adjustments.json', {
+                'demo_only':True,'warning':config['warning'],
+                'invoices':[{'source':inv['source'],'source_sha256':inv['sha256'],
+                             'printed_invoice':inv['demo_source_invoice'],
+                             'adjustments':inv['demo_adjustments']} for inv in eligible.values()]})
         return report
     finally:
         history.close()
