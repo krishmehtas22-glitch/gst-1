@@ -1,0 +1,456 @@
+"""Client discovery, isolation, incremental processing and review reports."""
+from contextlib import contextmanager
+from datetime import datetime, timezone
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import uuid
+
+from .accounting import accounting_entries, fingerprint, gstin_valid, invoice_key, validate, sales_ledger
+from .extraction import parse_text, text_from_pdf
+from .history import History
+from .masters import plan_masters, required_masters, identity
+from .templates import TemplateError, check_spec, registry, write_workbook
+from .tally_xml import masters_document, sales_document, save_document, verify_references
+
+DEFAULT_LEDGERS = {'taxable':'Sales','exempt':'Exempt Sales','nil_rated':'Nil Rated Sales','non_gst':'Non GST Sales',
+                   'cgst':'Output CGST','sgst':'Output SGST','igst':'Output IGST','round_off':'Round Off'}
+INBOX = 'Sales Invoices (PDF)'
+
+
+def read_json(path):
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def write_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(path.name + '.tmp')
+    temp.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str) + '\n', encoding='utf-8')
+    temp.replace(path)
+
+
+def init_client(root, name, company, seller_gstin, mode='new'):
+    if Path(name).name != name or name.startswith('.') or name in ('Common_Rules','tests'):
+        raise ValueError('Client name must be a single non-reserved folder name')
+    if not company.strip() or not gstin_valid(seller_gstin.upper()):
+        raise ValueError('Supply a company name and valid seller GSTIN (including checksum)')
+    client = root / name
+    if client.is_symlink():
+        raise ValueError('Client folder must not be a symbolic link')
+    if (client / 'client.json').exists():
+        raise ValueError('Client already configured; refusing to overwrite it')
+    config = {'company_id':str(uuid.uuid4()),'company_name':company,'seller_gstin':seller_gstin.upper(),
+              'company_mode':mode,'ledgers':dict(DEFAULT_LEDGERS),'stock_group':'Primary',
+              'output_format':'xml',
+              'units':{'Nos':{'formal_name':'Numbers','uqc':'NOS','decimal_places':0}}}
+    write_json(client / 'client.json', config)
+    (client / INBOX).mkdir(exist_ok=True)
+    (client / 'reviews').mkdir(exist_ok=True)
+    return client
+
+
+def discover(root):
+    return sorted([p for p in root.iterdir() if p.is_dir() and not p.is_symlink() and
+                   not p.name.startswith('.') and ((p / INBOX).is_dir() or (p / 'client.json').is_file() or
+                   any(f.is_file() and f.suffix.lower() == '.pdf' for f in p.iterdir()))], key=lambda p:p.name.casefold())
+
+
+def invoice_paths(client):
+    """Read PDFs directly inside a client, plus the supported optional inbox.
+
+    Do not search reports, imports, reviews or arbitrary adjacent directories:
+    they are not source-invoice locations.
+    """
+    paths = {p for p in client.iterdir() if p.is_file() and p.suffix.lower() == '.pdf'}
+    inbox = client / INBOX
+    if inbox.is_dir():
+        paths.update(p for p in inbox.rglob('*') if p.is_file() and p.suffix.lower() == '.pdf')
+    return sorted(paths, key=str)
+
+
+@contextmanager
+def client_lock(client):
+    # Atomic mkdir works on both Windows and Linux. A crash leaves a visible lock;
+    # only remove it after confirming no other process is using this client.
+    lock = client / '.automation' / 'run.lock'
+    lock.parent.mkdir(exist_ok=True)
+    try:
+        lock.mkdir()
+    except FileExistsError:
+        raise ValueError('Client is locked by another run (or a prior crash); inspect .automation/run.lock')
+    try:
+        yield
+    finally:
+        lock.rmdir()
+
+
+def load_config(client):
+    path = client / 'client.json'
+    if not path.is_file():
+        raise ValueError('Missing client.json; run init-client for this folder')
+    config = read_json(path)
+    for field in ('company_id','company_name','seller_gstin','company_mode','units','ledgers'):
+        if not config.get(field):
+            raise ValueError(f'Client configuration requires {field}')
+    if config['company_mode'] not in ('new','existing'):
+        raise ValueError('company_mode must be new or existing')
+    if config.get('output_format','xml') not in ('xml','excel'):
+        raise ValueError('output_format must be xml or excel')
+    if not set(DEFAULT_LEDGERS).issubset(config['ledgers']):
+        raise ValueError('Missing sales/tax ledger mapping')
+    ledger_names = [v.casefold().strip() for v in config['ledgers'].values()]
+    if any(not name for name in ledger_names) or len(set(ledger_names)) != len(ledger_names):
+        raise ValueError('Sales and tax ledgers must have distinct nonempty names')
+    return config
+
+
+def load_snapshot(client, config):
+    path = client / 'tally_snapshot.json'
+    if not path.exists():
+        if config['company_mode'] == 'existing':
+            raise ValueError('Existing company requires a complete reliable tally_snapshot.json before generating vouchers')
+        return {'masters':[], 'vouchers':[]}
+    snapshot = read_json(path)
+    if snapshot.get('company_id') != config['company_id'] or snapshot.get('seller_gstin') != config['seller_gstin']:
+        raise ValueError('Tally snapshot belongs to a different client/company')
+    if snapshot.get('complete') is not True or not snapshot.get('exported_at'):
+        raise ValueError('Tally snapshot must identify its export date and be explicitly complete')
+    stamp = datetime.fromisoformat(snapshot['exported_at'])
+    if stamp.tzinfo is None:
+        raise ValueError('Snapshot exported_at must include timezone')
+    age = (datetime.now(timezone.utc) - stamp).total_seconds()
+    if age < -300 or age > config.get('snapshot_max_age_hours', 24) * 3600:
+        raise ValueError('Tally snapshot is stale or dated in the future; refresh it')
+    # A full canonical invoice payload is required to compare conflicting details.
+    for voucher in snapshot['vouchers']:
+        if 'invoice' not in voucher:
+            raise ValueError('Snapshot vouchers need full canonical invoice data, not invoice numbers alone')
+        _, errors = validate(voucher['invoice'], config)
+        if errors:
+            raise ValueError('Invalid Tally snapshot invoice: ' + '; '.join(errors))
+    return snapshot
+
+
+def tally_vouchers(snapshot, config):
+    result = {}
+    for voucher in snapshot['vouchers']:
+        inv, _ = validate(voucher['invoice'], config)
+        key = invoice_key(inv)
+        fp = fingerprint(inv)
+        if key in result and result[key] != fp:
+            raise ValueError('Conflicting vouchers in Tally snapshot')
+        result[key] = fp
+    return result
+
+
+def invalidate_outputs(client):
+    manifest = client / 'imports' / 'manifest.json'
+    if manifest.exists():
+        old = read_json(manifest)
+        old['valid_for_import'] = False
+        old['reason'] = 'A new processing run has started; use only outputs with a current valid manifest'
+        write_json(manifest, old)
+        # Withdraw only files explicitly recorded as created by this engine.
+        for filename in old.get('files', []):
+            path = (client / 'imports' / filename).resolve()
+            if path.parent == (client / 'imports').resolve() and path.is_file():
+                path.unlink()
+
+
+def review_record(client, path, digest, raw, errors):
+    draft = client / 'reports' / 'review_drafts' / f'{digest}.json'
+    write_json(draft, {'source_sha256':digest,'source':path.name,'approved':False,'invoice':raw,'errors':errors})
+
+
+def export_imports(root, client, config, invoices, masters, history):
+    if config.get('output_format','xml') == 'xml':
+        return export_xml_imports(client,config,invoices,masters,history)
+    return export_excel_imports(root,client,config,invoices,masters,history)
+
+
+def export_xml_imports(client, config, invoices, masters, history):
+    verify_references(config,invoices,load_snapshot(client,config)['masters'] + history.confirmed_masters() + masters)
+    folder = client / 'imports'
+    staging = client / '.automation' / 'export-staging'
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir()
+    files = []
+    try:
+        if masters:
+            save_document(masters_document(config,masters,invoices),staging / 'Masters.xml')
+            files.append('Masters.xml')
+        save_document(sales_document(config,invoices),staging / 'Sales_Vouchers.xml')
+        files.append('Sales_Vouchers.xml')
+        write_json(staging / 'manifest.json', {'valid_for_import':True,'output_format':'xml',
+             'company_id':config['company_id'],'company_name':config['company_name'],
+             'generated_at':datetime.now(timezone.utc).isoformat(),'invoice_keys':list(invoices),
+             'masters':masters,'files':files,'import_order':files,
+             'file_sha256':{name:hashlib.sha256((staging / name).read_bytes()).hexdigest() for name in files},
+             'order':['unit','stock_group','ledger','stock_item','sales'],
+             'warning':'Import Masters.xml successfully before Sales_Vouchers.xml. Generation is not import confirmation. Verify GST in a dummy Tally company first.'})
+        folder.mkdir(exist_ok=True)
+        for file in staging.iterdir():
+            if file.name != 'manifest.json':
+                file.replace(folder / file.name)
+        (staging / 'manifest.json').replace(folder / 'manifest.json')
+        for key in invoices:
+            history.set_status(key,'generated')
+    finally:
+        shutil.rmtree(staging)
+
+
+def export_excel_imports(root, client, config, invoices, masters, history):
+    templates = root / 'Common_Rules' / 'templates'
+    specs = registry(templates)
+    kinds = {m['kind'] for m in masters} | {'sales'}
+    for kind in kinds:
+        if kind not in specs:
+            raise TemplateError(f'Official template mapping missing for {kind}')
+        check_spec(templates, specs[kind])
+    streams = {'invoices':[], 'inventory':[], 'accounting':[], 'rows':[]}
+    for key, inv in invoices.items():
+        base = {**inv, 'invoice_key':key,'company_name':config['company_name'], 'voucher_type':'Sales','sales_ledger':sales_ledger(inv, config)}
+        streams['invoices'].append(base)
+        for index, item in enumerate(inv['items'], 1):
+            row = {**base,'item':item,'line_number':index,'row_type':'inventory'}
+            streams['inventory'].append(row)
+            streams['rows'].append(row)
+        for index, allocation in enumerate(accounting_entries(inv, config), 1):
+            row = {**base,'allocation':allocation,'line_number':index,'row_type':'ledger'}
+            streams['accounting'].append(row)
+            streams['rows'].append(row)
+    folder = client / 'imports'
+    staging = client / '.automation' / 'export-staging'
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir()
+    files = []
+    try:
+        for kind in ('unit','stock_group','ledger','stock_item','sales'):
+            records = [m for m in masters if m['kind'] == kind]
+            if kind != 'sales' and not records:
+                continue
+            filename = 'Sales_Output.xlsx' if kind == 'sales' else f'Masters_{kind}.xlsx'
+            mapping = write_workbook(templates, specs[kind], staging / filename, streams if kind == 'sales' else {'masters':records})
+            files.append(filename)
+            mapping_name = f'{kind}_{mapping.name}'
+            shutil.copy2(mapping, staging / mapping_name)
+            files.append(mapping_name)
+        write_json(staging / 'manifest.json', {'valid_for_import':True, 'company_id':config['company_id'],
+             'company_name':config['company_name'], 'generated_at':datetime.now(timezone.utc).isoformat(),
+             'invoice_keys':list(invoices),'masters':masters,'files':files,
+             'order':['unit','stock_group','ledger','stock_item','sales'],
+             'warning':'Import masters successfully before sales. Generation is not import confirmation.'})
+        folder.mkdir(exist_ok=True)
+        for file in staging.iterdir():
+            if file.name != 'manifest.json':
+                file.replace(folder / file.name)
+        (staging / 'manifest.json').replace(folder / 'manifest.json')
+        for key in invoices:
+            history.set_status(key, 'generated')
+    finally:
+        shutil.rmtree(staging)
+
+
+def process_client(root, client):
+    with client_lock(client):
+        return _process_client(root, client)
+
+
+def _process_client(root, client):
+    invalidate_outputs(client)
+    config = load_config(client)
+    snapshot = load_snapshot(client, config)
+    tally = tally_vouchers(snapshot, config)
+    history = History(client / '.automation' / 'history.sqlite3')
+    issues = []
+    counts = {'new':0,'duplicate':0,'review':0,'already_in_tally':0}
+    try:
+        history.bind_company(config['company_id'], config['seller_gstin'])
+        # Also reconcile pending/generated records after a Tally snapshot refresh.
+        for key, inv in history.active().items():
+            if key in tally:
+                if fingerprint(inv) == tally[key]:
+                    history.set_status(key, 'imported')
+                    history.event(inv['source'], key, 'imported', 'Confirmed in complete Tally snapshot')
+                else:
+                    issues.append({'source':inv['source'],'invoice_key':key,'status':'review','errors':['Stored invoice conflicts with existing Tally voucher']})
+        paths = invoice_paths(client)
+        for path in paths:
+            raw = {}
+            digest = None
+            key = None
+            try:
+                if path.is_symlink() or not path.resolve().is_relative_to(client.resolve()):
+                    raise ValueError('Invoice path escapes the client folder')
+                digest = hashlib.sha256(path.read_bytes()).hexdigest()
+                override = client / 'reviews' / f'{digest}.json'
+                if override.exists():
+                    review = read_json(override)
+                    if review.get('source_sha256') != digest or review.get('approved') is not True:
+                        raise ValueError('Review must be approved and bound to this exact PDF digest')
+                    raw = review['invoice']
+                else:
+                    text = text_from_pdf(path)
+                    text_file = client / '.automation' / 'extracted_text' / f'{digest}.txt'
+                    text_file.parent.mkdir(exist_ok=True)
+                    text_file.write_text(text, encoding='utf-8')
+                    raw = parse_text(text)
+                raw = {**raw, 'sha256':digest, 'source':str(path.relative_to(client))}
+                inv, errors = validate(raw, config)
+                if errors:
+                    try:
+                        key = invoice_key(inv)
+                    except (ValueError, KeyError, TypeError):
+                        pass
+                    review_record(client, path, digest, raw, errors)
+                    raise ValueError('; '.join(errors))
+                key = invoice_key(inv)
+                fp = fingerprint(inv)
+                previous = history.lookup(key)
+                if previous:
+                    if previous['fingerprint'] != fp:
+                        raise ValueError('Invoice identity matches history but transaction details differ')
+                    counts['duplicate'] += 1
+                    history.event(path.name,key,'duplicate','No second voucher created')
+                    continue
+                if key in tally:
+                    if tally[key] != fp:
+                        raise ValueError('Invoice identity matches Tally but transaction details differ')
+                    history.save(key,fp,inv,'imported')
+                    history.event(path.name,key,'imported','Confirmed in complete Tally snapshot')
+                    counts['already_in_tally'] += 1
+                    continue
+                history.save(key,fp,inv,'pending')
+                history.event(path.name,key,'pending','Validated; not imported')
+                counts['new'] += 1
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                counts['review'] += 1
+                message = str(exc)
+                issues.append({'source':str(path.relative_to(client)),'invoice_key':key,'status':'review','errors':[message]})
+                history.event(path.name,None,'pending_review',message)
+                if digest:
+                    review_record(client, path, digest, raw, [message])
+            except Exception as exc:
+                # A corrupt PDF is contained to this document. Unexpected errors
+                # stay visible rather than masquerading as successful extraction.
+                counts['review'] += 1
+                issues.append({'source':path.name,'status':'review','errors':[f'{type(exc).__name__}: {exc}']})
+                history.event(path.name,None,'pending_review',f'{type(exc).__name__}: {exc}')
+        active = history.active()
+        for key, inv in list(active.items()):
+            _, errors = validate(inv, config)
+            if errors:
+                issues.append({'invoice_key':key,'status':'review','errors':errors})
+        for issue in issues:
+            key = issue.get('invoice_key')
+            if key:
+                active.pop(key, None)
+        masters, master_errors = plan_masters(active, config, snapshot['masters'] + history.confirmed_masters())
+        for key, errors in master_errors.items():
+            issues.append({'invoice_key':key,'status':'review','errors':errors})
+        eligible = {k:v for k,v in active.items() if k not in master_errors}
+        export_status = 'No pending invoices'
+        if eligible:
+            try:
+                export_imports(root,client,config,eligible,masters,history)
+                export_status = f'Generated {len(eligible)} sales vouchers; import not confirmed'
+            except (TemplateError, ValueError, KeyError, OSError) as exc:
+                export_status = f'BLOCKED: {exc}'
+                issues.append({'status':'export_blocked','errors':[str(exc)]})
+        report = {'client':client.name,'company_id':config['company_id'],'output_format':config.get('output_format','xml'),'counts':counts,
+                  'pending_validated':len(eligible),'export':export_status,'issues':issues,'history':history.statuses()}
+        write_json(client / 'reports' / 'validation.json', report)
+        write_json(client / 'reports' / 'master_plan.json', masters)
+        write_json(client / 'reports' / 'validated_invoices.json', [
+            {'invoice_key':key,'invoice':inv,'accounting':accounting_entries(inv,config)} for key,inv in eligible.items()])
+        return report
+    finally:
+        history.close()
+
+
+def run(root):
+    clients = discover(root)
+    if not clients:
+        return {'message':'No client folders found','clients':[]}
+    reports = []
+    configurations = {}
+    identity_counts = {}
+    for client in clients:
+        try:
+            config = load_config(client)
+            configurations[client] = config
+            identity_counts[config['company_id']] = identity_counts.get(config['company_id'], 0) + 1
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            configurations[client] = exc
+    for client in clients:
+        try:
+            config = configurations[client]
+            if isinstance(config, Exception):
+                raise config
+            if identity_counts[config['company_id']] > 1:
+                raise ValueError('Two client folders share company_id; copied histories must not create duplicate companies')
+            reports.append(process_client(root,client))
+        except Exception as exc:
+            try:
+                with client_lock(client):
+                    invalidate_outputs(client)
+            except (ValueError, OSError):
+                pass  # Never interfere with an independently running process.
+            reports.append({'client':client.name,'error':f'{type(exc).__name__}: {exc}'})
+    return {'clients':reports}
+
+
+def confirm_import(client, result_path):
+    with client_lock(client):
+        config = load_config(client)
+        result = read_json(result_path)
+        manifest = read_json(client / 'imports' / 'manifest.json')
+        if result.get('company_id') != config['company_id'] or manifest.get('company_id') != config['company_id']:
+            raise ValueError('Import results must match this client company_id')
+        if manifest.get('company_name') != config['company_name']:
+            raise ValueError('Company name changed after this export; regenerate for the correct Tally company')
+        if not manifest.get('valid_for_import') or result.get('generated_at') != manifest['generated_at']:
+            raise ValueError('Import results must reference the current valid export generated_at')
+        if not result.get('tally_result_reference'):
+            raise ValueError('Supply the Tally result/log reference; workbook generation alone is not import confirmation')
+        history = History(client / '.automation' / 'history.sqlite3')
+        try:
+            history.bind_company(config['company_id'], config['seller_gstin'])
+            planned = {identity(m):m for m in manifest['masters']}
+            confirmations = []
+            for master in result.get('masters', []):
+                details = master['master']
+                if planned.get(identity(details)) != details:
+                    raise ValueError('Master result does not match the generated master plan')
+                if master['status'] not in ('imported','rejected','pending'):
+                    raise ValueError('Unknown master import status')
+                if master['status'] == 'imported':
+                    confirmations.append(details)
+            known = {identity(m):m for m in history.confirmed_masters() + confirmations + load_snapshot(client,config)['masters']}
+            updates = []
+            for entry in result.get('vouchers', []):
+                key = entry['invoice_key']
+                previous = history.lookup(key)
+                if key not in manifest['invoice_keys'] or not previous or previous['status'] not in ('generated','imported','rejected','pending'):
+                    raise ValueError('Voucher result does not refer to a generated invoice')
+                if entry['status'] not in ('imported','rejected','pending'):
+                    raise ValueError('Unknown voucher import status')
+                if previous['status'] == 'imported' and entry['status'] != 'imported':
+                    raise ValueError('An imported voucher cannot be downgraded')
+                if entry['status'] == 'imported':
+                    for required in required_masters(previous['data'],config):
+                        existing = known.get(identity(required))
+                        if not existing or any(existing.get(k) != v for k,v in required.items() if k not in ('kind','name')):
+                            raise ValueError('Cannot confirm sales import before all matching dependent masters are confirmed')
+                updates.append(entry)
+            # Validate the whole result before mutating confirmation state.
+            history.apply_import_result(result)
+            manifest['valid_for_import'] = False
+            manifest['reason'] = 'Import results recorded; run again to generate only remaining pending vouchers'
+            write_json(client / 'imports' / 'manifest.json', manifest)
+            return history.statuses()
+        finally:
+            history.close()

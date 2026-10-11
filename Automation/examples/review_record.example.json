@@ -1,0 +1,35 @@
+{
+  "source_sha256": "COPY_THE_PDF_SHA256_FROM_THE_REVIEW_DRAFT",
+  "approved": false,
+  "invoice": {
+    "number": "",
+    "date": "YYYY-MM-DD",
+    "seller_name": "",
+    "seller_gstin": "",
+    "buyer_name": "",
+    "buyer_gstin": "",
+    "buyer_registration": "",
+    "buyer_state": "",
+    "place_of_supply": "",
+    "classification": "",
+    "taxable": "",
+    "cgst": "",
+    "sgst": "",
+    "igst": "",
+    "total": "",
+    "round_off": "0",
+    "items": [
+      {
+        "name": "",
+        "hsn": "",
+        "quantity": "",
+        "unit": "",
+        "rate": "",
+        "value": "",
+        "cgst_rate": "",
+        "sgst_rate": "",
+        "igst_rate": ""
+      }
+    ]
+  }
+}

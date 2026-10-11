@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+Automation/*/Sales Invoices (PDF)/
+Automation/*/*.[pP][dD][fF]
+Automation/*/.automation/
+Automation/*/reviews/
+Automation/*/reports/
+Automation/*/imports/
+Automation/*/client.json
+Automation/*/tally_snapshot.json
+Automation/*/import_results.json
