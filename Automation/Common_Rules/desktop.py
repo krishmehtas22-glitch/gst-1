@@ -272,26 +272,42 @@ def process_sources(root, demo=True, client_names=None):
                 raise ValueError('Retained source copy differs from the original PDF')
             write_json(company/'reviews'/(record['digest']+'.json'),
                        {'source_sha256':record['digest'],'approved':True,'invoice':raw})
-            write_json(binding,{'identity':identity,'company':company.name})
+            write_json(binding,{'identity':identity,'company':company.name,'source_client':record['client']})
             record['company_path'] = str(company)
             groups.setdefault(company,[]).append(record)
         except (ValueError,OSError,KeyError,TypeError) as exc:
             record['errors'].append(str(exc))
     for company, group in groups.items():
         try:
-            report = process_client(workspace,company)
             config = read_json(company/'client.json')
+            scopes={}
+            for record in group:
+                source_client=record['client']
+                token=(re.sub(r'[^A-Za-z0-9_-]+','_',source_client)[:40] or 'Client')+'_'+hashlib.sha256(source_client.encode()).hexdigest()[:12]
+                folder=company/'imports'/'by_client'/token
+                record['output_path']=str(folder)
+                scope=scopes.setdefault(source_client,{'invoice_keys':set(),'output_folder':folder})
+                try:
+                    scope['invoice_keys'].add(invoice_key({**record['invoice'],'seller_gstin':config['seller_gstin']}))
+                except (ValueError,KeyError,TypeError):
+                    pass
+            report = process_client(workspace,company,export_scopes=scopes)
             history = {entry['invoice_key']:entry['status'] for entry in report['history']}
             issues = {}
             for issue in report['issues']:
                 issues.setdefault(issue.get('source'),[]).extend(issue.get('errors',[]))
             for record in group:
                 record['errors'].extend(issues.get(record['digest']+'.pdf',[]))
-                # Master-plan/export failures must not be displayed as success.
-                if report['issues'] and not record['errors']:
-                    record['errors'].extend(error for issue in report['issues'] if not issue.get('source') for error in issue.get('errors',[]))
-                record['export'] = report['export']
-                record['batch_voucher_count'] = report['pending_validated']
+                scope_report=report['scopes'][record['client']]
+                try:
+                    key=invoice_key({**record['invoice'],'seller_gstin':config['seller_gstin']})
+                except (ValueError,KeyError,TypeError):
+                    key=None
+                for issue in report['issues']+scope_report['issues']:
+                    if not issue.get('source') and (not issue.get('invoice_key') or issue['invoice_key']==key):
+                        record['errors'].extend(issue.get('errors',[]))
+                record['export'] = scope_report['export']
+                record['batch_voucher_count'] = scope_report['pending_validated']
                 if not record['errors']:
                     try:
                         key = invoice_key({**record['invoice'],'seller_gstin':config['seller_gstin']})
@@ -300,7 +316,7 @@ def process_sources(root, demo=True, client_names=None):
                     status = history.get(key)
                     record['display_status'] = ('Already confirmed imported' if status == 'imported' else
                         'Sales XML prepared; import not confirmed' if status == 'generated' else
-                        report['export'])
+                        scope_report['export'])
                 if record['invoice'].get('classification') in EXPORT_MODES and not record['errors']:
                     record['export'] = 'Export accounting voucher prepared; verify GST in Tally'
                     if history.get(key) != 'imported':

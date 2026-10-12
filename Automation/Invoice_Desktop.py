@@ -65,7 +65,7 @@ class InvoiceApp:
         actions.pack(fill='x')
         ttk.Button(actions,text='Scan and generate XML',command=self.start).pack(side='left')
         ttk.Button(actions,text='Review selected invoice',command=self.review).pack(side='left',padx=8)
-        ttk.Button(actions,text='Open selected XML folder',command=self.open_output).pack(side='left')
+        ttk.Button(actions,text='Open client XML folder',command=self.open_output).pack(side='left')
         ttk.Button(actions,text='Open source PDF',command=self.open_source).pack(side='left',padx=8)
         self.auto = tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Watch for new PDFs',variable=self.auto).pack(side='right')
@@ -223,15 +223,15 @@ class InvoiceApp:
                 ('\nSupplier layout: '+layout if layout else '')+
                 price_note+
                 ('\nPrinted unit: '+record['invoice']['source_unit_note'] if record['invoice'].get('source_unit_note') else '')+
-                '\nCompany pending batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
-                '\nOutput: '+record.get('company_path','Not generated'))
+                '\nClient folder batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
+                '\nOutput: '+record.get('output_path','Not generated'))
 
     def open_output(self):
         record = self.selected()
         if not record or not record.get('company_path'):
             messagebox.showinfo('XML','Select an invoice with a prepared company output.')
             return
-        path = str(Path(record['company_path'])/'imports')
+        path = record.get('output_path',str(Path(record['company_path'])/'imports'))
         if not Path(path).is_dir():
             messagebox.showinfo('XML','No XML folder is available yet. Resolve the invoice errors first.')
             return

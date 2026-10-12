@@ -227,8 +227,9 @@ def tally_vouchers(snapshot, config):
     return result
 
 
-def invalidate_outputs(client):
-    manifest = client / 'imports' / 'manifest.json'
+def invalidate_outputs(client, folder=None):
+    folder = folder or client/'imports'
+    manifest = folder/'manifest.json'
     if manifest.exists():
         old = read_json(manifest)
         old['valid_for_import'] = False
@@ -236,8 +237,8 @@ def invalidate_outputs(client):
         write_json(manifest, old)
         # Withdraw only files explicitly recorded as created by this engine.
         for filename in old.get('files', []):
-            path = (client / 'imports' / filename).resolve()
-            if path.parent == (client / 'imports').resolve() and path.is_file():
+            path = (folder / filename).resolve()
+            if path.parent == folder.resolve() and path.is_file():
                 path.unlink()
 
 
@@ -246,15 +247,15 @@ def review_record(client, path, digest, raw, errors):
     write_json(draft, {'source_sha256':digest,'source':path.name,'approved':False,'invoice':raw,'errors':errors})
 
 
-def export_imports(root, client, config, invoices, masters, history):
+def export_imports(root, client, config, invoices, masters, history, output_folder=None, source_client=None):
     if config.get('output_format','xml') == 'xml':
-        return export_xml_imports(client,config,invoices,masters,history)
-    return export_excel_imports(root,client,config,invoices,masters,history)
+        return export_xml_imports(client,config,invoices,masters,history,output_folder,source_client)
+    return export_excel_imports(root,client,config,invoices,masters,history,output_folder,source_client)
 
 
-def export_xml_imports(client, config, invoices, masters, history):
+def export_xml_imports(client, config, invoices, masters, history, output_folder=None, source_client=None):
     verify_references(config,invoices,load_snapshot(client,config)['masters'] + history.confirmed_masters() + masters)
-    folder = client / 'imports'
+    folder = output_folder or client/'imports'
     staging = client / '.automation' / 'export-staging'
     if staging.exists():
         shutil.rmtree(staging)
@@ -268,6 +269,8 @@ def export_xml_imports(client, config, invoices, masters, history):
         files.append('Sales_Vouchers.xml')
         write_json(staging / 'manifest.json', {'valid_for_import':True,'output_format':'xml',
              'demo_only':bool(config.get('demo_only')),
+             'source_client':source_client,
+             'export_scope':folder.relative_to(client/'imports').as_posix() if folder != client/'imports' else None,
              'company_id':config['company_id'],'company_name':config['company_name'],
              'generated_at':datetime.now(timezone.utc).isoformat(),'invoice_keys':list(invoices),
              'masters':masters,'files':files,'import_order':files,
@@ -283,7 +286,7 @@ def export_xml_imports(client, config, invoices, masters, history):
                  for key,inv in invoices.items() if inv.get('accounting_only_export')],
              'gst_return_mapping_verified':False,
              'warning':('DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. ' if config.get('demo_only') else '') + 'Import Masters.xml successfully before Sales_Vouchers.xml. Generation is not import confirmation. Verify GST in a dummy Tally company first.'})
-        folder.mkdir(exist_ok=True)
+        folder.mkdir(parents=True,exist_ok=True)
         for file in staging.iterdir():
             if file.name != 'manifest.json':
                 file.replace(folder / file.name)
@@ -294,7 +297,7 @@ def export_xml_imports(client, config, invoices, masters, history):
         shutil.rmtree(staging)
 
 
-def export_excel_imports(root, client, config, invoices, masters, history):
+def export_excel_imports(root, client, config, invoices, masters, history, output_folder=None, source_client=None):
     templates = root / 'Common_Rules' / 'templates'
     specs = registry(templates)
     kinds = {m['kind'] for m in masters} | {'sales'}
@@ -314,7 +317,7 @@ def export_excel_imports(root, client, config, invoices, masters, history):
             row = {**base,'allocation':allocation,'line_number':index,'row_type':'ledger'}
             streams['accounting'].append(row)
             streams['rows'].append(row)
-    folder = client / 'imports'
+    folder = output_folder or client/'imports'
     staging = client / '.automation' / 'export-staging'
     if staging.exists():
         shutil.rmtree(staging)
@@ -332,11 +335,13 @@ def export_excel_imports(root, client, config, invoices, masters, history):
             shutil.copy2(mapping, staging / mapping_name)
             files.append(mapping_name)
         write_json(staging / 'manifest.json', {'valid_for_import':True, 'company_id':config['company_id'],
+             'source_client':source_client,
+             'export_scope':folder.relative_to(client/'imports').as_posix() if folder != client/'imports' else None,
              'company_name':config['company_name'], 'generated_at':datetime.now(timezone.utc).isoformat(),
              'invoice_keys':list(invoices),'masters':masters,'files':files,
              'order':['unit','stock_group','ledger','stock_item','sales'],
              'warning':'Import masters successfully before sales. Generation is not import confirmation.'})
-        folder.mkdir(exist_ok=True)
+        folder.mkdir(parents=True,exist_ok=True)
         for file in staging.iterdir():
             if file.name != 'manifest.json':
                 file.replace(folder / file.name)
@@ -347,13 +352,15 @@ def export_excel_imports(root, client, config, invoices, masters, history):
         shutil.rmtree(staging)
 
 
-def process_client(root, client):
+def process_client(root, client, export_scopes=None):
     with client_lock(client):
-        return _process_client(root, client)
+        return _process_client(root, client, export_scopes)
 
 
-def _process_client(root, client):
+def _process_client(root, client, export_scopes=None):
     invalidate_outputs(client)
+    for scope in (export_scopes or {}).values():
+        invalidate_outputs(client,scope['output_folder'])
     config = load_config(client)
     if config.get('demo_only') and not config.get('source_seller_gstin'):
         # Legacy dummy folders may contain several fictional sellers. A single
@@ -463,14 +470,44 @@ def _process_client(root, client):
             issues.append({'invoice_key':key,'status':'review','errors':errors})
         eligible = {k:v for k,v in active.items() if k not in master_errors}
         export_status = 'No pending invoices'
-        if eligible:
+        scope_reports = {}
+        if export_scopes is None and eligible:
             try:
                 export_imports(root,client,config,eligible,masters,history)
                 export_status = f'Generated {len(eligible)} sales vouchers; import not confirmed'
             except (TemplateError, ValueError, KeyError, OSError) as exc:
                 export_status = f'BLOCKED: {exc}'
                 issues.append({'status':'export_blocked','errors':[str(exc)]})
-        report = {'client':client.name,'company_id':config['company_id'],'output_format':config.get('output_format','xml'),'counts':counts,
+        elif export_scopes is not None:
+            available_masters=snapshot['masters']+history.confirmed_masters()
+            for source_client,scope in export_scopes.items():
+                chosen={key:inv for key,inv in eligible.items() if key in scope['invoice_keys']}
+                selected_masters,selected_errors=plan_masters(chosen,config,available_masters)
+                selected={key:inv for key,inv in chosen.items() if key not in selected_errors}
+                scope_issues=[{'invoice_key':key,'status':'review','errors':errors}
+                    for key,errors in {**master_errors,**selected_errors}.items() if key in scope['invoice_keys']]
+                status='No pending invoices'
+                if selected:
+                    try:
+                        export_imports(root,client,config,selected,selected_masters,history,scope['output_folder'],source_client)
+                        status=f'Generated {len(selected)} sales vouchers for {source_client}; import not confirmed'
+                    except (TemplateError,ValueError,KeyError,OSError) as exc:
+                        status=f'BLOCKED: {exc}'
+                        scope_issues.append({'status':'export_blocked','errors':[str(exc)]})
+                scope_reports[source_client]={'export':status,'pending_validated':len(selected),
+                    'issues':scope_issues,'output_path':str(scope['output_folder'])}
+            # Keep the old output location only when it contains exactly this
+            # single source folder's batch. Never retain a mixed company XML.
+            if len(export_scopes)==1:
+                source_client,scope=next(iter(export_scopes.items()))
+                report=scope_reports[source_client]
+                if eligible and set(eligible).issubset(scope['invoice_keys']) and not report['issues'] and report['pending_validated']:
+                    mirror=client/'imports';mirror.mkdir(exist_ok=True)
+                    manifest=read_json(scope['output_folder']/'manifest.json')
+                    for filename in manifest['files']:
+                        shutil.copy2(scope['output_folder']/filename,mirror/filename)
+                    write_json(mirror/'manifest.json',{**manifest,'export_scope':None})
+        report = {'scopes':scope_reports,'client':client.name,'company_id':config['company_id'],'output_format':config.get('output_format','xml'),'counts':counts,
                   'demo_only':bool(config.get('demo_only')),
                   'pending_validated':len(eligible),'export':export_status,'issues':issues,'history':history.statuses()}
         write_json(client / 'reports' / 'validation.json', report)
@@ -524,7 +561,18 @@ def confirm_import(client, result_path):
     with client_lock(client):
         config = load_config(client)
         result = read_json(result_path)
-        manifest = read_json(client / 'imports' / 'manifest.json')
+        export_scope=result.get('export_scope')
+        folder=client/'imports'
+        if export_scope is not None:
+            if not isinstance(export_scope,str) or Path(export_scope).is_absolute() or '..' in Path(export_scope).parts or '\\' in export_scope:
+                raise ValueError('Invalid export scope')
+            folder=folder/export_scope
+            if folder.is_symlink() or not folder.resolve().is_relative_to((client/'imports').resolve()):
+                raise ValueError('Export scope escapes the company imports folder')
+        manifest_path=folder/'manifest.json'
+        manifest = read_json(manifest_path)
+        if manifest.get('export_scope') != export_scope:
+            raise ValueError('Import results must match the generated export scope')
         if result.get('company_id') != config['company_id'] or manifest.get('company_id') != config['company_id']:
             raise ValueError('Import results must match this client company_id')
         if manifest.get('company_name') != config['company_name']:
@@ -567,7 +615,18 @@ def confirm_import(client, result_path):
             history.apply_import_result(result)
             manifest['valid_for_import'] = False
             manifest['reason'] = 'Import results recorded; run again to generate only remaining pending vouchers'
-            write_json(client / 'imports' / 'manifest.json', manifest)
+            write_json(manifest_path, manifest)
+            # Copies/other source folders can refer to the same company invoice.
+            # Retire those exports too, so confirmation cannot leave a second
+            # valid import batch containing an already handled voucher.
+            handled={entry['invoice_key'] for entry in result.get('vouchers',[])}
+            candidates=[client/'imports'/'manifest.json']+list((client/'imports'/'by_client').glob('*/manifest.json'))
+            for other in candidates:
+                if other==manifest_path or not other.exists():
+                    continue
+                saved=read_json(other)
+                if saved.get('company_id')==config['company_id'] and handled.intersection(saved.get('invoice_keys',[])):
+                    invalidate_outputs(client,other.parent)
             return history.statuses()
         finally:
             history.close()

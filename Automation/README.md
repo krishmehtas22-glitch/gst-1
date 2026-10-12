@@ -131,9 +131,13 @@ before re-reading. Company configurations, databases, import confirmations and
 original PDFs are not reset or deleted.
 
 Use the **Client folder** dropdown to inspect just CLIENT 8 or CLIENT 9 rather
-than the older sample folders. **All clients** remains the default. Outputs are
-still company-based retained pending batches: selecting a source folder does not
-delete a company's other pending invoices or confirmed history.
+than the older sample folders. **All clients** remains the default. Desktop XML
+batches are separated by source client folder, even when two folders share the
+same seller. CLIENT 14's ten invoices and CLIENT 15's fifteen invoices therefore
+produce separate ten- and fifteen-voucher XML files. Scanning just CLIENT 15
+exports only its current source invoices; scanning All clients prepares each
+folder's batch separately. Company IDs, duplicate checks, pending history and
+import confirmations remain shared for the same seller and are not reset.
 The review form offers dropdown choices for GST classification, registration,
 supply and export mode. These choices correct a particular invoice; they do not
 teach the reader a new layout. Exports cannot be edited into domestic sales or
@@ -141,8 +145,15 @@ changed between LUT and IGST payment modes. Explicit exports generate accounting
 vouchers, described below.
 
 Each distinct seller GSTIN gets a retained independent company under
-`.invoice_app/companies/`, with XML in that company's `imports` directory.
-Use **Open selected XML folder** to locate it. Original client folders,
+`.invoice_app/companies/`, with each source folder's XML under that company's
+`imports/by_client/<folder-name>_<id>/` directory. Use **Open client XML folder**
+to locate the selected row's folder-specific `Masters.xml`, `Sales_Vouchers.xml`
+and `manifest.json`. Its manifest records `source_client` and `export_scope`.
+The displayed voucher count is for that source folder's batch. The old top-level
+`imports` location is mirrored only when a single source folder contains the
+entire eligible batch; an older mixed company XML is withdrawn on the next scan.
+Keep any unrelated combined invoice PDF out of a client folder: a PDF containing
+twenty invoices contributes twenty rows in addition to that folder's other PDFs. Original client folders,
 configurations, PDFs and histories are preserved. Source PDFs are copied into
 the derived workspaces so their source/history survive moves; copies and JSON
 reviews are not moved or deleted automatically. Correcting an already routed
@@ -510,13 +521,17 @@ python main.py confirm-import "Client 1" "Client 1/import_results.json"
 ```
 
 The results file contains `company_id`, the manifest's exact `generated_at`,
-`tally_result_reference` (the actual log/report reference), `masters` and
+`export_scope` (copy it from a desktop folder-specific manifest; omit it for the
+legacy top-level output), `tally_result_reference` (the actual log/report reference), `masters` and
 `vouchers`. Master entries are `{"master": <exact planned master>, "status":
 "imported"}`. Voucher entries are `{"invoice_key": <manifest key>, "status":
 "imported"}`. Statuses can also be `rejected` or `pending`. Confirm dependent
 masters first or together with sales; otherwise sales confirmation is refused.
 Rejected invoices remain visible in history and are not silently resubmitted.
-Do not report success from XML generation alone.
+Do not report success from XML generation alone. A folder-specific confirmation
+updates the retained company history. Other folders keep their pending invoices;
+any other export containing a handled invoice is invalidated to prevent importing
+that same company invoice from a second batch.
 
 For an existing company, set `company_mode` to `existing` and supply a normalized
 `tally_snapshot.json` from a reliable full export. It must have the matching
