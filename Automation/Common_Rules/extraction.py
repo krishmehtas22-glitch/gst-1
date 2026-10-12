@@ -9,20 +9,21 @@ from .tabular_layout import parse_role_table, parse_receipt, marked_sample
 from .ocr import MARKER, read_page
 from .supplier_layouts import layout_text
 from .flat_layout import parse_flat_layout, supported_flat
+from .party_evidence import read_party_roles, role_heading, read_seller_masthead
 
 FIELDS = {
-    'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no'),
+    'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no', 'invoice reference', 'invoice ref', 'document no', 'document number', 'invoice id'),
     'date': ('invoice date', 'date', 'dated', 'inv date'),
-    'seller_name': ('seller', 'seller name', 'supplier', 'supplier name'),
-    'seller_gstin': ('seller gstin', 'supplier gstin'),
-    'buyer_name': ('buyer', 'buyer name', 'customer', 'customer name', 'bill to', 'billed to', 'recipient', 'recipient name', 'purchaser'),
-    'buyer_gstin': ('buyer gstin', 'customer gstin'),
+    'seller_name': ('seller', 'seller name', 'supplier', 'supplier name', 'vendor', 'vendor name', 'exporter', 'issued by', 'sold by', 'bill from', 'seller details', 'supplier details', 'vendor details'),
+    'seller_gstin': ('seller gstin', 'supplier gstin', 'vendor gstin', 'seller gst no', 'supplier gst no'),
+    'buyer_name': ('buyer', 'buyer name', 'customer', 'customer name', 'bill to', 'billed to', 'sold to', 'recipient', 'recipient name', 'purchaser'),
+    'buyer_gstin': ('buyer gstin', 'customer gstin', 'recipient gstin'),
     'buyer_registration': ('buyer registration', 'registration type', 'buyer registration type'),
     'buyer_state': ('buyer state', 'customer state'),
     'place_of_supply': ('place of supply', 'place of supply (state code)', 'pos'),
     'classification': ('tax treatment', 'gst classification', 'supply type'),
     'taxable': ('taxable value', 'taxable amount', 'taxable total', 'subtotal', 'sub total', 'net taxable value'),
-    'total': ('grand total', 'invoice total', 'total invoice amount', 'total amount'),
+    'total': ('grand total', 'invoice total', 'total invoice amount', 'total amount', 'total payable', 'amount payable', 'net payable', 'invoice value'),
     'round_off': ('round off', 'rounding'),
     'cess': ('cess',),
     'seller_state': ('seller state', 'supplier state'),
@@ -66,7 +67,7 @@ def text_from_pdf(path):
     used_ocr = False
     for index,page in enumerate(reader.pages):
         plain = page.extract_text() or ''
-        text = plain if supported_flat(plain) else (page.extract_text(extraction_mode='layout') or '')
+        text = choose_embedded_text(plain,page.extract_text(extraction_mode='layout') or '')
         if len(text.strip()) < 30:
             text = read_page(path,index)
             used_ocr = True
@@ -93,6 +94,8 @@ def split_label_lines(text, fields=None):
             lines.append(segment)
             if re.fullmatch(rf'\s*(?:{pattern})\s*[:=]?\s*',segment,re.I) and index+1<len(original):
                 next_line = original[index+1].strip()
+                if role_heading(segment.rstrip(' := ').strip()) and ':' in next_line:
+                    continue  # A following field label is not the party name.
                 if next_line and not re.match(rf'(?:{pattern})\s*[:=]',next_line,re.I):
                     lines[-1] = segment.rstrip(' :=')+': '+next_line
     return '\n'.join(segment for line in lines for segment in segments(line))
@@ -155,42 +158,23 @@ def layout_fields(text, warnings):
 
 
 def party_blocks(text, warnings):
-    """Assign generic GSTIN/state labels only inside an explicit party block."""
-    found = {}
-    role = None
-    expect_name = False
-    labels = {'seller':('seller','supplier','from','seller details','supplier details'),
-              'buyer':('buyer','recipient','customer','bill to','billed to','buyer details','customer details')}
-    for line in (line.strip() for line in text.splitlines() if line.strip()):
-        matched_role = next((prefix for prefix,names in labels.items() if line.rstrip(':').casefold() in names),None)
-        if matched_role:
-            role = matched_role
-            expect_name = True
-            continue
-        inline_role = next((prefix for prefix in ('seller','buyer') if re.match(
-            r'^(?:'+ '|'.join(re.escape(alias) for alias in FIELDS[prefix+'_name'])+r')\s*:',line,re.I)),None)
-        if inline_role:
-            role = inline_role
-            expect_name = False
-            continue
-        if re.match(r'^(?:invoice|inv\b|bill no|date\b|dated\b|item\b|description\b|particulars\b|place of supply\b)',line,re.I):
-            role = None
-        if not role:
-            continue
-        if expect_name and ':' not in line:
-            found[role+'_name'] = line
-            expect_name = False
-        match = re.fullmatch(r'(GSTIN|GSTIN/UIN|GST No\.?|State|State code|GST registration|Registration type)\s*:\s*(.*)',line,re.I)
-        if match:
-            label,value = match[1].casefold(),match[2].strip()
-            suffix = 'gstin' if label.startswith('gst') and 'registration' not in label else 'state' if label.startswith('state') else 'registration'
-            key = role+'_'+suffix
-            if key in found and found[key] != value:
-                warnings.append('Ambiguous '+key+' in party block')
-                found[key] = None
-            elif key not in found:
-                found[key] = value
+    found,_=read_party_roles(text,warnings)
     return found
+
+
+def choose_embedded_text(plain,layout):
+    """Use ordered text for intact roles when geometric spacing loses fields."""
+    if supported_flat(plain):return plain
+    if not layout.strip():return plain
+    first=parse_text(layout)
+    required=('number','date','seller_name','seller_gstin','buyer_name','items')
+    if all(first.get(key) for key in required):return layout
+    second=parse_text(plain)
+    def quality(inv):
+        populated=sum(bool(inv.get(key)) for key in required)
+        complete_items=sum(all(item.get(key) not in (None,'') for key in ('name','hsn','quantity','unit','rate','value')) for item in inv.get('items',[]))
+        return (populated,complete_items,-len(inv.get('extraction_warnings',[])))
+    return plain if quality(second)>quality(first) else layout
 
 
 def normalize_ocr_labels(text):
@@ -211,6 +195,7 @@ def normalize_ocr_labels(text):
 
 def normalize_basic_fields(inv, warnings):
     if inv.get('date'):
+        inv['date']=re.sub(r'(\d)(?:st|nd|rd|th)\b',r'\1',inv['date'],flags=re.I)
         for fmt in ('%Y-%m-%d','%d/%m/%Y','%d-%m-%Y','%d.%m.%Y','%d %b %Y','%d-%b-%Y','%d %B %Y'):
             try:
                 inv['date'] = datetime.strptime(inv['date'], fmt).date().isoformat()
@@ -228,6 +213,8 @@ def normalize_basic_fields(inv, warnings):
     if inv.get('classification'):
         normalized = inv['classification'].strip().lower().replace('-', '_').replace(' ', '_')
         inv['classification'] = {'nil':'nil_rated', 'nilrated':'nil_rated', 'exempted':'exempt', 'non_taxable':'non_gst'}.get(normalized, normalized)
+    for field in ('seller_gstin','buyer_gstin'):
+        if inv.get(field):inv[field]=inv[field].strip().upper()
 
 
 def mapped_field(text,rule,key,fields,warnings):
@@ -290,6 +277,12 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             inv[key] = None
         else:
             inv[key] = value
+    if not inv.get('seller_name') and not any('ambiguous seller' in warning.casefold() for warning in warnings):
+        for key,value in read_seller_masthead(original_text,warnings).items():
+            if inv.get(key) and inv[key]!=value:
+                warnings.append('Seller masthead conflicts with '+key)
+            elif key not in field_mappings:
+                inv[key]=value
     normalize_basic_fields(inv,warnings)
     rates = {}
     for tax in ('cgst','sgst','igst'):
@@ -345,7 +338,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                             item[tax+'_rate'] = str(value)
                         if item.get('printed_'+tax) is not None and cents(money(item['value'])*money(value)/100) != cents(item['printed_'+tax]):
                             warnings.append('Item printed '+tax.upper()+' does not reconcile to its rate')
-                except (KeyError,ValueError,ArithmeticError):
+                except (KeyError,ValueError,TypeError,ArithmeticError):
                     warnings.append('Item GST split needs seller state and place of supply review')
             items.append(item)
     inv['items'] = items
@@ -356,6 +349,11 @@ def parse_text(text, field_mappings=None, header_aliases=None):
     if 'synthetic test document - not for real gst filing or commercial use. gstins and identifiers are fictional.' in ' '.join(original_text.lower().split()):
         inv['dummy_document'] = True
     if marked_sample(original_text):inv['dummy_document']=True
+    if 'synthetic test data - not a valid tax document or gst registration' in ' '.join(original_text.casefold().split()):
+        inv['dummy_document']=True
+    if re.fullmatch(r'\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9]',inv.get('seller_gstin') or ''):
+        if inv.get('seller_name') and inv.get('buyer_name') and items:
+            inv['source_layout']='flexible_roles_v1'
     inv['extraction_warnings'] = warnings
     if MARKER in text:
         inv['source_ocr'] = True

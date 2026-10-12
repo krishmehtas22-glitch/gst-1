@@ -9,6 +9,8 @@ from tkinter import ttk, filedialog, messagebox
 
 from Common_Rules.desktop import process_sources, save_review, reset_source_reviews, UNITS
 from Common_Rules.source_documents import confirm_test_document
+from Common_Rules.workflow_status import invoice_status, scan_summary
+from Common_Rules.unit_choices import open_unit_choices
 from Common_Rules.engine import discover
 from Common_Rules.watcher import source_signature
 from Common_Rules.supplier_editor import open_layout_editor
@@ -28,6 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
+APP_VERSION='Reader 4'
 
 
 class InvoiceApp:
@@ -41,7 +44,7 @@ class InvoiceApp:
         self.observed = None
         self.closing = False
         window.protocol('WM_DELETE_WINDOW',self.close)
-        window.title('Invoice inspection and XML')
+        window.title('Invoice inspection and XML — '+APP_VERSION)
         window.geometry('1150x700')
         controls = ttk.Frame(window, padding=10)
         controls.pack(fill='x')
@@ -60,6 +63,7 @@ class InvoiceApp:
         ttk.Button(scope,text='Re-read selected PDFs',command=self.reread).pack(side='left')
         ttk.Button(scope,text='Save supplier layout',command=self.supplier_layout).pack(side='left',padx=8)
         ttk.Button(scope,text='Confirm test PDF',command=self.confirm_test).pack(side='left')
+        ttk.Button(scope,text='Choose missing units',command=self.units).pack(side='left',padx=8)
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
@@ -115,6 +119,14 @@ class InvoiceApp:
             return
         self.reset()
         self.start()
+
+    def units(self):
+        if self.busy:return
+        watching=self.auto.get();self.auto.set(False)
+        def done(changed):
+            self.auto.set(watching)
+            if changed:self.reset();self.start()
+        open_unit_choices(self.window,self.root,self.records,done)
 
     def close(self):
         self.closing = True
@@ -174,15 +186,19 @@ class InvoiceApp:
             if kind == 'error':
                 self.status.config(text='Needs attention: '+value)
             else:
+                previous=self.selected()
+                preferred=(previous.get('digest'),previous.get('client')) if previous else None
                 self.records = value
                 self.table.delete(*self.table.get_children())
                 for index, record in enumerate(value):
                     inv = record['invoice']
-                    state = 'Needs review' if record['errors'] else record.get('display_status',record.get('export','Inspected'))
+                    state = invoice_status(record)
                     self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name',''),inv.get('total',''),state))
-                count = sum(bool(record['errors']) for record in value)
-                pdf_count=len({record.get('source_path',record['path']) for record in value})
-                self.status.config(text=f'{pdf_count} PDFs; {len(value)} invoices inspected; {count} need review. XML is prepared, not imported into Tally.')
+                self.status.config(text=scan_summary(value))
+                if value:
+                    selected=next((i for i,r in enumerate(value) if (r.get('digest'),r['client'])==preferred),
+                                  next((i for i,r in enumerate(value) if r['errors']),0))
+                    self.table.selection_set(str(selected));self.table.see(str(selected));self.details()
                 # Use the signature from before processing, so PDFs arriving
                 # during a run are noticed at the next stable scan.
         except queue.Empty:

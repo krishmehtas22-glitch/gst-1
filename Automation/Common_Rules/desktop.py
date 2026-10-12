@@ -1,4 +1,5 @@
 """Source inspection and isolated company workspaces for the desktop UI."""
+from copy import deepcopy
 import hashlib
 from pathlib import Path
 import re
@@ -25,6 +26,10 @@ UNITS = {
     'PKT': {'formal_name':'Packets','uqc':'PAC','decimal_places':0,'tally_uqc':'PAC-PACKS'},
     'KGS': {'formal_name':'Kilograms','uqc':'KGS','decimal_places':3},
     'DOZ': {'formal_name':'Dozens','uqc':'DOZ','decimal_places':0,'tally_uqc':'DOZ-DOZENS'},
+    'MT': {'formal_name':'Metric Tonnes','uqc':'MTS','decimal_places':3,'tally_uqc':'MTS-METRIC TON'},
+    'PCS': {'formal_name':'Pieces','uqc':'PCS','decimal_places':0},
+    'LTR': {'formal_name':'Litres','uqc':'LTR','decimal_places':3},
+    'MTR': {'formal_name':'Metres','uqc':'MTR','decimal_places':3},
     'Units': {'formal_name':'Units','uqc':'UNT','decimal_places':0},
     'Vials': {'formal_name':'Vials','uqc':'OTH','decimal_places':0},
     'Packs': {'formal_name':'Packs','uqc':'PAC','decimal_places':0,'tally_uqc':'PAC-PACKS'},
@@ -32,7 +37,7 @@ UNITS = {
     'Liters': {'formal_name':'Liters','uqc':'LTR','decimal_places':3},
 }
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','supplier_layouts.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','supplier_layouts.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):
@@ -49,8 +54,19 @@ def refresh_review(source, saved):
     original=saved.get('original_extraction')
     # Without a baseline, never guess which fields the user intentionally set.
     # Keep prior OCR approvals intact rather than replacing them with new OCR.
-    if not isinstance(original,dict) or source.get('source_ocr'):
+    if source.get('source_ocr') or reviewed.get('source_ocr') or (isinstance(original,dict) and original.get('source_ocr')):
         return dict(reviewed)
+    if not isinstance(original,dict):
+        refreshed=deepcopy(reviewed)
+        recovered=False
+        # Blank identity fields cannot be valid reviewed facts. Recover only
+        # those blanks, preserving every nonblank edit and all tax decisions.
+        for field in ('seller_name','seller_gstin','seller_state','buyer_name','number','date','source_layout'):
+            if refreshed.get(field) in (None,'') and source.get(field) not in (None,''):
+                refreshed[field]=source[field];recovered=True
+        if recovered:
+            refreshed['extraction_warnings']=list(dict.fromkeys(refreshed.get('extraction_warnings',[])+source.get('extraction_warnings',[])))
+        return refreshed
     refreshed=dict(source)
     if source.get('extraction_warnings',[])==original.get('extraction_warnings',[]):
         # An approval resolves the same warnings, but not new parser warnings.
@@ -171,11 +187,11 @@ def inspect_sources(root, client_names=None, demo=True):
     return records
 
 
-def save_review(root, record, invoice):
+def save_review(root, record, invoice, resolve_warnings=True):
     verify_source(root,record)
     digest=record['digest']
     edited = dict(invoice)
-    edited['extraction_warnings'] = []
+    if resolve_warnings:edited['extraction_warnings'] = []
     write_json(root/'.invoice_app'/'reviews'/(digest+'.json'),
                {'source_sha256':digest,'approved':True,'invoice':edited,
                 'original_extraction':record.get('source_invoice',record['invoice'])})
@@ -196,6 +212,9 @@ def process_sources(root, demo=True, client_names=None):
                 continue
             if not record.get('digest'):
                 raise ValueError('Unreadable source PDF')
+            if source.get('dummy_document'):
+                raw={**raw,'dummy_document':True}
+                record['invoice']=raw
             verify_source(root,record)
             if demo and not raw.get('dummy_document'):
                 raise ValueError('For fictional test PDFs, select the row and click Confirm test PDF. For real invoices, switch off Dummy PDFs.')
@@ -264,6 +283,17 @@ def process_sources(root, demo=True, client_names=None):
                 record['notices'] = [export_notice(config)]
             if config.get('source_seller_name','').casefold() != name.casefold():
                 raise ValueError('Seller GSTIN matches a retained company but seller name differs; review the source identity')
+            if not demo:
+                # Unit capitalization is representational; do not change
+                # quantity, scale, or an unknown unit's physical meaning.
+                mapped=[]
+                for item in raw.get('items',[]):
+                    item=dict(item)
+                    unit=next((key for key in config['units'] if key.casefold()==str(item.get('unit','')).casefold()),None)
+                    if unit and unit!=item.get('unit'):
+                        item['printed_unit']=item['unit'];item['unit']=unit
+                    mapped.append(item)
+                raw={**raw,'items':mapped};record['invoice']=raw
             filename = record['digest']+'.pdf'
             target = company/filename
             if not target.exists():

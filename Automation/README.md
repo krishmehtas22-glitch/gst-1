@@ -1,5 +1,39 @@
 # Sales invoice automation
 
+## Reader 4: recurring extraction and setup issues
+
+The title bar shows **Reader 4** so a replaced installation can be identified.
+The reader recognizes explicit supplier/vendor/exporter and customer/billing
+roles, standalone or inline names, and separate party columns. A seller banner
+can be recovered from a single business name and GSTIN before the billing party,
+or a matching printed signatory. Ambiguous banners/signatories remain blocked.
+When geometric PDF spacing loses key fields, ordered embedded text is compared
+and used if it recovers more complete printed facts. Supplier names are read from
+the document; there is no list of sample seller names or guessed spelling.
+
+The table shows the actual outstanding action: **Choose quantity unit**,
+**Confirm test PDF**, **Choose invoice mode**, **Choose GST treatment**,
+**Check seller details**, **Check GSTIN**, **Check amounts / GST**, or
+**Verify scanned invoice**. Successful rows show XML prepared/import status.
+The header reports how many invoices have XML prepared and counts each pending
+action, rather than saying XML is prepared when every row is blocked. The first
+outstanding row is selected automatically, exposing its detailed reason below.
+
+Click **Choose missing units** to set each visible invoice item's actual unit in
+one scrollable screen. Every row starts blank; choose Nos, KG, MT, PCS or another
+supported unit independently. **Save chosen units and rescan** saves only your
+choices and revalidates. It does not approve other warnings or clear required
+scanned-PDF checks. Recognized unit capitalization is normalized for real
+invoices without converting quantities. Older reviews with blank identity
+fields can recover those blanks from newly readable native text while retaining
+all nonblank edits and tax decisions. OCR reviews remain intact.
+
+The supplied 61 distinct PDFs contain 80 invoices. All seller names were read;
+all 80 vouchers were checked in isolated audit runs after explicit test-data,
+unit and exempt-treatment choices. These checks verify accounting XML, not a
+live Tally import or every possible future PDF layout. CLIENT 16's SI-0029 style
+was shown only in a screenshot and requires its source PDFs for verification.
+
 ## Desktop workflow: inspection, corrections and seller grouping
 
 On Windows, double-click `Open_Invoice_App.bat` alongside `main.py`. Select the
@@ -37,7 +71,8 @@ Seller/buyer, GSTIN, date, invoice number, HSN, quantity, rates and totals are
 extracted. Their printed `Unit: Nos / Kg (as applicable)` leaves the actual unit
 unspecified. Select each invoice, click **Review selected invoice**, choose its
 actual **Unit** from the item dropdown, then **Approve corrections and revalidate**.
-There is no automatic Nos assumption. Unit choices belong to that exact invoice,
+The same choices can be made together with **Choose missing units**, without
+re-entering the rest of each invoice. There is no automatic Nos assumption. Unit choices belong to that exact invoice,
 not every later invoice from the supplier. Missing or ambiguous units always
 require review. `SYNTHETIC TEST DATA - NOT A VALID TAX DOCUMENT OR GST REGISTRATION`
 is recognized as an explicit fictional marker.
@@ -123,8 +158,9 @@ classification rules. Unknown units need company unit/UQC configuration.
 
 When a reader update recovers previously missing fields, unchanged fields from
 an older native-PDF review refresh from the source; explicit human corrections
-remain retained. Existing OCR approvals and older reviews without a baseline
-are preserved as complete overrides. If one of those old overrides still blocks
+remain retained. Existing OCR approvals remain complete overrides. Older reviews without a
+baseline retain every nonblank correction and tax decision; empty identity
+fields can recover from newly readable native text. If one of those old overrides still blocks
 a readable PDF, select its row(s) and use **Re-read selected PDFs**. This archives
 only those saved reviews and extraction caches under `.invoice_app/review_backups/`
 before re-reading. Company configurations, databases, import confirmations and

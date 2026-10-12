@@ -21,6 +21,21 @@ def test_gstin(base):
 
 
 def prepare_demo_invoice(raw, config):
+    if raw.get('source_layout')=='flexible_roles_v1':
+        adapted=deepcopy(raw);derived=[]
+        if not adapted.get('seller_state'):
+            adapted['seller_state']=raw.get('seller_gstin','')[:2]
+            derived.append({'location':'invoice','field':'seller_state','printed':raw.get('seller_state'),
+                'demo_value':adapted['seller_state'],'reason':'State from the printed fictional seller GSTIN'})
+        if not adapted.get('supply') and raw.get('classification') in ('taxable','exempt','nil_rated','non_gst'):
+            pos=state_code(raw.get('place_of_supply',''))
+            adapted['supply']='EXEMPT' if raw['classification']!='taxable' else 'INTRA' if pos==state_code(adapted['seller_state']) else 'INTER'
+            derived.append({'location':'invoice','field':'supply','printed':raw.get('supply'),
+                'demo_value':adapted['supply'],'reason':'Printed classification and GSTIN/place-of-supply state split'})
+        prepared=prepare_paired_demo(adapted,config)
+        prepared['demo_source_invoice']=deepcopy(raw)
+        prepared['demo_adjustments']=derived+prepared['demo_adjustments']
+        return prepared
     if raw.get('source_layout') in ('paired_columns_v1','section_panels_v1','supplier_mapping_v1','tabular_roles_v1','receipt_items_v1','ordered_roles_v1'):
         return prepare_paired_demo(raw, config)
     if config['demo_profile'].get('version') != 1:
