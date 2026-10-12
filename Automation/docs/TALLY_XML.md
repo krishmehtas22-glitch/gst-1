@@ -38,6 +38,14 @@ LUT/IGST mode, country and shipping reference stay in the voucher narration and
 manifest. These export vouchers still have no inventory movement and do not
 claim automatic GSTR-1 classification.
 
+For the CLIENT 12 USD/AED examples, the exporter posts verified INR values using
+the printed exchange rate, retaining foreign currency/amount/rate in narration
+and manifest. This creates INR accounting entries, not foreign-currency Tally
+debtor balances. Percentage-discounted domestic items use their net unit rate
+and taxable value in inventory. Original list price/discount are kept in the
+records and narration; no separate discount ledger or Tally discount column is
+created. Each source extension and tax amount is reconciled before export.
+
 Before filing, check each export voucher's GST nature in your Tally
 release and verify the transactions in its GSTR-1 export section. Do not set the
 whole shared Sales ledger to export-only treatment: domestic sales use it too. This change

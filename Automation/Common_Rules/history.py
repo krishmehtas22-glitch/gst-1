@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 import json
 import sqlite3
-from .accounting import fingerprint, legacy_fingerprint
+from .accounting import fingerprint, legacy_fingerprint, previous_financial_fingerprint
 
 
 class History:
@@ -46,7 +46,7 @@ class History:
         if row:
             data = json.loads(row[1])
             current = fingerprint(data)
-            if row[0] not in (current,legacy_fingerprint(data)):
+            if row[0] not in (current,legacy_fingerprint(data),previous_financial_fingerprint(data)):
                 raise ValueError('Stored invoice fingerprint does not match its retained data')
             # Read older hashes compatibly, preserving the original database,
             # invoice audit data and confirmed import status.

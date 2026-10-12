@@ -18,9 +18,15 @@ UNITS = {
     'KG': {'formal_name':'Kilograms','uqc':'KGS','decimal_places':3},
     'ROLL': {'formal_name':'Rolls','uqc':'ROL','decimal_places':0,'tally_uqc':'ROL-ROLLS'},
     'SET': {'formal_name':'Sets','uqc':'SET','decimal_places':0},
+    'BOX': {'formal_name':'Boxes','uqc':'BOX','decimal_places':0},
+    'PRS': {'formal_name':'Pairs','uqc':'PRS','decimal_places':0,'tally_uqc':'PRS-PAIRS'},
+    'REAM': {'formal_name':'Reams','uqc':'RIM','decimal_places':0,'tally_uqc':'RIM-REAMS'},
+    'PKT': {'formal_name':'Packets','uqc':'PAC','decimal_places':0,'tally_uqc':'PAC-PACKS'},
+    'KGS': {'formal_name':'Kilograms','uqc':'KGS','decimal_places':3},
+    'DOZ': {'formal_name':'Dozens','uqc':'DOZ','decimal_places':0,'tally_uqc':'DOZ-DOZENS'},
 }
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','paired_layout.py','section_layout.py','supplier_layouts.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','supplier_layouts.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):
@@ -222,6 +228,10 @@ def process_sources(root, demo=True, client_names=None):
                 config['source_seller_name'] = name
                 write_json(company/'client.json',config)
             config = read_json(company/'client.json')
+            if any(unit not in config.get('units',{}) for unit in UNITS):
+                config.setdefault('units',{})
+                for unit,mapping in UNITS.items():config['units'].setdefault(unit,dict(mapping))
+                write_json(company/'client.json',config)
             if 'unified_sales_ledger' not in config:
                 # Add the desktop default without replacing identity, history,
                 # unit mappings or any existing explicit ledger preference.
@@ -229,7 +239,7 @@ def process_sources(root, demo=True, client_names=None):
                 write_json(company/'client.json',config)
             if raw.get('classification') in EXPORT_MODES:
                 record['notices'] = [export_notice(config)]
-            if config.get('source_seller_name') != name:
+            if config.get('source_seller_name','').casefold() != name.casefold():
                 raise ValueError('Seller GSTIN matches a retained company but seller name differs; review the source identity')
             filename = record['digest']+'.pdf'
             target = company/filename

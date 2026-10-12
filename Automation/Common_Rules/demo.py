@@ -21,7 +21,7 @@ def test_gstin(base):
 
 
 def prepare_demo_invoice(raw, config):
-    if raw.get('source_layout') in ('paired_columns_v1','section_panels_v1','supplier_mapping_v1'):
+    if raw.get('source_layout') in ('paired_columns_v1','section_panels_v1','supplier_mapping_v1','tabular_roles_v1','receipt_items_v1'):
         return prepare_paired_demo(raw, config)
     if config['demo_profile'].get('version') != 1:
         raise ValueError('This seller-specific demo configuration requires the paired seller/buyer layout')

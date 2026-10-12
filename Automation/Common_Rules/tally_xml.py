@@ -169,6 +169,11 @@ def sales_document(config, invoices):
         if inv.get('buyer_address'):
             address = ET.SubElement(voucher,'BASICBUYERADDRESS.LIST',{'TYPE':'String'})
             text(address,'BASICBUYERADDRESS',inv['buyer_address'])
+        for index,item in enumerate(inv['items'],1):
+            if item.get('discount_rate'):
+                voucher.find('NARRATION').text+=f"; item {index}: printed list rate INR {item['list_rate']}, discount {item['discount_rate']}%, net unit rate INR {item['rate']}"
+        if inv.get('foreign_currency'):
+            voucher.find('NARRATION').text+=f"; original invoice {inv['foreign_currency']} {inv['foreign_invoice_value']}; printed exchange rate 1 {inv['foreign_currency']} = INR {inv['exchange_rate']}; accounting amounts in INR"
         if is_export:
             narration = voucher.find('NARRATION')
             treatment = 'EXPORT UNDER LUT WITHOUT PAYMENT OF IGST' if inv['classification']=='export_lut' else 'EXPORT WITH PAYMENT OF IGST'

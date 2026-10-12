@@ -154,7 +154,9 @@ def extract_with_layouts(text,layouts,demo):
 def new_layout(record,demo):
     invoice=record['invoice']
     anchors={'section_panels_v1':['SELLER DETAILS','INVOICE DETAILS','BILL TO / BUYER'],
-             'paired_columns_v1':['SELLER / SUPPLIER','BUYER / RECIPIENT']}.get(invoice.get('source_layout'),[])
+             'paired_columns_v1':['SELLER / SUPPLIER','BUYER / RECIPIENT'],
+             'tabular_roles_v1':['Billed To (Recipient)'],
+             'receipt_items_v1':['Customer:','HSN']}.get(invoice.get('source_layout'),[])
     return {'version':1,'id':uuid.uuid4().hex,'name':invoice.get('seller_name','Supplier layout'),
             'seller_gstin':str(invoice.get('seller_gstin','')).upper(),'demo':demo,
             'anchors':anchors,'fields':{},'headers':{}}

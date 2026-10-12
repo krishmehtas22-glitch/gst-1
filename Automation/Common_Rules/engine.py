@@ -276,6 +276,9 @@ def export_xml_imports(client, config, invoices, masters, history):
              'accounting_only_exports':[{'invoice_key':key,'number':inv['number'],
                  'buyer_country':inv['buyer_country'],'export_mode':inv['export_mode'],
                  'shipping_bill_port':inv.get('shipping_bill_port'),
+                 'foreign_currency':inv.get('foreign_currency'),
+                 'exchange_rate':inv.get('exchange_rate'),
+                 'foreign_invoice_value':inv.get('foreign_invoice_value'),
                  'notice':export_notice(config)}
                  for key,inv in invoices.items() if inv.get('accounting_only_export')],
              'gst_return_mapping_verified':False,
@@ -363,7 +366,7 @@ def _process_client(root, client):
                 parsed = parse_text(text_from_pdf(path))
             except Exception:
                 continue  # The per-document review path reports unreadable PDFs.
-            if parsed.get('source_layout') in ('paired_columns_v1','section_panels_v1'):
+            if parsed.get('source_layout') in ('paired_columns_v1','section_panels_v1','tabular_roles_v1','receipt_items_v1'):
                 paired_sellers.add(parsed.get('seller_gstin'))
         if len(paired_sellers) > 1:
             raise ValueError('Multiple sellers in this folder; use Open_Invoice_App.bat to create separate seller companies without changing existing history')

@@ -34,6 +34,9 @@ def state_code(value):
     value = str(value).strip()
     if value.isdigit() and value.zfill(2) in STATES:
         return value.zfill(2)
+    prefixed=re.fullmatch(r'(\d{2})\s*-\s*(.+)',value)
+    if prefixed and STATES.get(prefixed[1],'').casefold()==prefixed[2].strip().casefold():
+        return prefixed[1]
     for code, name in STATES.items():
         if value.casefold() == name.casefold() or value.casefold() == f'{code} - {name}'.casefold():
             return code
@@ -70,11 +73,20 @@ def fingerprint(inv):
     fields = ('number','date','seller_name','seller_gstin','seller_state','seller_address',
         'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address','buyer_country',
         'place_of_supply','classification','supply','taxable','total','round_off',
-        'cgst','sgst','igst','cess','currency','export_mode','demo_only')
-    item_fields = ('name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate')
+        'cgst','sgst','igst','cess','currency','export_mode','demo_only',
+        'foreign_currency','exchange_rate','foreign_invoice_value')
+    item_fields = ('name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate',
+                   'list_rate','discount_rate','foreign_rate','foreign_value')
     clean = {key:inv[key] for key in fields if key in inv}
     clean['items'] = [{key:item[key] for key in item_fields if key in item} for item in inv.get('items',[])]
     return hashlib.sha256(json.dumps(clean,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+
+
+def previous_financial_fingerprint(inv):
+    """Verify hashes saved before discount/foreign-price facts were included."""
+    previous={key:value for key,value in inv.items() if key not in ('foreign_currency','exchange_rate','foreign_invoice_value')}
+    previous['items']=[{key:value for key,value in item.items() if key not in ('list_rate','discount_rate','foreign_rate','foreign_value')} for item in inv.get('items',[])]
+    return fingerprint(previous)
 
 
 def validate(raw, config):
@@ -82,6 +94,8 @@ def validate(raw, config):
     inv = dict(raw)
     inv.pop('accounting_only_export',None)
     inv.pop('export_accounting_notice',None)
+    for key in ('foreign_currency','exchange_rate','foreign_invoice_value'):
+        if inv.get(key) in (None,''):inv.pop(key,None)
     errors = list(inv.pop('extraction_warnings', []))
     if bool(inv.get('demo_only')) != bool(config.get('demo_only')):
         errors.append('Demo invoices require a demo client; real invoices require a separate production client')
@@ -140,6 +154,14 @@ def validate(raw, config):
             errors.append('Buyer state required for master creation')
         if inv['classification'] not in ('taxable','exempt','nil_rated','non_gst',*EXPORT_MODES):
             errors.append('Uncertain GST classification')
+        fx=any(key in inv for key in ('foreign_currency','exchange_rate','foreign_invoice_value'))
+        if fx:
+            if not is_export or inv.get('foreign_currency') not in ('USD','AED') or any(key not in inv for key in ('foreign_currency','exchange_rate','foreign_invoice_value')):
+                errors.append('Foreign-price conversion requires an export, USD/AED currency, exchange rate and foreign invoice value')
+            inv['exchange_rate']=format(money(inv.get('exchange_rate',0)).normalize(),'f')
+            inv['foreign_invoice_value']=str(cents(inv.get('foreign_invoice_value',0)))
+            if money(inv['exchange_rate'])<=0 or money(inv['foreign_invoice_value'])<=0:
+                errors.append('Export exchange rate and foreign invoice value must be positive')
         inv['taxable'] = str(cents(inv['taxable']))
         inv['total'] = str(cents(inv['total']))
         inv['round_off'] = str(cents(inv.get('round_off', '0')))
@@ -156,9 +178,12 @@ def validate(raw, config):
         if inv['classification']=='export_igst' and money(inv['igst'])<=0:
             errors.append('Export with payment of IGST requires a positive IGST amount')
         normalized = []
+        foreign_sum=Decimal(0)
         sums = {tax: Decimal('0') for tax in TAXES}
         for index, item in enumerate(inv['items'], 1):
             item = dict(item)
+            for key in ('list_rate','discount_rate','foreign_rate','foreign_value','printed_cgst','printed_sgst','printed_igst','printed_total'):
+                if item.get(key) in (None,''):item.pop(key,None)
             for field in ('name','hsn','quantity','unit','rate','value'):
                 if item.get(field) in (None, ''):
                     errors.append(f'Item {index}: missing {field}')
@@ -169,6 +194,25 @@ def validate(raw, config):
                 errors.append(f'Item {index}: invalid HSN/SAC')
             for field in ('quantity','rate','value'):
                 item[field] = format(money(item[field]).normalize(), 'f')
+            if 'list_rate' in item or 'discount_rate' in item:
+                if 'list_rate' not in item or 'discount_rate' not in item:
+                    errors.append(f'Item {index}: printed list rate and discount percentage are both required')
+                else:
+                    item['list_rate']=format(money(item['list_rate']).normalize(),'f')
+                    item['discount_rate']=format(money(item['discount_rate']).normalize(),'f')
+                    discount=money(item['discount_rate'])
+                    if money(item['list_rate'])<0 or not 0<discount<=100 or money(item['list_rate'])*(1-discount/100)!=money(item['rate']):
+                        errors.append(f'Item {index}: net unit rate does not reconcile to printed list rate and discount')
+            if fx:
+                if 'foreign_rate' not in item or 'foreign_value' not in item:
+                    errors.append(f'Item {index}: foreign unit rate and value are required')
+                else:
+                    for key in ('foreign_rate','foreign_value'):item[key]=format(money(item[key]).normalize(),'f')
+                    foreign_sum+=money(item['foreign_value'])
+                    if money(item['foreign_rate'])<0 or money(item['foreign_value'])<0 or cents(money(item['quantity'])*money(item['foreign_rate']))!=cents(item['foreign_value']) or cents(money(item['foreign_value'])*money(inv['exchange_rate']))!=cents(item['value']) or money(item['foreign_rate'])*money(inv['exchange_rate'])!=money(item['rate']):
+                        errors.append(f'Item {index}: foreign price/exchange rate does not reconcile to INR accounting values')
+            elif 'foreign_rate' in item or 'foreign_value' in item:
+                errors.append(f'Item {index}: foreign item prices require export exchange-rate metadata')
             if money(item['quantity']) <= 0 or money(item['rate']) < 0 or money(item['value']) < 0:
                 errors.append(f'Item {index}: negative amount or nonpositive quantity')
             if abs(cents(money(item['quantity']) * money(item['rate'])) - cents(item['value'])) > Decimal('.01'):
@@ -182,6 +226,8 @@ def validate(raw, config):
                 if rate < 0 or rate > 100:
                     errors.append(f'Item {index}: invalid {tax} rate')
                 sums[tax] += cents(money(item['value']) * rate / 100)
+                if 'printed_'+tax in item and cents(item['printed_'+tax])!=cents(money(item['value'])*rate/100):
+                    errors.append(f'Item {index}: printed {tax.upper()} amount does not reconcile')
             if money(item['cgst_rate']) != money(item['sgst_rate']):
                 errors.append(f'Item {index}: CGST and SGST rates differ')
             intra = inv['seller_gstin'][:2] == inv['place_of_supply']
@@ -194,8 +240,11 @@ def validate(raw, config):
                 errors.append(f'Item {index}: taxable classification requires a GST rate')
             if inv['classification'] not in ('taxable','export_igst') and rate_sum:
                 errors.append(f'Item {index}: non-taxable classification conflicts with GST')
+            if item.get('printed_total') is not None and cents(item['printed_total'])!=cents(money(item['value'])+sum(cents(money(item['value'])*money(item[tax+'_rate'])/100) for tax in TAXES)):
+                errors.append(f'Item {index}: printed gross amount does not reconcile')
             normalized.append(item)
         inv['items'] = normalized
+        if fx and cents(foreign_sum)!=cents(inv['foreign_invoice_value']):errors.append('Foreign item values do not reconcile to foreign invoice total')
         if abs(sum(money(i['value']) for i in normalized) - money(inv['taxable'])) > Decimal('.01'):
             errors.append('Item taxable values do not reconcile to invoice taxable total')
         for tax in TAXES:

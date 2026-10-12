@@ -5,6 +5,7 @@ from pypdf import PdfReader
 from .accounting import money
 from .paired_layout import parse_paired_layout
 from .section_layout import parse_section_layout
+from .tabular_layout import parse_role_table, parse_receipt, marked_sample
 from .ocr import MARKER, read_page
 from .supplier_layouts import layout_text
 
@@ -31,10 +32,13 @@ FIELDS = {
     'export_mode': ('export mode',),
     'shipping_bill_port': ('shipping bill / port',),
     'currency': ('currency',),
+    'foreign_currency': ('foreign currency',),
+    'exchange_rate': ('exchange rate',),
+    'foreign_invoice_value': ('foreign invoice value',),
     'cgst': ('cgst',), 'sgst': ('sgst',), 'igst': ('igst',),
 }
 HEADERS = {
-    'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description'),
+    'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description', 'item description'),
     'hsn': ('hsn', 'hsn/sac', 'sac', 'hsn code'),
     'quantity': ('qty', 'qty.', 'quantity'),
     'unit': ('unit', 'uom', 'units', 'u/q', 'uqc'),
@@ -47,6 +51,9 @@ HEADERS = {
     'printed_cgst': ('cgst', 'cgst amount', 'cgst amt'),
     'printed_sgst': ('sgst', 'sgst amount', 'sgst amt'),
     'printed_igst': ('igst', 'igst amount', 'igst amt'),
+    'discount_rate': ('discount %','disc %','discount rate'),
+    'foreign_rate': ('rate (usd)','rate (aed)','foreign rate'),
+    'foreign_value': ('amount (usd)','amount (aed)','foreign amount'),
 }
 
 
@@ -89,10 +96,11 @@ def split_label_lines(text, fields=None):
     return '\n'.join(segment for line in lines for segment in segments(line))
 
 
-def unique_field(text, aliases, field, warnings):
+def unique_field(text, aliases, field, warnings, mapped=False):
     pattern = '|'.join(re.escape(a) for a in sorted(aliases, key=len, reverse=True))
-    delimiter = r'(?:\s*[:=]\s*|\s{2,})' if field in ('taxable','total','round_off','cess') else r'\s*[:=]\s*'
-    found = re.findall(rf'^\s*(?:{pattern}){delimiter}(.*?)\s*$', text, re.I | re.M)
+    delimiter = r'(?:\s*[:=]\s*|\s{2,})' if mapped or field in ('taxable','total','round_off','cess') else r'\s*[:=]\s*'
+    anchor=r'(?:^\s*|\s{2,})' if mapped else r'^\s*'
+    found = re.findall(rf'{anchor}(?:{pattern}){delimiter}(.*?)\s*$', text, re.I | re.M)
     unique = list(dict.fromkeys(s.strip() for s in found if s.strip()))
     if len(unique) > 1:
         warnings.append(f'Ambiguous {field}: multiple different values')
@@ -224,7 +232,7 @@ def mapped_field(text,rule,key,fields,warnings):
     scoped=layout_text(text,rule,warnings)
     if rule.get('position')=='first_line':
         return next((line.strip() for line in scoped.splitlines() if line.strip()),None)
-    return unique_field(split_label_lines(scoped,fields),(rule['label'],),key,warnings)
+    return unique_field(split_label_lines(scoped,fields),(rule['label'],),key,warnings,mapped=True)
 
 
 def parse_text(text, field_mappings=None, header_aliases=None):
@@ -235,7 +243,11 @@ def parse_text(text, field_mappings=None, header_aliases=None):
     if MARKER in text:
         text = normalize_ocr_labels(text)
     original_text=text
-    paired = parse_section_layout(text, headers)
+    paired = parse_role_table(text,headers)
+    if paired is None:
+        paired = parse_receipt(text)
+    if paired is None:
+        paired = parse_section_layout(text, headers)
     if paired is None:
         paired = parse_paired_layout(text,headers)
     if paired is not None:
@@ -339,6 +351,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
         inv['dummy_document'] = True
     if 'synthetic test document - not for real gst filing or commercial use. gstins and identifiers are fictional.' in ' '.join(original_text.lower().split()):
         inv['dummy_document'] = True
+    if marked_sample(original_text):inv['dummy_document']=True
     inv['extraction_warnings'] = warnings
     if MARKER in text:
         inv['source_ocr'] = True

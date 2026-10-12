@@ -16,8 +16,11 @@ FIELDS = ['number','date','seller_name','seller_gstin','seller_state','seller_ad
           'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address',
           'place_of_supply','supply','classification','buyer_country',
           'export_mode','shipping_bill_port',
+          'foreign_currency','exchange_rate','foreign_invoice_value',
           'taxable','cgst','sgst','igst','round_off','total']
-ITEM_FIELDS = ['name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate']
+ITEM_FIELDS = ['name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate',
+               'list_rate','discount_rate','foreign_rate','foreign_value',
+               'printed_cgst','printed_sgst','printed_igst','printed_total']
 REVIEW_CHOICES = {
     'classification': ('taxable','exempt','nil_rated','non_gst','export_lut','export_igst'),
     'buyer_registration': ('Regular','Composition','Unregistered','Consumer'),
@@ -193,9 +196,12 @@ class InvoiceApp:
         if record:
             evidence=record['invoice'].get('rate_evidence')
             layout=record['invoice'].get('supplier_layout_name')
+            price_note=('\nDiscounted items use net unit rates; printed list rates/discounts are retained.' if any(item.get('discount_rate') for item in record['invoice'].get('items',[])) else '')
+            price_note+=('\nINR accounting values converted using the printed '+record['invoice']['foreign_currency']+' exchange rate '+str(record['invoice'].get('exchange_rate','')) if record['invoice'].get('foreign_currency') else '')
             self.detail.insert('end',record['path']+'\n'+'\n'.join(record['errors']+record.get('notices',[]))+
                 ('\n'+evidence if evidence else '')+
                 ('\nSupplier layout: '+layout if layout else '')+
+                price_note+
                 '\nCompany pending batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
                 '\nOutput: '+record.get('company_path','Not generated'))
 
