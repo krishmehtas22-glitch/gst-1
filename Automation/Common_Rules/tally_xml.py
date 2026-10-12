@@ -9,7 +9,7 @@ from decimal import Decimal
 import uuid
 import xml.etree.ElementTree as ET
 
-from .accounting import STATES, TAXES, EXPORT_ACCOUNTING_NOTICE, accounting_entries, cents, money, sales_ledger
+from .accounting import STATES, TAXES, export_notice, accounting_entries, cents, money, sales_ledger
 from .masters import identity, required_masters
 
 HEADS = {'cgst':'Central Tax','sgst':'State Tax','igst':'Integrated Tax'}
@@ -173,7 +173,7 @@ def sales_document(config, invoices):
             narration = voucher.find('NARRATION')
             narration.text += ('; EXPORT UNDER LUT WITHOUT PAYMENT OF IGST; country '+inv['buyer_country']+
                                '; shipping bill/port '+str(inv.get('shipping_bill_port','not provided'))+
-                               '; '+EXPORT_ACCOUNTING_NOTICE)
+                               '; '+export_notice(config))
         if inv['buyer_gstin']:
             text(voucher,'PARTYGSTIN',inv['buyer_gstin'])
         entries = accounting_entries(inv,config)

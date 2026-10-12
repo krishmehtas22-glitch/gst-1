@@ -41,12 +41,20 @@ Run the desktop app separately from earlier watcher launchers.
 The ten uploaded CLIENT 7 PDFs were checked end to end: eight domestic item
 invoices and two LUT export accounting vouchers across three companies. The
 domestic invoices have fourteen inventory lines; export accounting vouchers
-debit the foreign customer and credit `Export Sales - LUT` without stock movement.
+debit the foreign customer and credit the same `Sales` ledger without stock movement.
+Desktop company configurations default to `unified_sales_ledger: true`, so taxable,
+exempt, nil-rated, non-GST and export sales share the configured taxable-sales
+ledger. Their invoice/stock tax classifications remain separate. For a company
+that explicitly needs separate sales ledgers, set this option to false; existing
+explicit choices are preserved. Prior imported Tally vouchers are not changed by
+replacing program files. Only pending XML is regenerated with the new ledger.
+The table shows per-invoice preparation/import status; company batch totals appear
+once in the selected invoice's details instead of being repeated as row statuses.
 NOS, ROLL, KG and SET have explicit unit mappings; unknown units need review and
 configuration. Export buyer country, LUT mode and shipping references are retained
 in the records, voucher narration and manifest. The manifest explicitly marks
 `gst_return_mapping_verified: false`: correct GSTR-1 classification and inventory
-handling must be configured/checked in Tally; they are not established by these
+handling must be configured/checked per voucher in Tally; they are not established by these
 accounting vouchers. Exports with payment of IGST remain unsupported. Exempt
 classification follows the document's explicit printed
 statement; this is not an independent HSN exemption determination.

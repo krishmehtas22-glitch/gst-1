@@ -23,14 +23,16 @@ There is no extra standalone sales credit that would double the posting.
 
 For explicit exports under LUT without payment of IGST, the engine prepares a
 Sales voucher in Accounting Voucher View (`ISINVOICE: No`). The overseas debtor
-is debited and `Export Sales - LUT` is credited; zero GST is required. Customer
+is debited and the common `Sales` ledger is credited; zero GST is required. Desktop
+companies default to one sales ledger for all sales treatments. Customer
 country/address and the printed LUT/shipping reference are retained. These
 vouchers have no inventory allocations and no invented stock tax-rate masters.
 They do not reduce stock. The two uploaded export invoices were verified as
 balanced accounting XML for INR 30,000 and INR 45,000 respectively.
 
-Before filing, configure and check the export ledger's GST nature in your Tally
-release and verify the transactions in its GSTR-1 export section. This change
+Before filing, check each export voucher's GST nature in your Tally
+release and verify the transactions in its GSTR-1 export section. Do not set the
+whole shared Sales ledger to export-only treatment: domestic sales use it too. This change
 does not claim automatic GSTR-1 mapping, customs/LUT validity or a successful
 Tally import. `manifest.json` lists `accounting_only_exports` and sets
 `gst_return_mapping_verified` to false. Export-specific official documentation

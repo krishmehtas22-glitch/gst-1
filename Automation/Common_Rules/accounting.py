@@ -192,12 +192,22 @@ def validate(raw, config):
 
 
 def sales_ledger(inv, config):
+    if config.get('unified_sales_ledger'):
+        return config['ledgers']['taxable']
     if inv['classification'] == 'export_lut':
         name = config['ledgers'].get('export_lut','Export Sales - LUT')
         if not name.strip() or any(name.casefold()==other.casefold() for key,other in config['ledgers'].items() if key != 'export_lut'):
             raise ValueError('Export sales ledger must have a distinct nonempty name')
         return name
     return config['ledgers'][inv['classification']]
+
+
+def export_notice(config):
+    if config.get('unified_sales_ledger'):
+        return ('LUT export accounting voucher only: no inventory movement. '
+                'Check the export GST nature on this voucher and verify GSTR-1 in Tally; '
+                'do not change the shared Sales ledger to export-only GST treatment.')
+    return EXPORT_ACCOUNTING_NOTICE
 
 
 def accounting_entries(inv, config):

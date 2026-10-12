@@ -136,3 +136,42 @@ def test_unreadable_text_can_be_manually_reviewed_without_bypassing_validation(t
     result = process_sources(tmp_path,demo=False)[0]
     assert result['errors'] == []
     assert result['export'].startswith('Generated 1')
+
+
+def test_all_desktop_sales_share_one_ledger_without_losing_tax_classification(tmp_path):
+    setup_files(tmp_path)
+    records=process_sources(tmp_path)
+    companies={Path(record['company_path']) for record in records}
+    classifications=set()
+    for company in companies:
+        config=read_json(company/'client.json')
+        assert config['unified_sales_ledger'] is True
+        masters=read_json(company/'reports/master_plan.json')
+        sales=[master for master in masters if master.get('group')=='Sales Accounts']
+        assert len(sales)==1 and sales[0]['name']=='Sales'
+        for row in read_json(company/'reports/validated_invoices.json'):
+            classifications.add(row['invoice']['classification'])
+            assert row['accounting'][1]['ledger']=='Sales'
+    assert classifications=={'taxable','exempt','export_lut'}
+    assert all('Generated' not in record['display_status'] for record in records)
+    assert all(record['batch_voucher_count'] in (2,4) for record in records)
+
+
+def test_existing_pending_exports_move_to_shared_sales_without_new_history(tmp_path):
+    from Common_Rules.engine import process_client, write_json
+    setup_files(tmp_path)
+    records=process_sources(tmp_path)
+    companies={Path(record['company_path']) for record in records}
+    prior_ids={}
+    for company in companies:
+        config=read_json(company/'client.json')
+        config.pop('unified_sales_ledger')
+        write_json(company/'client.json',config)
+        report=process_client(company.parent,company)
+        assert report['counts']['new']==0
+        prior_ids[company]={v.get('REMOTEID') for v in ET.parse(company/'imports/Sales_Vouchers.xml').findall('.//VOUCHER')}
+    updated=process_sources(tmp_path)
+    assert all(not record['errors'] for record in updated)
+    for company in companies:
+        assert prior_ids[company]=={v.get('REMOTEID') for v in ET.parse(company/'imports/Sales_Vouchers.xml').findall('.//VOUCHER')}
+        assert len(read_json(company/'reports/validation.json')['history'])==len(prior_ids[company])

@@ -7,7 +7,7 @@ def required_masters(inv, config):
     is_export = inv['classification'] == 'export_lut'
     masters = [
         {'kind':'ledger','name':inv['buyer_name'],'group':'Sundry Debtors','gstin':inv['buyer_gstin'], 'registration':inv['buyer_registration'], 'state':'Not Applicable' if is_export else STATES[inv['buyer_state']], 'country':inv['buyer_country'] if is_export else 'India'},
-        {'kind':'ledger','name':sales_ledger(inv, config),'group':'Sales Accounts','classification':inv['classification']},
+        {'kind':'ledger','name':sales_ledger(inv, config),'group':'Sales Accounts','classification':'taxable' if config.get('unified_sales_ledger') else inv['classification']},
     ]
     for tax in TAXES:
         if money(inv[tax]):

@@ -112,7 +112,7 @@ class InvoiceApp:
                 self.table.delete(*self.table.get_children())
                 for index, record in enumerate(value):
                     inv = record['invoice']
-                    state = 'Needs review' if record['errors'] else record.get('export','Inspected')
+                    state = 'Needs review' if record['errors'] else record.get('display_status',record.get('export','Inspected'))
                     self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name',''),inv.get('total',''),state))
                 count = sum(bool(record['errors']) for record in value)
                 self.status.config(text=f'{len(value)} PDFs inspected; {count} need review. XML is prepared, not imported into Tally.')
@@ -143,7 +143,9 @@ class InvoiceApp:
         record = self.selected()
         self.detail.delete('1.0','end')
         if record:
-            self.detail.insert('end',record['path']+'\n'+'\n'.join(record['errors']+record.get('notices',[]))+'\nOutput: '+record.get('company_path','Not generated'))
+            self.detail.insert('end',record['path']+'\n'+'\n'.join(record['errors']+record.get('notices',[]))+
+                '\nCompany pending batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
+                '\nOutput: '+record.get('company_path','Not generated'))
 
     def open_output(self):
         record = self.selected()

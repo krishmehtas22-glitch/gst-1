@@ -7,7 +7,7 @@ from pathlib import Path
 import shutil
 import uuid
 
-from .accounting import accounting_entries, cents, fingerprint, gstin_valid, invoice_key, state_code, validate, sales_ledger
+from .accounting import accounting_entries, cents, fingerprint, gstin_valid, invoice_key, state_code, validate, sales_ledger, export_notice
 from .demo import prepare_demo_invoice, test_gstin
 from .extraction import parse_text, text_from_pdf
 from .history import History
@@ -276,7 +276,7 @@ def export_xml_imports(client, config, invoices, masters, history):
              'accounting_only_exports':[{'invoice_key':key,'number':inv['number'],
                  'buyer_country':inv['buyer_country'],'export_mode':inv['export_mode'],
                  'shipping_bill_port':inv.get('shipping_bill_port'),
-                 'notice':inv['export_accounting_notice']}
+                 'notice':export_notice(config)}
                  for key,inv in invoices.items() if inv.get('accounting_only_export')],
              'gst_return_mapping_verified':False,
              'warning':('DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. ' if config.get('demo_only') else '') + 'Import Masters.xml successfully before Sales_Vouchers.xml. Generation is not import confirmation. Verify GST in a dummy Tally company first.'})

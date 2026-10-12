@@ -34,7 +34,7 @@ def test_lut_exports_debit_foreign_debtor_credit_export_sales(tmp_path,name,tota
     assert inv['export_mode']=='LUT_without_payment'
     assert accounting_entries(inv,config)==[
         {'ledger':inv['buyer_name'],'debit':total,'credit':'0.00'},
-        {'ledger':'Export Sales - LUT','debit':'0.00','credit':total}]
+        {'ledger':'Sales','debit':'0.00','credit':total}]
     root=ET.parse(company/'imports/Sales_Vouchers.xml')
     voucher=root.find('.//VOUCHER')
     assert voucher.get('OBJVIEW')=='Accounting Voucher View'

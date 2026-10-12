@@ -5,7 +5,7 @@ import re
 import shutil
 
 from .accounting import gstin_valid, state_code
-from .accounting import EXPORT_ACCOUNTING_NOTICE
+from .accounting import export_notice, invoice_key
 from .demo import test_gstin
 from .engine import (discover, init_client, invoice_paths, process_client,
                      read_json, write_json)
@@ -101,7 +101,6 @@ def process_sources(root, demo=True):
             if raw.get('supply') == 'EXPORT':
                 if raw.get('classification') != 'export_lut' or raw.get('export_mode') != 'LUT_without_payment':
                     raise ValueError('Only explicit LUT without payment exports are supported as accounting vouchers')
-                record['notices'] = [EXPORT_ACCOUNTING_NOTICE]
             seller = raw.get('seller_gstin','').upper()
             name = raw.get('seller_name','').strip()
             if not name or not seller:
@@ -141,6 +140,13 @@ def process_sources(root, demo=True):
                 config['source_seller_name'] = name
                 write_json(company/'client.json',config)
             config = read_json(company/'client.json')
+            if 'unified_sales_ledger' not in config:
+                # Add the desktop default without replacing identity, history,
+                # unit mappings or any existing explicit ledger preference.
+                config['unified_sales_ledger'] = True
+                write_json(company/'client.json',config)
+            if raw.get('classification') == 'export_lut':
+                record['notices'] = [export_notice(config)]
             if config.get('source_seller_name') != name:
                 raise ValueError('Seller GSTIN matches a retained company but seller name differs; review the source identity')
             filename = record['digest']+'.pdf'
@@ -159,6 +165,8 @@ def process_sources(root, demo=True):
     for company, group in groups.items():
         try:
             report = process_client(workspace,company)
+            config = read_json(company/'client.json')
+            history = {entry['invoice_key']:entry['status'] for entry in report['history']}
             issues = {}
             for issue in report['issues']:
                 issues.setdefault(issue.get('source'),[]).extend(issue.get('errors',[]))
@@ -168,8 +176,20 @@ def process_sources(root, demo=True):
                 if report['issues'] and not record['errors']:
                     record['errors'].extend(error for issue in report['issues'] if not issue.get('source') for error in issue.get('errors',[]))
                 record['export'] = report['export']
+                record['batch_voucher_count'] = report['pending_validated']
+                if not record['errors']:
+                    try:
+                        key = invoice_key({**record['invoice'],'seller_gstin':config['seller_gstin']})
+                    except (ValueError,KeyError,TypeError):
+                        key = None
+                    status = history.get(key)
+                    record['display_status'] = ('Already confirmed imported' if status == 'imported' else
+                        'Sales XML prepared; import not confirmed' if status == 'generated' else
+                        report['export'])
                 if record['invoice'].get('classification') == 'export_lut' and not record['errors']:
                     record['export'] = 'Export accounting voucher prepared; verify GST in Tally'
+                    if history.get(key) != 'imported':
+                        record['display_status'] = 'Export sales XML prepared; verify GST in Tally'
         except Exception as exc:
             for record in group:
                 record['errors'].append(str(exc))
