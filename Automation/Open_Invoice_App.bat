@@ -13,6 +13,8 @@ if not exist "Common_Rules\tabular_layout.py" goto incomplete
 if not exist "Common_Rules\flat_layout.py" goto incomplete
 if not exist "Common_Rules\party_evidence.py" goto incomplete
 if not exist "Common_Rules\unit_choices.py" goto incomplete
+if not exist "Common_Rules\unit_catalog.py" goto incomplete
+if not exist "Common_Rules\unit_inference.py" goto incomplete
 if not exist "Common_Rules\workflow_status.py" goto incomplete
 if not exist "Common_Rules\source_documents.py" goto incomplete
 if not exist "requirements-ocr.txt" goto incomplete

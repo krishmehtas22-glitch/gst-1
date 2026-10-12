@@ -10,6 +10,7 @@ from .ocr import MARKER, read_page
 from .supplier_layouts import layout_text
 from .flat_layout import parse_flat_layout, supported_flat
 from .party_evidence import read_party_roles, role_heading, read_seller_masthead
+from .unit_inference import quantity_parts, canonical_unit
 
 FIELDS = {
     'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no', 'invoice reference', 'invoice ref', 'document no', 'document number', 'invoice id'),
@@ -307,18 +308,40 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             pass  # Validation reports malformed printed amounts.
     items = []
     columns = None
+    quantity_header_unit=rate_header_unit=None
     for line in text.splitlines():
         row = cells(line)
         decoded = []
+        row_quantity_unit=row_rate_unit=None
         for cell in row:
-            decoded.append(next((key for key, aliases in headers.items() if cell.casefold() in aliases), None))
+            key=next((key for key,aliases in headers.items() if cell.casefold() in aliases),None)
+            if key is None:
+                hint=re.fullmatch(r'(qty\.?|quantity|rate|price|unit rate|unit price)\s*(?:\(\s*(?:per\s+)?([^()]+)\s*\)|(?:per|/)\s+(.+))',cell,re.I)
+                if hint and canonical_unit(hint[2] or hint[3]):
+                    key='quantity' if hint[1].casefold().startswith(('qty','quantity')) else 'rate'
+                    if key=='quantity':row_quantity_unit=hint[2] or hint[3]
+                    else:row_rate_unit=hint[2] or hint[3]
+            decoded.append(key)
         if all(field in decoded for field in ('name','quantity','rate','value')):
             columns = decoded
+            quantity_header_unit,rate_header_unit=row_quantity_unit,row_rate_unit
             continue
         if columns and len(row) == len(columns) and len(row) >= 4:
             item = {key: value for key, value in zip(columns, row) if key}
-            if not re.fullmatch(r'[\d,.]+', item.get('quantity', '')):
+            if not item.get('unit') and (quantity_header_unit or rate_header_unit):
+                item['unit']=quantity_header_unit or rate_header_unit
+                item['unit_evidence']='Printed quantity/rate table header: '+str(item['unit'])
+                item['unit_origin']='printed';item['unit_auto']=False
+            if quantity_header_unit and rate_header_unit and canonical_unit(quantity_header_unit)!=canonical_unit(rate_header_unit):
+                warnings.append('Quantity and price use different units; unit-price conversion needs review')
+            parsed_quantity=quantity_parts(item.get('quantity',''))
+            if not parsed_quantity:
                 continue
+            if parsed_quantity[1]:
+                item['printed_quantity']=item['quantity'];item['quantity']=parsed_quantity[0]
+                if item.get('unit') and canonical_unit(item['unit'])!=canonical_unit(parsed_quantity[1]):
+                    warnings.append('Quantity suffix conflicts with the printed item unit; choose the actual selling unit')
+                if not item.get('unit'):item['unit']=parsed_quantity[1]
             for tax in ('cgst','sgst','igst'):
                 if f'{tax}_rate' not in item:
                     if tax in rates:

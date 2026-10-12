@@ -14,30 +14,12 @@ from .engine import (discover, init_client, invoice_paths, process_client,
 from .extraction import parse_text, text_from_pdf
 from .supplier_layouts import load_layouts, layouts_revision, extract_with_layouts
 from .source_documents import expand_source, verify_source, confirmed_test
+from .unit_inference import UnitResolver, remember_units
 
-UNITS = {
-    'Nos': {'formal_name':'Numbers','uqc':'NOS','decimal_places':0},
-    'KG': {'formal_name':'Kilograms','uqc':'KGS','decimal_places':3},
-    'ROLL': {'formal_name':'Rolls','uqc':'ROL','decimal_places':0,'tally_uqc':'ROL-ROLLS'},
-    'SET': {'formal_name':'Sets','uqc':'SET','decimal_places':0},
-    'BOX': {'formal_name':'Boxes','uqc':'BOX','decimal_places':0},
-    'PRS': {'formal_name':'Pairs','uqc':'PRS','decimal_places':0,'tally_uqc':'PRS-PAIRS'},
-    'REAM': {'formal_name':'Reams','uqc':'RIM','decimal_places':0,'tally_uqc':'RIM-REAMS'},
-    'PKT': {'formal_name':'Packets','uqc':'PAC','decimal_places':0,'tally_uqc':'PAC-PACKS'},
-    'KGS': {'formal_name':'Kilograms','uqc':'KGS','decimal_places':3},
-    'DOZ': {'formal_name':'Dozens','uqc':'DOZ','decimal_places':0,'tally_uqc':'DOZ-DOZENS'},
-    'MT': {'formal_name':'Metric Tonnes','uqc':'MTS','decimal_places':3,'tally_uqc':'MTS-METRIC TON'},
-    'PCS': {'formal_name':'Pieces','uqc':'PCS','decimal_places':0},
-    'LTR': {'formal_name':'Litres','uqc':'LTR','decimal_places':3},
-    'MTR': {'formal_name':'Metres','uqc':'MTR','decimal_places':3},
-    'Units': {'formal_name':'Units','uqc':'UNT','decimal_places':0},
-    'Vials': {'formal_name':'Vials','uqc':'OTH','decimal_places':0},
-    'Packs': {'formal_name':'Packs','uqc':'PAC','decimal_places':0,'tally_uqc':'PAC-PACKS'},
-    'Tubes': {'formal_name':'Tubes','uqc':'TUB','decimal_places':0,'tally_uqc':'TUB-TUBES'},
-    'Liters': {'formal_name':'Liters','uqc':'LTR','decimal_places':3},
-}
+from .unit_catalog import UNITS
+
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','supplier_layouts.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','supplier_layouts.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):
@@ -117,8 +99,9 @@ def reset_source_reviews(root, records):
     return archived
 
 
-def inspect_sources(root, client_names=None, demo=True):
+def inspect_sources(root, client_names=None, demo=True, auto_units=True):
     records = []
+    resolver=UnitResolver(root,demo,auto_units)
     layout_errors=[]
     try:
         layouts=load_layouts(root)
@@ -178,6 +161,7 @@ def inspect_sources(root, client_names=None, demo=True):
                     record['errors'] = list(layout_errors)
                 if declared_test:
                     record['invoice']={**record['invoice'],'dummy_document':True,'test_data_confirmed':True}
+                resolver.apply(record)
                 record['errors'].extend(record['invoice'].get('extraction_warnings',[]))
             except (ValueError,OSError,KeyError,TypeError) as exc:
                 record['errors'].append(str(exc))
@@ -190,15 +174,24 @@ def inspect_sources(root, client_names=None, demo=True):
 def save_review(root, record, invoice, resolve_warnings=True):
     verify_source(root,record)
     digest=record['digest']
-    edited = dict(invoice)
+    edited = deepcopy(invoice)
+    for index,item in enumerate(edited.get('items',[])):
+        prior=record.get('invoice',{}).get('items',[])
+        old=prior[index] if index<len(prior) else {}
+        if item.get('unit') and (resolve_warnings or item.get('unit_correction_reviewed')):
+            if record.get('display_status')=='Already confirmed imported' and item.get('unit')!=old.get('unit'):
+                raise ValueError('This invoice is confirmed imported; correct its unit in Tally before changing the retained invoice')
+            item.update(unit_origin='manual',unit_auto=False,unit_confidence=1.0,
+                unit_evidence='Confirmed/changed by you',unit_correction_reviewed=True)
     if resolve_warnings:edited['extraction_warnings'] = []
     write_json(root/'.invoice_app'/'reviews'/(digest+'.json'),
                {'source_sha256':digest,'approved':True,'invoice':edited,
                 'original_extraction':record.get('source_invoice',record['invoice'])})
+    remember_units(root,record,edited)
 
 
-def process_sources(root, demo=True, client_names=None):
-    records = inspect_sources(root,client_names,demo)
+def process_sources(root, demo=True, client_names=None, auto_units=True):
+    records = inspect_sources(root,client_names,demo,auto_units)
     workspace = root/'.invoice_app'/'companies'
     workspace.mkdir(parents=True,exist_ok=True)
     groups = {}

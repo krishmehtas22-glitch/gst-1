@@ -5,10 +5,14 @@ from collections import Counter
 def invoice_status(record):
     errors=record.get('errors',[])
     if not errors:
-        return record.get('display_status',record.get('export','Invoice read'))
+        status=record.get('display_status',record.get('export','Invoice read'))
+        if any(item.get('unit_auto') for item in record.get('invoice',{}).get('items',[])) and status!='Already confirmed imported':
+            status+='; estimated unit'
+        return status
     joined='; '.join(errors).casefold()
     if 'confirm test pdf' in joined:
-        return 'Confirm test PDF' if record.get('invoice',{}).get('test_document') else 'Choose invoice mode'
+        return 'Confirm test PDF' if record.get('demo_mode') or record.get('invoice',{}).get('test_document') else 'Choose invoice mode'
+    if 'explicitly fictional; use dummy mode' in joined:return 'Use test-invoice mode'
     if 'ocr-derived' in joined or 'scanned pdf' in joined:return 'Verify scanned invoice'
     if all('unit' in error.casefold() and any(word in error.casefold() for word in ('choose','missing','mapping')) for error in errors):
         return 'Choose quantity unit'
@@ -29,6 +33,8 @@ def scan_summary(records):
     prepared=sum(not record.get('errors') and record.get('batch_voucher_count',0)>0 and record.get('display_status')!='Already confirmed imported' for record in records)
     confirmed=sum(record.get('display_status')=='Already confirmed imported' and not record.get('errors') for record in records)
     parts=[f'{pdfs} PDFs; {len(records)} invoices read',f'{prepared} XML prepared']
+    estimated=sum(any(item.get('unit_auto') for item in r.get('invoice',{}).get('items',[])) for r in records)
+    if estimated:parts.append(f'{estimated} with estimated units (editable)')
     if confirmed:parts.append(f'{confirmed} already imported')
     parts.extend(f'{count} {action.lower()}' for action,count in actions.items())
     return '; '.join(parts)+'. XML preparation does not import into Tally.'

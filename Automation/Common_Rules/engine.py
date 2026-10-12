@@ -429,7 +429,11 @@ def _process_client(root, client, export_scopes=None):
                 previous = history.lookup(key)
                 if previous:
                     if previous['fingerprint'] != fp:
-                        raise ValueError('Invoice identity matches history but transaction details differ')
+                        if key in tally or not history.correct_units(key,inv):
+                            raise ValueError('Invoice identity matches history but transaction details differ')
+                        for manifest_path in (client/'imports'/'by_client').glob('*/manifest.json'):
+                            manifest=read_json(manifest_path)
+                            if key in manifest.get('invoice_keys',[]):invalidate_outputs(client,manifest_path.parent)
                     counts['duplicate'] += 1
                     history.event(path.name,key,'duplicate','No second voucher created')
                     continue

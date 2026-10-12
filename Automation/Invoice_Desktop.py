@@ -30,7 +30,12 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 4.1'
+APP_VERSION='Reader 5'
+
+
+def quantity_unit_summary(invoice):
+    items=invoice.get('items',[])
+    return '; '.join(str(item.get('quantity','?'))+' '+str(item.get('unit') or '?')+(' (estimated)' if item.get('unit_auto') else '') for item in items[:3])+(' +'+str(len(items)-3)+' items' if len(items)>3 else '')
 
 
 class InvoiceApp:
@@ -45,14 +50,14 @@ class InvoiceApp:
         self.closing = False
         window.protocol('WM_DELETE_WINDOW',self.close)
         window.title('Invoice inspection and XML — '+APP_VERSION)
-        window.geometry('1150x700')
+        window.geometry('1350x750')
         controls = ttk.Frame(window, padding=10)
         controls.pack(fill='x')
         ttk.Button(controls,text='Choose invoice parent folder',command=self.choose).pack(side='left')
         self.folder_label = ttk.Label(controls,text=str(self.root))
         self.folder_label.pack(side='left',padx=10)
         self.demo = tk.BooleanVar(value=True)
-        ttk.Checkbutton(controls,text='Dummy PDFs (fictional substitutions)',variable=self.demo,command=self.reset).pack(side='right')
+        ttk.Checkbutton(controls,text='Test invoices (fictional data)',variable=self.demo,command=self.reset).pack(side='right')
         scope=ttk.Frame(window,padding=(10,0))
         scope.pack(fill='x')
         ttk.Label(scope,text='Client folder:').pack(side='left')
@@ -63,7 +68,7 @@ class InvoiceApp:
         ttk.Button(scope,text='Re-read selected PDFs',command=self.reread).pack(side='left')
         ttk.Button(scope,text='Save supplier layout',command=self.supplier_layout).pack(side='left',padx=8)
         ttk.Button(scope,text='Confirm test PDF',command=self.confirm_test).pack(side='left')
-        ttk.Button(scope,text='Choose missing units',command=self.units).pack(side='left',padx=8)
+        ttk.Button(scope,text='Check / change units',command=self.units).pack(side='left',padx=8)
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
@@ -71,16 +76,18 @@ class InvoiceApp:
         ttk.Button(actions,text='Review selected invoice',command=self.review).pack(side='left',padx=8)
         ttk.Button(actions,text='Open client XML folder',command=self.open_output).pack(side='left')
         ttk.Button(actions,text='Open source PDF',command=self.open_source).pack(side='left',padx=8)
+        self.auto_units=tk.BooleanVar(value=True)
+        ttk.Checkbutton(actions,text='Auto-fill units',variable=self.auto_units,command=self.reset).pack(side='left',padx=8)
         self.auto = tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Watch for new PDFs',variable=self.auto).pack(side='right')
-        ttk.Label(window,text='Put PDFs in client folders under the selected parent. Separate sellers get separate company outputs.').pack(anchor='w',padx=10)
+        ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
         self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10)
         self.status.pack(fill='x')
         frame = ttk.Frame(window)
         frame.pack(fill='both',expand=True,padx=10)
-        self.table = ttk.Treeview(frame,columns=('client','invoice','seller','total','status'),show='headings')
-        for field,width in [('client',120),('invoice',190),('seller',260),('total',110),('status',280)]:
-            self.table.heading(field,text=field.title())
+        self.table = ttk.Treeview(frame,columns=('client','invoice','seller','total','quantity_unit','status'),show='headings')
+        for field,width in [('client',110),('invoice',165),('seller',235),('total',110),('quantity_unit',260),('status',300)]:
+            self.table.heading(field,text='Quantity / unit' if field=='quantity_unit' else field.title())
             self.table.column(field,width=width)
         bar = ttk.Scrollbar(frame,orient='vertical',command=self.table.yview)
         self.table.configure(yscrollcommand=bar.set)
@@ -141,7 +148,7 @@ class InvoiceApp:
         records=[self.records[int(item)] for item in self.table.selection()]
         if self.busy or not records:return
         if not self.demo.get():
-            messagebox.showinfo('Test PDF','Select Dummy PDFs to process fictional test documents.');return
+            messagebox.showinfo('Test PDF','Select Test invoices to process fictional test documents.');return
         if any(not record.get('digest') for record in records):return
         documents={record.get('source_sha256',record['digest']):record for record in records}
         names=[record.get('source_path',record['path']) for record in documents.values()]
@@ -177,12 +184,12 @@ class InvoiceApp:
             return
         self.busy = True
         self.status.config(text='Reading invoices and validating totals…')
-        root, demo = self.root, self.demo.get()
+        root, demo, auto_units = self.root, self.demo.get(),self.auto_units.get()
         selected=self.client_scope.get()
         clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
         def worker():
             try:
-                self.events.put(('ok',process_sources(root,demo,clients)))
+                self.events.put(('ok',process_sources(root,demo,clients,auto_units)))
             except Exception as exc:
                 self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
@@ -201,7 +208,7 @@ class InvoiceApp:
                 for index, record in enumerate(value):
                     inv = record['invoice']
                     state = invoice_status(record)
-                    self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name',''),inv.get('total',''),state))
+                    self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name',''),inv.get('total',''),quantity_unit_summary(inv),state))
                 self.status.config(text=scan_summary(value))
                 if value:
                     selected=next((i for i,r in enumerate(value) if (r.get('digest'),r['client'])==preferred),
@@ -217,9 +224,10 @@ class InvoiceApp:
         if self.auto.get() and not self.busy:
             self.refresh_clients()
             try:
-                signature = (self.demo.get(),self.client_scope.get(),source_signature(self.root),
-                             tuple((str(p),p.stat().st_mtime_ns) for folder in ('reviews','supplier_layouts','document_settings')
-                                   for p in sorted((self.root/'.invoice_app'/folder).glob('*.json'))))
+                signature = (self.demo.get(),self.auto_units.get(),self.client_scope.get(),source_signature(self.root),
+                             tuple((str(p),p.stat().st_mtime_ns) for folder in ('reviews','supplier_layouts','document_settings','unit_estimates')
+                                   for p in sorted((self.root/'.invoice_app'/folder).glob('*.json'))),
+                             tuple(p.stat().st_mtime_ns for p in (self.root/'.invoice_app').glob('unit_preferences.json')))
                 if signature == self.observed and signature != self.last:
                     self.last = signature
                     self.start()
@@ -239,6 +247,7 @@ class InvoiceApp:
             evidence=record['invoice'].get('rate_evidence')
             layout=record['invoice'].get('supplier_layout_name')
             price_note=('\nDiscounted items use net unit rates; printed list rates/discounts are retained.' if any(item.get('discount_rate') for item in record['invoice'].get('items',[])) else '')
+            price_note+=''.join('\nItem '+str(i+1)+' unit '+str(item.get('unit','?'))+(': estimated — ' if item.get('unit_auto') else ': ')+str(item.get('unit_evidence','printed')) for i,item in enumerate(record['invoice'].get('items',[])))
             price_note+=('\nINR accounting values converted using the printed '+record['invoice']['foreign_currency']+' exchange rate '+str(record['invoice'].get('exchange_rate','')) if record['invoice'].get('foreign_currency') else '')
             source_note=record.get('source_path',record['path'])
             if record.get('page_number'):source_note+=f" (page {record['page_number']} of {record['page_count']})"

@@ -90,7 +90,7 @@ def test_generic_fictional_role_invoice_uses_demo_adapter_without_old_template_r
 def install_units(root):
     folder=root/'Client';folder.mkdir()
     for path in (FIXTURES/'client15').glob('Sales_Invoice*.pdf'):shutil.copy2(path,folder/path.name)
-    return process_sources(root)
+    return process_sources(root,auto_units=False)
 
 
 def test_single_sheet_unit_choices_resolve_all_fifteen_keep_individual_choices(tmp_path):
@@ -129,19 +129,19 @@ def test_blank_and_conflicting_unit_choices_do_not_silently_approve(tmp_path):
     assert save_unit_choices(tmp_path,[(records[0],0,'')])==0
     with pytest.raises(ValueError,match='same item unit'):
         save_unit_choices(tmp_path,[(records[0],0,'Nos'),(records[0],0,'KG')])
-    assert 'unit' not in inspect_sources(tmp_path)[0]['invoice']['items'][0]
+    assert 'unit' not in inspect_sources(tmp_path,auto_units=False)[0]['invoice']['items'][0]
 
 
 def test_pending_test_confirmation_and_missing_units_have_separate_actions(tmp_path):
     folder=tmp_path/'Client';folder.mkdir();shutil.copy2(FIXTURES/'client15/GSTR1_Test_Invoices.pdf',folder/'bundle.pdf')
-    records=process_sources(tmp_path)
+    records=process_sources(tmp_path,auto_units=False)
     assert len(records)==20 and all(invoice_status(r)=='Confirm test PDF' for r in records)
-    confirm_test_document(tmp_path,records[0]);records=process_sources(tmp_path)
+    confirm_test_document(tmp_path,records[0]);records=process_sources(tmp_path,auto_units=False)
     assert all(invoice_status(r)=='Choose quantity unit' for r in records[:5])
     assert all(not r['errors'] for r in records[5:])
     assert '15 XML prepared' in scan_summary(records)
     save_unit_choices(tmp_path,[(r,0,'Nos') for r in records[:5]])
-    assert all(not r['errors'] for r in process_sources(tmp_path))
+    assert all(not r['errors'] for r in process_sources(tmp_path,auto_units=False))
 
 
 @pytest.mark.parametrize('family',['client1','client7','client8','client11','client12','client15'])
@@ -198,7 +198,7 @@ def test_real_unit_capitalization_does_not_require_a_unit_choice(tmp_path):
 def test_unmarked_real_document_in_dummy_mode_has_a_mode_action(tmp_path):
     make_pdf(tmp_path/'Client'/'invoice.pdf',alternate_text())
     record=process_sources(tmp_path)[0]
-    assert invoice_status(record)=='Choose invoice mode'
+    assert invoice_status(record)=='Confirm test PDF'
     assert record['invoice']['seller_name']=='Example Seller'
     assert not record.get('output_path')
 

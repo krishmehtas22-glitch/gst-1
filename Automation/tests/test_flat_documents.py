@@ -34,7 +34,7 @@ def vouchers(records):
 def test_fifteen_styles_extract_fields_leave_individual_units_unresolved(tmp_path):
     folder=setup(tmp_path)
     originals={p.name:p.read_bytes() for p in folder.glob('*.pdf')}
-    records=process_sources(tmp_path)
+    records=process_sources(tmp_path,auto_units=False)
     assert len(records)==15
     assert [r['invoice']['number'] for r in records]==[f'DM/26-27/{i:04d}' for i in range(11,26)]
     for record in records:
@@ -46,12 +46,12 @@ def test_fifteen_styles_extract_fields_leave_individual_units_unresolved(tmp_pat
         assert 'unit' not in inv['items'][0]
         assert len(record['errors'])==1 and 'choose the quantity unit' in record['errors'][0]
         choose_unit(tmp_path,record,'KG' if inv['classification']=='exempt' else 'Nos')
-    accepted=process_sources(tmp_path)
+    accepted=process_sources(tmp_path,auto_units=False)
     assert all(not r['errors'] for r in accepted)
     assert len(vouchers(accepted))==15
     assert all(r['invoice']['items'][0]['unit']=='KG' for r in accepted[-3:])
     assert originals=={p.name:p.read_bytes() for p in folder.glob('*.pdf')}
-    assert all(not r['errors'] for r in process_sources(tmp_path))
+    assert all(not r['errors'] for r in process_sources(tmp_path,auto_units=False))
     export=accepted[11]['invoice']
     assert export['classification']=='export_lut' and export['items'][0]['printed_gst_rate']=='12'
     assert export['items'][0]['igst_rate']=='0' and export['igst']=='0.00'
@@ -59,7 +59,7 @@ def test_fifteen_styles_extract_fields_leave_individual_units_unresolved(tmp_pat
 
 def test_twenty_page_bundle_confirmation_and_individual_units(tmp_path):
     folder=setup(tmp_path,True);original=next(folder.glob('*.pdf'));source_bytes=original.read_bytes()
-    records=process_sources(tmp_path)
+    records=process_sources(tmp_path,auto_units=False)
     assert len(records)==20 and {r['source_path'] for r in records}=={str(original)}
     assert [r['page_number'] for r in records]==list(range(1,21))
     assert len({r['invoice']['number'] for r in records})==20
@@ -67,12 +67,12 @@ def test_twenty_page_bundle_confirmation_and_individual_units(tmp_path):
     assert all('Confirm test PDF' in '; '.join(r['errors']) for r in records)
     digests=[r['digest'] for r in records]
     confirm_test_document(tmp_path,records[0])
-    records=process_sources(tmp_path)
+    records=process_sources(tmp_path,auto_units=False)
     assert [r['digest'] for r in records]==digests
     assert all('choose the quantity unit' in '; '.join(r['errors']) for r in records[:5])
     assert all(not r['errors'] for r in records[5:])
     for record in records[:5]:choose_unit(tmp_path,record,'Nos') # Explicit test choice, never a reader default.
-    records=process_sources(tmp_path)
+    records=process_sources(tmp_path,auto_units=False)
     assert all(not r['errors'] for r in records)
     vs=vouchers(records);assert len(vs)==20
     ledger_amounts={}

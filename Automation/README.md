@@ -1,8 +1,8 @@
 # Sales invoice automation
 
-## Reader 4: recurring extraction and setup issues
+## Reader 5: visible automatic units and clearer invoice mode
 
-The title bar shows **Reader 4.1** so a replaced installation can be identified.
+The title bar shows **Reader 5** so a replaced installation can be identified.
 The reader recognizes explicit supplier/vendor/exporter and customer/billing
 roles, standalone or inline names, and separate party columns. A seller banner
 can be recovered from a single business name and GSTIN before the billing party,
@@ -11,7 +11,7 @@ When geometric PDF spacing loses key fields, ordered embedded text is compared
 and used if it recovers more complete printed facts. Supplier names are read from
 the document; there is no list of sample seller names or guessed spelling.
 
-Reader 4.1 also accepts checked legacy demo reviews whose original layout name
+Reader 5 also accepts checked legacy demo reviews whose original layout name
 is missing, using their seller, state, supply and item facts. The old paired-layout
 configuration gate no longer rejects an otherwise valid review. Source identity,
 GST, unit and total checks still run. To confirm several fictional PDFs at once,
@@ -27,14 +27,33 @@ The header reports how many invoices have XML prepared and counts each pending
 action, rather than saying XML is prepared when every row is blocked. The first
 outstanding row is selected automatically, exposing its detailed reason below.
 
-Click **Choose missing units** to set each visible invoice item's actual unit in
-one scrollable screen. Every row starts blank; choose Nos, KG, MT, PCS or another
-supported unit independently. **Save chosen units and rescan** saves only your
-choices and revalidates. It does not approve other warnings or clear required
-scanned-PDF checks. Recognized unit capitalization is normalized for real
-invoices without converting quantities. Older reviews with blank identity
-fields can recover those blanks from newly readable native text while retaining
-all nonblank edits and tax decisions. OCR reviews remain intact.
+**Auto-fill units** is enabled by default. Printed units in item cells,
+quantity suffixes (such as `12 pcs`) and quantity/rate headings take priority.
+For missing/ambiguous units the reader uses product and packaging keywords:
+pens → Nos, loose rice → KG, box of pens → BOX, tools described as a set → SET.
+Medicine strength such as `500 mg` is not treated as the unit sold. A printed
+quantity of `150 mg` does use MG. No quantity, rate or amount is converted.
+
+The table shows quantity and unit, marking automatic suggestions **estimated**.
+Click **Check / change units** for a prefilled list of all items and the reason
+for each suggestion. Save a correction to regenerate an unimported voucher with
+the same identity. Your correction is remembered for the same supplier, product,
+HSN and invoice mode. Already estimated documents keep their saved choices.
+Confirmed imported vouchers require correction in Tally. Corrections do not
+approve other tax/OCR warnings or overwrite confirmed stock masters.
+
+Without a reliable clue, whole quantities receive a low-confidence Nos estimate;
+fractional quantities receive a generic Qty unit (OTH), visibly marked for checking.
+These are estimates rather than knowledge of the actual selling unit. Untick
+**Auto-fill units** to require manual choice for missing units. Unknown explicit
+units remain unresolved until configured. Older reviews and import history stay
+intact; unit choices and learned preferences are stored locally in `.invoice_app`.
+
+Unit aliases and GST UQC references were checked against the public
+[India Compliance unit map](https://github.com/resilient-tech/india-compliance/blob/develop/india_compliance/gst_india/constants/__init__.py)
+and [ERPNext unit definitions](https://github.com/frappe/erpnext/blob/develop/erpnext/setup/setup_wizard/data/uom_data.json).
+Official GST/Tally pages were inaccessible from the current environment.
+Custom mg, microgram and packaging units use OTH rather than invented GST codes.
 
 The supplied 61 distinct PDFs contain 80 invoices. All seller names were read;
 all 80 vouchers were checked in isolated audit runs after explicit test-data,
@@ -46,8 +65,9 @@ was shown only in a screenshot and requires its source PDFs for verification.
 
 On Windows, double-click `Open_Invoice_App.bat` alongside `main.py`. Select the
 parent folder containing the client folders. Leave **Watch for new PDFs** enabled
-to process stable file changes automatically. The **Dummy PDFs** checkbox is for
-the supplied fictional documents; uncheck it for real invoices. Real invoices
+to process stable file changes automatically. The **Test invoices (fictional data)** checkbox selects invoice mode. Leave it
+checked for fictional PDFs and use **Confirm test PDF** when their fictional
+marker is missing. Uncheck it for real business invoices and re-read the PDFs. Real invoices
 must contain valid GSTINs and explicit registration/tax details, or require review.
 The application reads supported text layouts, not every possible invoice style.
 Image-only pages are rendered locally and read with bundled RapidOCR models.
@@ -77,12 +97,9 @@ The supplied `Sales_Invoice_11` through `Sales_Invoice_25` layouts are read usin
 ordered embedded text, avoiding word breaks introduced by PDF layout spacing.
 Seller/buyer, GSTIN, date, invoice number, HSN, quantity, rates and totals are
 extracted. Their printed `Unit: Nos / Kg (as applicable)` leaves the actual unit
-unspecified. Select each invoice, click **Review selected invoice**, choose its
-actual **Unit** from the item dropdown, then **Approve corrections and revalidate**.
-The same choices can be made together with **Choose missing units**, without
-re-entering the rest of each invoice. There is no automatic Nos assumption. Unit choices belong to that exact invoice,
-not every later invoice from the supplier. Missing or ambiguous units always
-require review. `SYNTHETIC TEST DATA - NOT A VALID TAX DOCUMENT OR GST REGISTRATION`
+unspecified. Reader 5 estimates units from item descriptions and shows them
+beside each quantity. Use **Check / change units** to correct them, or turn off
+**Auto-fill units** for the manual workflow. `SYNTHETIC TEST DATA - NOT A VALID TAX DOCUMENT OR GST REGISTRATION`
 is recognized as an explicit fictional marker.
 
 The desktop reader expands the supplied twenty-page `GSTR1_Test_Invoices.pdf`
@@ -100,7 +117,7 @@ substitutions. If this entire PDF is fictional test data, select one of its rows
 and click **Confirm test PDF** once. The confirmation applies only to those exact
 source bytes and all their invoice pages. Real documents must use real-invoice
 mode; a test-confirmed document is blocked in that mode. The first five invoices
-in this bundle omit units: choose their units separately in Review. The other
+in this bundle omit units: Reader 5 estimates them and makes them editable. The other
 pages retain their printed Nos, Units, Vials, Packs, Tubes or Liters. Supported
 LUT invoices use zero payable GST even when a statutory product rate is printed;
 source tax totals must still reconcile.

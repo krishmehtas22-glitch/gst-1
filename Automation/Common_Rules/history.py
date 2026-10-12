@@ -56,6 +56,26 @@ class History:
         self.db.execute('INSERT INTO invoices VALUES(?,?,?,?,?)', (key, fp, json.dumps(data, ensure_ascii=False), status, data['sha256']))
         self.db.commit()
 
+    def correct_units(self,key,invoice):
+        """Explicit unit-only edits to the same unimported PDF, with an audit."""
+        previous=self.lookup(key)
+        if not previous or previous['status'] not in ('pending','generated') or previous['sha256']!=invoice['sha256']:
+            return False
+        before=previous['data'];old_items=before.get('items',[]);new_items=invoice.get('items',[])
+        if len(old_items)!=len(new_items):return False
+        changed=[i for i,(old,new) in enumerate(zip(old_items,new_items)) if old.get('unit')!=new.get('unit')]
+        if not changed or any(not new_items[i].get('unit_correction_reviewed') for i in changed):return False
+        def without_units(data):
+            return {**data,'items':[{k:v for k,v in item.items() if k!='unit'} for item in data['items']]}
+        if fingerprint(without_units(before))!=fingerprint(without_units(invoice)):return False
+        message=json.dumps({'reason':'User changed only quantity units before import',
+            'source_sha256':invoice['sha256'],'units':[{'item':i+1,'before':old_items[i]['unit'],'after':new_items[i]['unit']} for i in changed]},ensure_ascii=False)
+        with self.db:
+            self.db.execute("UPDATE invoices SET fingerprint=?,data=?,status='pending' WHERE invoice_key=?",(fingerprint(invoice),json.dumps(invoice,ensure_ascii=False),key))
+            self.db.execute('INSERT INTO events(at,source,invoice_key,status,message) VALUES(?,?,?,?,?)',
+                (datetime.now(timezone.utc).isoformat(),invoice['source'],key,'unit_corrected',message))
+        return True
+
     def set_status(self, key, status):
         self.db.execute('UPDATE invoices SET status=? WHERE invoice_key=?', (status, key))
         self.db.commit()

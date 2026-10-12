@@ -223,8 +223,12 @@ def save_layout(root,record,layout,demo):
             raise ValueError('Preview item count differs from the checked invoice')
         for old,item in zip(expected_items,parsed['items']):
             for key in ('name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate'):
+                if key=='unit' and old.get('unit_auto') and not item.get('unit'):continue
                 if old.get(key) not in (None,''):
                     same=(money(old[key])==money(item.get(key))) if key in ('quantity','rate','value','cgst_rate','sgst_rate','igst_rate') else old[key]==item.get(key)
+                    if key=='unit':
+                        from .unit_inference import canonical_unit
+                        same=bool(canonical_unit(old[key])) and canonical_unit(old[key])==canonical_unit(item.get(key))
                     if not same:
                         raise ValueError('Preview item '+key+' differs from the checked invoice')
     folder=root/'.invoice_app'/'supplier_layouts'
