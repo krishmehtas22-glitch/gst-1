@@ -11,7 +11,7 @@ from .accounting import EXPORT_MODES, export_notice, invoice_key
 from .demo import test_gstin
 from .engine import (discover, init_client, invoice_paths, process_client,
                      read_json, write_json)
-from .extraction import parse_text, text_from_pdf
+from .extraction import parse_text, text_from_pdf, normalize_basic_fields
 from .supplier_layouts import load_layouts, layouts_revision, extract_with_layouts
 from .source_documents import expand_source, verify_source, confirmed_test
 from .unit_inference import UnitResolver, remember_units
@@ -43,9 +43,12 @@ def refresh_review(source, saved):
         recovered=False
         # Blank identity fields cannot be valid reviewed facts. Recover only
         # those blanks, preserving every nonblank edit and all tax decisions.
-        for field in ('seller_name','seller_gstin','seller_state','buyer_name','number','date','source_layout'):
+        for field in ('seller_name','seller_gstin','seller_state','buyer_name','number','date','source_layout',
+                      'supply','classification','place_of_supply','currency','taxable','total','cgst','sgst','igst'):
             if refreshed.get(field) in (None,'') and source.get(field) not in (None,''):
                 refreshed[field]=source[field];recovered=True
+        if not refreshed.get('items') and source.get('items'):
+            refreshed['items']=deepcopy(source['items']);recovered=True
         if recovered:
             refreshed['extraction_warnings']=list(dict.fromkeys(refreshed.get('extraction_warnings',[])+source.get('extraction_warnings',[])))
         return refreshed
@@ -161,6 +164,7 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                     record['errors'] = list(layout_errors)
                 if declared_test:
                     record['invoice']={**record['invoice'],'dummy_document':True,'test_data_confirmed':True}
+                normalize_basic_fields(record['invoice'],record['invoice'].setdefault('extraction_warnings',[]))
                 resolver.apply(record)
                 record['errors'].extend(record['invoice'].get('extraction_warnings',[]))
             except (ValueError,OSError,KeyError,TypeError) as exc:

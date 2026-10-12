@@ -22,8 +22,8 @@ FIELDS = {
     'buyer_registration': ('buyer registration', 'registration type', 'buyer registration type'),
     'buyer_state': ('buyer state', 'customer state'),
     'place_of_supply': ('place of supply', 'place of supply (state code)', 'pos'),
-    'classification': ('tax treatment', 'gst classification', 'supply type'),
-    'taxable': ('taxable value', 'taxable amount', 'taxable total', 'subtotal', 'sub total', 'net taxable value'),
+    'classification': ('tax treatment', 'gst classification'),
+    'taxable': ('taxable value', 'taxable amount', 'taxable total', 'taxable / supply value', 'subtotal', 'sub total', 'net taxable value'),
     'total': ('grand total', 'invoice total', 'total invoice amount', 'total amount', 'total payable', 'amount payable', 'net payable', 'invoice value'),
     'round_off': ('round off', 'rounding'),
     'cess': ('cess',),
@@ -31,22 +31,23 @@ FIELDS = {
     'seller_address': ('seller address', 'supplier address'),
     'buyer_address': ('buyer address', 'customer address'),
     'buyer_country': ('buyer country', 'country of destination'),
-    'supply': ('supply',),
+    'supply': ('supply', 'supply type'),
     'export_mode': ('export mode',),
     'shipping_bill_port': ('shipping bill / port',),
     'currency': ('currency',),
+    'reverse_charge': ('reverse charge',),
     'foreign_currency': ('foreign currency',),
     'exchange_rate': ('exchange rate',),
     'foreign_invoice_value': ('foreign invoice value',),
     'cgst': ('cgst',), 'sgst': ('sgst',), 'igst': ('igst',),
 }
 HEADERS = {
-    'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description', 'item description'),
+    'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description', 'item description', 'item / description'),
     'hsn': ('hsn', 'hsn/sac', 'sac', 'hsn code'),
     'quantity': ('qty', 'qty.', 'quantity'),
     'unit': ('unit', 'uom', 'units', 'u/q', 'uqc'),
     'rate': ('rate', 'unit rate', 'price', 'rate (inr)', 'unit price'),
-    'value': ('value', 'taxable value', 'taxable amount', 'amount', 'item value', 'net amount', 'taxable (inr)'),
+    'value': ('value', 'taxable value', 'taxable amount', 'amount', 'item value', 'net amount', 'taxable (inr)', 'amount (inr)'),
     'cgst_rate': ('cgst %', 'cgst rate', 'cgst%'),
     'sgst_rate': ('sgst %', 'sgst rate', 'sgst%'),
     'igst_rate': ('igst %', 'igst rate', 'igst%'),
@@ -195,6 +196,22 @@ def normalize_ocr_labels(text):
 
 
 def normalize_basic_fields(inv, warnings):
+    from .accounting import state_code
+    if inv.get('currency') and re.fullmatch(r'INR(?:\s*\(Indian Rupees\))?(?:\s+Reverse charge:\s*No)?',inv['currency'],re.I):inv['currency']='INR'
+    if inv.get('reverse_charge') and inv['reverse_charge'].strip().casefold() not in ('no','n','false'):
+        warnings.append('Reverse-charge invoice requires supported accounting treatment')
+    if inv.get('place_of_supply'):
+        parts=inv['place_of_supply'].rsplit(',',1)
+        if len(parts)==2:
+            try:inv['place_of_supply']=state_code(parts[1])
+            except ValueError:pass
+    if str(inv.get('classification','')).upper() in ('INTRA','INTER'):
+        legacy_supply=inv['classification'].upper()
+        if inv.get('supply') and str(inv['supply']).upper()!=legacy_supply:warnings.append('Supply type conflicts with the retained classification')
+        else:inv['supply']=legacy_supply;inv['classification']='taxable'
+    if inv.get('supply'):
+        inv['supply']=inv['supply'].strip().upper()
+        if inv['supply'] in ('INTRA','INTER') and not inv.get('classification'):inv['classification']='taxable'
     if inv.get('date'):
         inv['date']=re.sub(r'(\d)(?:st|nd|rd|th)\b',r'\1',inv['date'],flags=re.I)
         for fmt in ('%Y-%m-%d','%d/%m/%Y','%d-%m-%Y','%d.%m.%Y','%d %b %Y','%d-%b-%Y','%d %B %Y'):
@@ -250,6 +267,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             else:
                 paired.pop(key,None)
                 paired['extraction_warnings'].append('Mapped field missing: '+key)
+        if marked_sample(original_text):paired['dummy_document']=True
         normalize_basic_fields(paired,paired['extraction_warnings'])
         if MARKER in text:
             paired['source_ocr'] = True
@@ -311,6 +329,13 @@ def parse_text(text, field_mappings=None, header_aliases=None):
     quantity_header_unit=rate_header_unit=None
     for line in text.splitlines():
         row = cells(line)
+        if columns and any(unique_field(line,FIELDS[key],key,[]) is not None for key in ('taxable','total')):columns=None
+        continuation=re.fullmatch(r'\s*GST\s+rate\s*:\s*(\d+(?:\.\d+)?)\s*%\s*',line,re.I)
+        if continuation and columns and items:
+            if items[-1].get('gst_rate') and money(items[-1]['gst_rate'])!=money(continuation[1]):
+                warnings.append('Conflicting GST rate continuation for the preceding item')
+            else:items[-1]['gst_rate']=continuation[1]
+            continue
         decoded = []
         row_quantity_unit=row_rate_unit=None
         for cell in row:
@@ -342,29 +367,33 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                 if item.get('unit') and canonical_unit(item['unit'])!=canonical_unit(parsed_quantity[1]):
                     warnings.append('Quantity suffix conflicts with the printed item unit; choose the actual selling unit')
                 if not item.get('unit'):item['unit']=parsed_quantity[1]
-            for tax in ('cgst','sgst','igst'):
-                if f'{tax}_rate' not in item:
-                    if tax in rates:
-                        item[f'{tax}_rate'] = rates[tax]
-                    elif inv.get(tax) is not None and re.fullmatch(r'(?:0+(?:\.0+)?)', inv[tax]):
-                        item[f'{tax}_rate'] = '0'
-            if item.get('gst_rate'):
-                try:
-                    from .accounting import state_code, cents
-                    rate = money(item['gst_rate'])
-                    intra = state_code(inv['place_of_supply']) == inv['seller_gstin'][:2]
-                    derived = {'cgst':rate/2 if intra else 0,'sgst':rate/2 if intra else 0,'igst':0 if intra else rate}
-                    for tax,value in derived.items():
-                        if item.get(tax+'_rate') is not None and money(item[tax+'_rate']) != value:
-                            warnings.append('Item combined GST rate conflicts with component rate')
-                        else:
-                            item[tax+'_rate'] = str(value)
-                        if item.get('printed_'+tax) is not None and cents(money(item['value'])*money(value)/100) != cents(item['printed_'+tax]):
-                            warnings.append('Item printed '+tax.upper()+' does not reconcile to its rate')
-                except (KeyError,ValueError,TypeError,ArithmeticError):
-                    warnings.append('Item GST split needs seller state and place of supply review')
             items.append(item)
+    for item in items:
+        for tax in ('cgst','sgst','igst'):
+            if f'{tax}_rate' not in item:
+                if tax in rates:
+                    item[f'{tax}_rate'] = rates[tax]
+                elif inv.get(tax) is not None and re.fullmatch(r'(?:0+(?:\.0+)?)', inv[tax]):
+                    item[f'{tax}_rate'] = '0'
+        if item.get('gst_rate'):
+            try:
+                from .accounting import state_code, cents
+                rate = money(item['gst_rate'])
+                intra = state_code(inv['place_of_supply']) == inv['seller_gstin'][:2]
+                derived = {'cgst':rate/2 if intra else 0,'sgst':rate/2 if intra else 0,'igst':0 if intra else rate}
+                for tax,value in derived.items():
+                    if item.get(tax+'_rate') is not None and money(item[tax+'_rate']) != value:
+                        warnings.append('Item combined GST rate conflicts with component rate')
+                    else:
+                        item[tax+'_rate'] = str(value)
+                    if item.get('printed_'+tax) is not None and cents(money(item['value'])*money(value)/100) != cents(item['printed_'+tax]):
+                        warnings.append('Item printed '+tax.upper()+' does not reconcile to its rate')
+            except (KeyError,ValueError,TypeError,ArithmeticError):
+                warnings.append('Item GST split needs seller state and place of supply review')
     inv['items'] = items
+    if items:
+        for tax in ('cgst','sgst','igst'):
+            if inv.get(tax) is None and all(item.get(tax+'_rate') is not None and money(item[tax+'_rate'])==0 for item in items):inv[tax]='0'
     if all(marker.casefold() in text.casefold() for marker in (
             'TEST DOCUMENT - NOT VALID FOR FILING', 'DUMMY / NOT FOR COMMERCIAL USE',
             'All parties, GSTINs, HSN mappings and rates are synthetic examples')):

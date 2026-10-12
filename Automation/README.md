@@ -1,8 +1,8 @@
 # Sales invoice automation
 
-## Reader 5: visible automatic units and clearer invoice mode
+## Reader 5.1: item GST continuation lines and automatic units
 
-The title bar shows **Reader 5** so a replaced installation can be identified.
+The title bar shows **Reader 5.1** so a replaced installation can be identified.
 The reader recognizes explicit supplier/vendor/exporter and customer/billing
 roles, standalone or inline names, and separate party columns. A seller banner
 can be recovered from a single business name and GSTIN before the billing party,
@@ -55,11 +55,27 @@ and [ERPNext unit definitions](https://github.com/frappe/erpnext/blob/develop/er
 Official GST/Tally pages were inaccessible from the current environment.
 Custom mg, microgram and packaging units use OTH rather than invented GST codes.
 
-The supplied 61 distinct PDFs contain 80 invoices. All seller names were read;
+The original supplied 61 distinct PDFs contain 80 invoices. All seller names were read;
 all 80 vouchers were checked in isolated audit runs after explicit test-data,
 unit and exempt-treatment choices. These checks verify accounting XML, not a
 live Tally import or every possible future PDF layout. CLIENT 16's SI-0029 style
 was shown only in a screenshot and requires its source PDFs for verification.
+
+Reader 5.1 reads per-item `GST rate: 18%` continuation lines below table rows,
+including reordered columns and separate supplier/buyer headings. `Supply type:
+INTRA/INTER` supplies the state split rather than becoming a tax classification.
+City/state place-of-supply values and `INR (Indian Rupees)` are normalized.
+Zero omitted GST components are derived only when every recognized item has
+an explicit zero component rate. Missing per-item rates and conflicting rates
+remain blocked. Explicit paired fictional-testing and fictional-identity notices
+are recognized automatically; a generic word such as “sample” is insufficient.
+
+The eight uploaded `Sales_Invoice_46` through `53` PDFs now generate eight
+vouchers with all 20 printed item rows and their distinct GST rates, with no
+seller re-entry or fictional-data declaration. Their printed PCS/BOX units stay
+unchanged. Old unbaselined reviews with empty item lists can recover newly read
+rows; nonempty manual item corrections remain preserved. The screenshot's
+SI-0026–0045 documents were not uploaded, so those exact files are not verified.
 
 ## Desktop workflow: inspection, corrections and seller grouping
 

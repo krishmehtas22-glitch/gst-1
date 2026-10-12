@@ -16,7 +16,9 @@ SAMPLE_NOTICE='Sample invoice generated for software testing. All names, GSTINs 
 def marked_sample(text):
     normalized=' '.join(text.casefold().split())
     return (SAMPLE_NOTICE.casefold() in normalized or
-            'sample invoice for software testing. fictional data.' in normalized)
+            'sample invoice for software testing. fictional data.' in normalized or
+            ('synthetic sample for ocr/accounting automation testing only.' in normalized and
+             'not a valid tax invoice. all gstins and buyer identities are fictional.' in normalized))
 
 
 def spans(line):
