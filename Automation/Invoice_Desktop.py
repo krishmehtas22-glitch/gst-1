@@ -7,7 +7,8 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-from Common_Rules.desktop import process_sources, save_review
+from Common_Rules.desktop import process_sources, save_review, reset_source_reviews
+from Common_Rules.engine import discover
 from Common_Rules.watcher import source_signature
 
 FIELDS = ['number','date','seller_name','seller_gstin','seller_state','seller_address',
@@ -38,6 +39,15 @@ class InvoiceApp:
         self.folder_label.pack(side='left',padx=10)
         self.demo = tk.BooleanVar(value=True)
         ttk.Checkbutton(controls,text='Dummy PDFs (fictional substitutions)',variable=self.demo,command=self.reset).pack(side='right')
+        scope=ttk.Frame(window,padding=(10,0))
+        scope.pack(fill='x')
+        ttk.Label(scope,text='Client folder:').pack(side='left')
+        self.client_scope=tk.StringVar(value='All clients')
+        self.client_picker=ttk.Combobox(scope,textvariable=self.client_scope,state='readonly',width=30)
+        self.client_picker.pack(side='left',padx=8)
+        self.client_picker.bind('<<ComboboxSelected>>',lambda event:self.reset())
+        ttk.Button(scope,text='Re-read selected PDFs',command=self.reread).pack(side='left')
+        self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
         ttk.Button(actions,text='Scan and generate XML',command=self.start).pack(side='left')
@@ -69,6 +79,30 @@ class InvoiceApp:
         self.last = None
         self.observed = None
 
+    def refresh_clients(self):
+        try:
+            values=['All clients']+['Folder: '+folder.name for folder in discover(self.root)]
+            if self.client_scope.get() not in values:
+                values.append(self.client_scope.get())
+            self.client_picker.config(values=values)
+        except OSError:
+            pass
+
+    def reread(self):
+        if self.busy:
+            return
+        records=[self.records[int(item)] for item in self.table.selection()]
+        if not records:
+            messagebox.showinfo('Re-read PDFs','Select the invoice rows to re-read. Use Ctrl or Shift to select several.')
+            return
+        try:
+            reset_source_reviews(self.root,records)
+        except (ValueError,OSError) as exc:
+            messagebox.showerror('Re-read PDFs',str(exc))
+            return
+        self.reset()
+        self.start()
+
     def close(self):
         self.closing = True
         self.auto.set(False)
@@ -86,6 +120,8 @@ class InvoiceApp:
             self.folder_label.config(text=path)
             self.records = []
             self.table.delete(*self.table.get_children())
+            self.client_scope.set('All clients')
+            self.refresh_clients()
             self.reset()
 
     def start(self):
@@ -94,9 +130,11 @@ class InvoiceApp:
         self.busy = True
         self.status.config(text='Reading invoices and validating totals…')
         root, demo = self.root, self.demo.get()
+        selected=self.client_scope.get()
+        clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
         def worker():
             try:
-                self.events.put(('ok',process_sources(root,demo)))
+                self.events.put(('ok',process_sources(root,demo,clients)))
             except Exception as exc:
                 self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
@@ -124,8 +162,9 @@ class InvoiceApp:
             self.window.destroy()
             return
         if self.auto.get() and not self.busy:
+            self.refresh_clients()
             try:
-                signature = (self.demo.get(),source_signature(self.root),
+                signature = (self.demo.get(),self.client_scope.get(),source_signature(self.root),
                              tuple((str(p),p.stat().st_mtime_ns) for p in sorted((self.root/'.invoice_app/reviews').glob('*.json'))))
                 if signature == self.observed and signature != self.last:
                     self.last = signature

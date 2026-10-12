@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 import re
 import shutil
+import uuid
 
 from .accounting import gstin_valid, state_code
 from .accounting import export_notice, invoice_key
@@ -21,9 +22,76 @@ PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_byte
     for name in ('extraction.py','paired_layout.py','ocr.py'))).hexdigest()
 
 
-def inspect_sources(root):
+def _same_review_value(left,right):
+    if left in (None,'') and right in (None,''):
+        return True
+    if isinstance(left,(str,int,float)) and isinstance(right,(str,int,float)):
+        return str(left).strip()==str(right).strip()
+    return left==right
+
+
+def refresh_review(source, saved):
+    """Rebase unchanged extraction fields, preserving explicit human edits."""
+    reviewed=saved['invoice']
+    original=saved.get('original_extraction')
+    # Without a baseline, never guess which fields the user intentionally set.
+    # Keep prior OCR approvals intact rather than replacing them with new OCR.
+    if not isinstance(original,dict) or source.get('source_ocr'):
+        return dict(reviewed)
+    refreshed=dict(source)
+    for field,value in reviewed.items():
+        if field in ('items','extraction_warnings'):
+            continue
+        if not _same_review_value(value,original.get(field)):
+            refreshed[field]=value
+    old_items=original.get('items',[])
+    reviewed_items=reviewed.get('items',[])
+    if reviewed_items!=old_items:
+        fresh_items=source.get('items',[])
+        same_rows=(len(old_items)==len(reviewed_items)==len(fresh_items) and
+            all((old.get('name'),old.get('hsn'))==(fresh.get('name'),fresh.get('hsn'))
+                for old,fresh in zip(old_items,fresh_items)))
+        if same_rows:
+            updated=[]
+            for old,edited,fresh in zip(old_items,reviewed_items,fresh_items):
+                item=dict(fresh)
+                item.update({field:value for field,value in edited.items() if not _same_review_value(value,old.get(field))})
+                updated.append(item)
+            refreshed['items']=updated
+        else:
+            refreshed['items']=reviewed_items
+    return refreshed
+
+
+def reset_source_reviews(root, records):
+    """Archive only selected source reviews/caches; never reset company history."""
+    backup=root/'.invoice_app'/'review_backups'/uuid.uuid4().hex
+    archived=[]
+    digests=set()
+    for record in records:
+        digest=record.get('digest','')
+        if not re.fullmatch(r'[a-f0-9]{64}',digest):
+            raise ValueError('Scan the selected PDF before re-reading it')
+        path=Path(record['path'])
+        if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:
+            raise ValueError('The selected PDF changed or is outside the invoice folder; scan again')
+        digests.add(digest)
+    for digest in sorted(digests):
+        for folder in ('reviews','extraction'):
+            source=root/'.invoice_app'/folder/(digest+'.json')
+            if source.exists():
+                destination=backup/folder/source.name
+                destination.parent.mkdir(parents=True,exist_ok=True)
+                source.replace(destination)
+                archived.append(str(destination))
+    return archived
+
+
+def inspect_sources(root, client_names=None):
     records = []
     for folder in discover(root):
+        if client_names is not None and folder.name not in client_names:
+            continue
         for path in invoice_paths(folder):
             record = {'path':str(path),'client':folder.name,'errors':[],'invoice':{}}
             try:
@@ -47,7 +115,7 @@ def inspect_sources(root):
                     saved = read_json(review)
                     if saved.get('source_sha256') != digest or saved.get('approved') is not True:
                         raise ValueError('Review must be approved and match this PDF')
-                    record['invoice'] = saved['invoice']
+                    record['invoice'] = refresh_review(record['source_invoice'],saved)
                     original = record['source_invoice']
                     if (record['invoice'].get('classification') == 'export' and
                         original.get('classification') == 'export_lut' and
@@ -79,8 +147,8 @@ def save_review(root, record, invoice):
                 'original_extraction':record.get('source_invoice',record['invoice'])})
 
 
-def process_sources(root, demo=True):
-    records = inspect_sources(root)
+def process_sources(root, demo=True, client_names=None):
+    records = inspect_sources(root,client_names)
     workspace = root/'.invoice_app'/'companies'
     workspace.mkdir(parents=True,exist_ok=True)
     groups = {}

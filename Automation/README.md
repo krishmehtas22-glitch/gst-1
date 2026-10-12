@@ -28,6 +28,19 @@ The app displays extracted invoice summaries and errors. Select an invoice and
 click **Review selected invoice** to correct fields/items in a form, then
 **Approve corrections and revalidate**. Approval binds the corrections to the
 exact PDF SHA256 and never bypasses GST, total, unit or master-conflict checks.
+When a reader update recovers previously missing fields, unchanged fields from
+an older native-PDF review refresh from the source; explicit human corrections
+remain retained. Existing OCR approvals and older reviews without a baseline
+are preserved as complete overrides. If one of those old overrides still blocks
+a readable PDF, select its row(s) and use **Re-read selected PDFs**. This archives
+only those saved reviews and extraction caches under `.invoice_app/review_backups/`
+before re-reading. Company configurations, databases, import confirmations and
+original PDFs are not reset or deleted.
+
+Use the **Client folder** dropdown to inspect just CLIENT 8 or CLIENT 9 rather
+than the older sample folders. **All clients** remains the default. Outputs are
+still company-based retained pending batches: selecting a source folder does not
+delete a company's other pending invoices or confirmed history.
 Exports cannot be edited into domestic sales. Explicit LUT exports without
 payment of IGST now generate separate accounting vouchers, described below.
 
