@@ -5,6 +5,7 @@ from .accounting import STATES, TAXES, EXPORT_MODES, money, sales_ledger
 
 def required_masters(inv, config):
     is_export = inv['classification'] in EXPORT_MODES
+    accounting_only=is_export or inv.get('tax_accounting_basis')=='invoice_summary'
     masters = [
         {'kind':'ledger','name':inv['buyer_name'],'group':'Sundry Debtors','gstin':inv['buyer_gstin'], 'registration':inv['buyer_registration'], 'state':'Not Applicable' if is_export else STATES[inv['buyer_state']], 'country':inv['buyer_country'] if is_export else 'India'},
         {'kind':'ledger','name':sales_ledger(inv, config),'group':'Sales Accounts','classification':'taxable' if config.get('unified_sales_ledger') else inv['classification']},
@@ -15,7 +16,7 @@ def required_masters(inv, config):
     if money(inv['round_off']):
         masters.append({'kind':'ledger','name':config['ledgers']['round_off'],'group':'Indirect Expenses'})
     for item in inv['items']:
-        if is_export:
+        if accounting_only:
             continue  # Accounting export vouchers do not create stock masters.
         unit = config.get('units', {}).get(item['unit'])
         if not unit or not all(unit.get(k) is not None for k in ('formal_name','uqc','decimal_places')):

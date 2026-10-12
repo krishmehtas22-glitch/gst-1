@@ -114,6 +114,8 @@ def prepare_paired_demo(raw, config):
         raise ValueError('Printed seller state does not match the demo company state')
     if raw.get('supply') not in ('INTRA','INTER','EXEMPT','EXPORT'):
         raise ValueError('Unsupported supply treatment in this demo layout')
+    if raw.get('tax_accounting_basis')=='invoice_summary' and raw.get('items') and all(all(item.get(tax+'_rate') not in (None,'') for tax in TAXES) for item in raw['items']):
+        raw=deepcopy(raw);raw.pop('tax_accounting_basis',None)
     is_export = raw.get('supply') == 'EXPORT'
     if is_export and raw.get('export_mode') != EXPORT_MODES.get(raw.get('classification'),False):
         raise ValueError('Export requires an explicit matching LUT/IGST payment mode')
@@ -156,6 +158,7 @@ def prepare_paired_demo(raw, config):
                 raise ValueError(f'Item {index}: choose the quantity unit in Review; the PDF omits it or prints alternatives')
             raise ValueError('Printed unit needs a configured unit mapping')
         change(item,'unit',unit,'Normalize printed unit capitalization',f'item {index}')
+        if inv.get('tax_accounting_basis')=='invoice_summary':continue
         full_rate = sum(money(item[tax+'_rate']) for tax in TAXES)
         alias = f"{item['name']} [DEMO HSN {item['hsn']} GST {format(full_rate.normalize(), 'f')}%]"
         change(item,'name',alias,'Keep demo stock identity specific to HSN and GST rate',f'item {index}')

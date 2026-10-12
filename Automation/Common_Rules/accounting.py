@@ -75,7 +75,7 @@ def fingerprint(inv):
         'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address','buyer_country',
         'place_of_supply','classification','supply','taxable','total','round_off',
         'cgst','sgst','igst','cess','currency','export_mode','demo_only',
-        'foreign_currency','exchange_rate','foreign_invoice_value')
+        'foreign_currency','exchange_rate','foreign_invoice_value','tax_accounting_basis')
     item_fields = ('name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate',
                    'list_rate','discount_rate','foreign_rate','foreign_value')
     clean = {key:inv[key] for key in fields if key in inv}
@@ -100,6 +100,14 @@ def validate(raw, config):
     errors = list(inv.pop('extraction_warnings', []))
     if bool(inv.get('demo_only')) != bool(config.get('demo_only')):
         errors.append('Demo invoices require a demo client; real invoices require a separate production client')
+    summary=inv.get('tax_accounting_basis')=='invoice_summary'
+    if summary and inv.get('items') and all(all(item.get(tax+'_rate') not in (None,'') for tax in TAXES) for item in inv['items']):
+        inv.pop('tax_accounting_basis',None);summary=False
+    if summary and not config.get('allow_invoice_summary_accounting',False):errors.append('Item GST rates are not printed; inventory requires item-rate review')
+    if summary:
+        try:
+            if any(money(item[tax+'_rate'])!=0 for item in inv.get('items',[]) for tax in TAXES if item.get(tax+'_rate') not in (None,'')):errors.append('Partial item GST rates require full item-rate review before inventory posting')
+        except (ValueError,InvalidOperation,TypeError):errors.append('Invalid partial item GST rate')
     required = ('number','date','seller_name','seller_gstin','buyer_name','buyer_registration','place_of_supply','classification','taxable','total','items')
     for field in required:
         if inv.get(field) is None or inv.get(field) == '' or inv.get(field) == []:
@@ -218,6 +226,9 @@ def validate(raw, config):
                 errors.append(f'Item {index}: negative amount or nonpositive quantity')
             if abs(cents(money(item['quantity']) * money(item['rate'])) - cents(item['value'])) > Decimal('.01'):
                 errors.append(f'Item {index}: quantity × rate does not equal taxable value; discount handling needs review')
+            if summary:
+                if any(item.get('printed_'+tax) not in (None,'') for tax in TAXES):errors.append('Item GST amounts require item-level tax validation')
+                normalized.append(item);continue
             for tax in TAXES:
                 rate_field = f'{tax}_rate'
                 if item.get(rate_field) in (None, ''):
@@ -248,8 +259,14 @@ def validate(raw, config):
         if fx and cents(foreign_sum)!=cents(inv['foreign_invoice_value']):errors.append('Foreign item values do not reconcile to foreign invoice total')
         if abs(sum(money(i['value']) for i in normalized) - money(inv['taxable'])) > Decimal('.01'):
             errors.append('Item taxable values do not reconcile to invoice taxable total')
+        if summary:
+            if inv['classification']=='taxable':
+                intra=inv['seller_gstin'][:2]==inv['place_of_supply']
+                if intra and (money(inv['igst']) or money(inv['cgst'])!=money(inv['sgst'])):errors.append('Invoice-summary GST conflicts with intra-state supply')
+                if not intra and (money(inv['cgst']) or money(inv['sgst'])):errors.append('Invoice-summary GST conflicts with inter-state supply')
+                if sum(money(inv[t]) for t in TAXES)<=0:errors.append('Taxable invoice-summary accounting requires positive GST')
         for tax in TAXES:
-            if money(inv[tax]) < 0 or abs(sums[tax] - money(inv[tax])) > Decimal('.01'):
+            if money(inv[tax]) < 0 or (not summary and abs(sums[tax] - money(inv[tax])) > Decimal('.01')):
                 errors.append(f'{tax.upper()} amount does not reconcile to item rates')
         expected = money(inv['taxable']) + sum(money(inv[t]) for t in TAXES) + money(inv['round_off'])
         if money(inv['taxable']) < 0 or money(inv['total']) <= 0 or cents(expected) != cents(inv['total']):

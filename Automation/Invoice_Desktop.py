@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 5.5'
+APP_VERSION='Reader 6'
 
 
 def quantity_unit_summary(invoice):
@@ -80,6 +80,8 @@ class InvoiceApp:
         ttk.Button(actions,text='Open source PDF',command=self.open_source).pack(side='left',padx=8)
         self.auto_units=tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Auto-fill units',variable=self.auto_units,command=self.reset).pack(side='left',padx=8)
+        self.summary_accounting=tk.BooleanVar(value=False)
+        ttk.Checkbutton(actions,text='Summary GST accounting',variable=self.summary_accounting,command=self.reset).pack(side='left',padx=8)
         self.auto = tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Watch for new PDFs',variable=self.auto).pack(side='right')
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
@@ -186,12 +188,12 @@ class InvoiceApp:
             return
         self.busy = True
         self.status.config(text='Reading invoices and validating totals…')
-        root, demo, auto_units = self.root, self.demo.get(),self.auto_units.get()
+        root, demo, auto_units, summary_accounting = self.root, self.demo.get(),self.auto_units.get(),self.summary_accounting.get()
         selected=self.client_scope.get()
         clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
         def worker():
             try:
-                self.events.put(('ok',process_sources(root,demo,clients,auto_units)))
+                self.events.put(('ok',process_sources(root,demo,clients,auto_units,summary_accounting)))
             except Exception as exc:
                 self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
@@ -226,7 +228,7 @@ class InvoiceApp:
         if self.auto.get() and not self.busy:
             self.refresh_clients()
             try:
-                signature = (self.demo.get(),self.auto_units.get(),self.client_scope.get(),source_signature(self.root),
+                signature = (self.demo.get(),self.auto_units.get(),self.summary_accounting.get(),self.client_scope.get(),source_signature(self.root),
                              tuple((str(p),p.stat().st_mtime_ns) for folder in ('reviews','supplier_layouts','document_settings','unit_estimates')
                                    for p in sorted((self.root/'.invoice_app'/folder).glob('*.json'))),
                              tuple(p.stat().st_mtime_ns for p in (self.root/'.invoice_app').glob('unit_preferences.json')))

@@ -275,6 +275,8 @@ def export_xml_imports(client, config, invoices, masters, history, output_folder
                  'foreign_invoice_value':inv.get('foreign_invoice_value'),
                  'notice':export_notice(config)}
                  for key,inv in invoices.items() if inv.get('accounting_only_export')],
+             'invoice_summary_accounting':[{'invoice_key':key,'number':inv['number'],'note':inv.get('tax_accounting_note'),
+                 'tax_totals':{tax:inv[tax] for tax in ('cgst','sgst','igst')}} for key,inv in invoices.items() if inv.get('tax_accounting_basis')=='invoice_summary'],
              'gst_return_mapping_verified':False,
              'warning':('DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. ' if config.get('demo_only') else '') + 'Import Masters.xml successfully before Sales_Vouchers.xml. Generation is not import confirmation. Verify GST in a dummy Tally company first.'})
         folder.mkdir(parents=True,exist_ok=True)

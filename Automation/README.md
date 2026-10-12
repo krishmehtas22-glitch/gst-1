@@ -1,8 +1,8 @@
 # Sales invoice automation
 
-## Reader 5.5: processing recovery and supplier identity
+## Reader 6: structure-based extraction and summary GST accounting
 
-The title bar shows **Reader 5.5** so a replaced installation can be identified.
+The title bar shows **Reader 6** so a replaced installation can be identified.
 The reader recognizes explicit supplier/vendor/exporter and customer/billing
 roles, standalone or inline names, and separate party columns. A seller banner
 can be recovered from a single business name and GSTIN before the billing party,
@@ -709,3 +709,18 @@ section. An accounting XML check cannot certify Tally's GST-return classificatio
 The latest Tally register is short by 18,031.34: SI-0079 (5,303.00) and SI-0081
 (12,728.34). The twenty supplied 66–85 PDFs remain regression-covered. CLIENT 21
 source PDFs have not been supplied; its exact masthead/item layout is unverified.
+
+## Reader 6: new structural logic
+
+See [EXTRACTION_LOGIC.md](docs/EXTRACTION_LOGIC.md) for the complete pipeline:
+separate scalar fields from their neighboring metadata, preserve party columns,
+recognize invoice headings, interpret semantic table headers, and validate
+printed facts before XML generation. The 106–125 uploaded batch previously
+produced 0 XML; it now extracts 20 invoices and 39 items. Five prepare XML automatically; fifteen need item GST rates under the requested default.
+
+**Summary GST accounting** is off by default, following your choice to require item-rate review for inventory XML. When every item's GST rate is
+omitted but invoice-level CGST/SGST/IGST amounts are printed, it uses the printed
+invoice amounts in an accounting voucher without stock movement. The status and
+narration state this explicitly. Leave the option off when inventory posting is
+required; missing item rates then need review. Printed exemption/LUT zero GST
+is handled separately. Units omitted by the PDF stay visibly estimated.

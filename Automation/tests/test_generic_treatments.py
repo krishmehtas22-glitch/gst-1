@@ -50,7 +50,7 @@ def test_printed_treatment_has_correct_payable_component_rates(treatment):
   assert item['cgst_rate']==item['sgst_rate']=='0'
   assert item['igst_rate']==('18' if treatment=='export_igst' else '0')
  if treatment.startswith('export'):
-  assert inv['place_of_supply']=='Outside India' and inv['buyer_country']=='UAE'
+  assert inv['place_of_supply']=='Outside India' and inv['buyer_country']=='United Arab Emirates'
   assert inv['buyer_gstin']=='' and inv['buyer_registration']=='Unregistered'
 
 

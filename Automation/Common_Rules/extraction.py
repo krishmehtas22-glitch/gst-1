@@ -12,6 +12,7 @@ from .flat_layout import parse_flat_layout, supported_flat
 from .party_evidence import read_party_roles, role_heading, read_seller_masthead
 from .unit_inference import quantity_parts, canonical_unit
 from .tax_treatment import apply_printed_treatment
+from .document_structure import gst_identifier, header_key, unlabelled_invoice_number, positional_cells
 
 FIELDS = {
     'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no', 'invoice reference', 'invoice ref', 'document no', 'document number', 'invoice id'),
@@ -24,14 +25,14 @@ FIELDS = {
     'buyer_state': ('buyer state', 'customer state'),
     'place_of_supply': ('place of supply', 'place of supply (state code)', 'pos'),
     'classification': ('tax treatment', 'gst classification'),
-    'taxable': ('taxable value', 'taxable amount', 'taxable total', 'taxable / supply value', 'subtotal', 'sub total', 'net taxable value'),
+    'taxable': ('taxable value', 'taxable amount', 'taxable total', 'taxable / supply value', 'taxable / exempt value', 'subtotal', 'sub total', 'net taxable value'),
     'total': ('grand total', 'invoice total', 'total invoice amount', 'total amount', 'total payable', 'amount payable', 'net payable', 'invoice value'),
     'round_off': ('round off', 'rounding'),
     'cess': ('cess',),
     'seller_state': ('seller state', 'supplier state'),
     'seller_address': ('seller address', 'supplier address'),
     'buyer_address': ('buyer address', 'customer address'),
-    'buyer_country': ('buyer country', 'country of destination', 'destination country'),
+    'buyer_country': ('buyer country', 'country of destination', 'destination country', 'destination'),
     'supply': ('supply', 'supply type'),
     'export_mode': ('export mode',),
     'shipping_bill_port': ('shipping bill / port',),
@@ -110,7 +111,7 @@ def party_value(key,value):
     if key in ('seller_gstin','buyer_gstin'):
         if key=='buyer_gstin' and (re.fullmatch(r'unregistered(?:\s*(?:/\s*consumer|buyer|[-–]\s*export|\(foreign entity\)))?',token,re.I) or re.fullmatch(r'(?:n/a|na|not applicable)(?:\s*[-–]\s*(?:overseas buyer|export))?',token,re.I)):
             return ''
-        return token.upper()
+        return gst_identifier(token).upper()
     return value
 
 
@@ -120,6 +121,9 @@ def unique_field(text, aliases, field, warnings, mapped=False):
     anchor=r'(?:^\s*|\s{2,})' if mapped else r'^\s*'
     found = re.findall(rf'{anchor}(?:{pattern}){delimiter}(.*?)\s*$', text, re.I | re.M)
     values=[s.strip() for s in found if s.strip()]
+    if field in ('seller_gstin','buyer_gstin'):values=[gst_identifier(value) for value in values]
+    elif field not in ('seller_name','buyer_name','seller_address','buyer_address'):
+        values=[re.split(r'\s*\|\s*(?=[A-Za-z][^|:]{0,40}:)',value)[0].strip() for value in values]
     unique=list(dict.fromkeys(party_value(field,value) for value in values)) if field in ('seller_gstin','buyer_gstin') else list(dict.fromkeys(values))
     if len(unique) > 1:
         warnings.append(f'Ambiguous {field}: multiple different values')
@@ -211,6 +215,8 @@ def normalize_ocr_labels(text):
 
 def normalize_basic_fields(inv, warnings):
     from .accounting import state_code
+    if inv.get('tax_accounting_basis')=='invoice_summary' and inv.get('items') and all(all(item.get(tax+'_rate') not in (None,'') for tax in ('cgst','sgst','igst')) for item in inv['items']):
+        inv.pop('tax_accounting_basis',None);inv.pop('tax_accounting_note',None)
     if inv.get('currency') and re.fullmatch(r'INR(?:\s*\(Indian Rupees\))?(?:\s+Reverse charge:\s*No)?',inv['currency'],re.I):inv['currency']='INR'
     if inv.get('reverse_charge') and inv['reverse_charge'].strip().casefold() not in ('no','n','false'):
         warnings.append('Reverse-charge invoice requires supported accounting treatment')
@@ -295,8 +301,8 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                 if key in field_mappings else unique_field(text,aliases,key,warnings))
            for key,aliases in field_aliases.items()}
     warnings.extend('Mapped field missing: '+key for key in field_mappings if inv.get(key) is None)
-    extracted = layout_fields(text, warnings)
-    for key,value in party_blocks(text,warnings).items():
+    extracted = layout_fields(original_text, warnings)
+    for key,value in party_blocks(original_text,warnings).items():
         if key in extracted and extracted[key] != value:
             warnings.append('Ambiguous '+key+' in party layout')
             extracted[key] = None
@@ -316,6 +322,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                 warnings.append('Seller masthead conflicts with '+key)
             elif key not in field_mappings:
                 inv[key]=value
+    if not inv.get('number'):inv['number']=unlabelled_invoice_number(original_text,warnings)
     normalize_basic_fields(inv,warnings)
     apply_printed_treatment(inv,original_text,warnings)
     rates = {}
@@ -341,20 +348,21 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             pass  # Validation reports malformed printed amounts.
     items = []
     columns = None
+    header_line=None
     quantity_header_unit=rate_header_unit=None
-    for line in text.splitlines():
+    for line in original_text.splitlines():
         row = cells(line)
         if columns and any(unique_field(line,FIELDS[key],key,[]) is not None for key in ('taxable','total')):columns=None
         continuation=re.fullmatch(r'\s*GST\s+rate\s*:\s*(\d+(?:\.\d+)?)\s*%\s*',line,re.I)
         if continuation and columns and items:
             if items[-1].get('gst_rate') and money(items[-1]['gst_rate'])!=money(continuation[1]):
                 warnings.append('Conflicting GST rate continuation for the preceding item')
-            else:items[-1]['gst_rate']=continuation[1]
+            else:items[-1]['gst_rate']=continuation[1];items[-1]['tax_rates_printed']=True
             continue
         decoded = []
         row_quantity_unit=row_rate_unit=None
         for cell in row:
-            key=next((key for key,aliases in headers.items() if cell.casefold() in aliases),None)
+            key=header_key(cell,headers)
             if key is None:
                 hint=re.fullmatch(r'(qty\.?|quantity|rate|price|unit rate|unit price)\s*(?:\(\s*(?:per\s+)?([^()]+)\s*\)|(?:per|/)\s+(.+))',cell,re.I)
                 if hint and canonical_unit(hint[2] or hint[3]):
@@ -363,11 +371,19 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                     else:row_rate_unit=hint[2] or hint[3]
             decoded.append(key)
         if all(field in decoded for field in ('name','quantity','rate','value')):
-            columns = decoded
+            columns = decoded;header_line=line
             quantity_header_unit,rate_header_unit=row_quantity_unit,row_rate_unit
             continue
+        if columns and len(row)!=len(columns) and header_line:
+            positioned=positional_cells(line,header_line)
+            if positioned and len(positioned)==len(columns):
+                candidate=dict(zip(columns,positioned))
+                try:
+                    if quantity_parts(candidate.get('quantity','')) and money(candidate.get('rate',''))>=0 and money(candidate.get('value',''))>=0:row=positioned
+                except (ValueError,TypeError,ArithmeticError):pass
         if columns and len(row) == len(columns) and len(row) >= 4:
             item = {key: value for key, value in zip(columns, row) if key}
+            item['tax_rates_printed']=any(item.get(key) not in (None,'') for key in ('gst_rate','cgst_rate','sgst_rate','igst_rate'))
             if not item.get('unit') and (quantity_header_unit or rate_header_unit):
                 item['unit']=quantity_header_unit or rate_header_unit
                 item['unit_evidence']='Printed quantity/rate table header: '+str(item['unit'])
@@ -383,6 +399,14 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                     warnings.append('Quantity suffix conflicts with the printed item unit; choose the actual selling unit')
                 if not item.get('unit'):item['unit']=parsed_quantity[1]
             items.append(item)
+    summary_only=bool(items) and all(not item.get('tax_rates_printed') for item in items) and not rates
+    if summary_only and all(inv.get(tax) is not None for tax in ('cgst','sgst','igst')):
+        if inv.get('classification') in ('export_lut','exempt','nil_rated','non_gst'):
+            for item in items:
+                for tax in ('cgst','sgst','igst'):item[tax+'_rate']='0'
+        else:
+            inv['tax_accounting_basis']='invoice_summary'
+            inv['tax_accounting_note']='Printed invoice GST totals used in accounting view; item GST rates are not printed; no stock movement'
     for item in items:
         for tax in ('cgst','sgst','igst'):
             if f'{tax}_rate' not in item:

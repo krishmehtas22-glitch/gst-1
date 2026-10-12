@@ -126,7 +126,7 @@ def masters_document(config, masters, invoices):
             text(node,'BASEUNITS',master['unit'])
             text(node,'GSTAPPLICABLE','Applicable')
             text(node,'GSTTYPEOFSUPPLY','Goods')
-            dates = [inv['date'] for inv in invoices.values() if any(item['name'].strip().casefold() == master['name'].strip().casefold() for item in inv['items'])]
+            dates = [inv['date'] for inv in invoices.values() if inv.get('tax_accounting_basis')!='invoice_summary' and inv['classification'] not in EXPORT_MODES and any(item['name'].strip().casefold() == master['name'].strip().casefold() for item in inv['items'])]
             if not dates:
                 raise ValueError('Stock master has no dependent invoice')
             gst_details(node,master,min(dates).replace('-',''))
@@ -154,7 +154,8 @@ def sales_document(config, invoices):
         root.insert(0,ET.Comment(' DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. '))
     for key, inv in sorted(invoices.items(),key=lambda entry:(entry[1]['date'],entry[0])):
         is_export = inv['classification'] in EXPORT_MODES
-        view = 'Accounting Voucher View' if is_export else 'Invoice Voucher View'
+        accounting_only=is_export or inv.get('tax_accounting_basis')=='invoice_summary'
+        view = 'Accounting Voucher View' if accounting_only else 'Invoice Voucher View'
         remote_id = str(uuid.uuid5(uuid.NAMESPACE_URL,config['company_id'] + '|' + key))
         voucher = ET.SubElement(message(data),'VOUCHER',{'REMOTEID':remote_id,'VCHTYPE':'Sales','ACTION':'Create','OBJVIEW':view})
         for name,value in {
@@ -163,7 +164,7 @@ def sales_document(config, invoices):
             'REFERENCE':inv['number'],'REFERENCEDATE':inv['date'].replace('-',''),
             'PARTYLEDGERNAME':inv['buyer_name'],'PARTYNAME':inv['buyer_name'],
             'BASICBUYERNAME':inv['buyer_name'],'PERSISTEDVIEW':view,
-            'ISINVOICE':'No' if is_export else 'Yes','ISOPTIONAL':'No','ISCANCELLED':'No',
+            'ISINVOICE':'No' if accounting_only else 'Yes','ISOPTIONAL':'No','ISCANCELLED':'No',
             'GSTREGISTRATIONTYPE':registration_type(inv['buyer_registration']),
             'PLACEOFSUPPLY':'Outside India' if is_export else STATES[inv['place_of_supply']],
             'STATENAME':'Not Applicable' if is_export else STATES[inv['buyer_state']],
@@ -187,12 +188,13 @@ def sales_document(config, invoices):
                                '; '+export_notice(config))
         if inv['buyer_gstin']:
             text(voucher,'PARTYGSTIN',inv['buyer_gstin'])
+        if inv.get('tax_accounting_basis')=='invoice_summary':voucher.find('NARRATION').text+='; '+inv['tax_accounting_note']
         entries = accounting_entries(inv,config)
         # The sales credit is in each inventory item's accounting allocation.
         # Adding a second standalone sales credit would double-post it.
         allocation(voucher,entries[0],inv['number'],party=True,
-                   entries_tag='ALLLEDGERENTRIES.LIST' if is_export else 'LEDGERENTRIES.LIST')
-        if is_export:
+                   entries_tag='ALLLEDGERENTRIES.LIST' if accounting_only else 'LEDGERENTRIES.LIST')
+        if accounting_only:
             for entry in entries[1:]:
                 allocation(voucher,entry,inv['number'],entries_tag='ALLLEDGERENTRIES.LIST')
             continue
@@ -238,14 +240,15 @@ def verify_sales(root, invoices, config):
         if inv is None:
             raise ValueError('XML voucher does not match its input invoice identity')
         is_export = inv['classification'] in EXPORT_MODES
-        if is_export:
+        accounting_only=is_export or inv.get('tax_accounting_basis')=='invoice_summary'
+        if accounting_only:
             if items or voucher.findall('LEDGERENTRIES.LIST') or voucher.get('OBJVIEW') != 'Accounting Voucher View' or voucher.findtext('ISINVOICE') != 'No':
                 raise ValueError('Export must use accounting view with no inventory movement')
             actual = [(e.findtext('LEDGERNAME'),cents(e.findtext('AMOUNT'))) for e in entries]
             desired = [(e['ledger'],cents(money(e['credit'])-money(e['debit']))) for e in accounting_entries(inv,config)]
             if actual != desired:
                 raise ValueError('Export XML ledger allocations do not match the validated accounting entry')
-        if not is_export and any(e.findtext('LEDGERNAME') in {config['ledgers'][k] for k in TAXABILITY} for e in entries):
+        if not accounting_only and any(e.findtext('LEDGERNAME') in {config['ledgers'][k] for k in TAXABILITY} for e in entries):
             raise ValueError('Sales ledger was posted outside inventory accounting allocation')
         for item in items:
             if sum(money(a.findtext('AMOUNT')) for a in item.findall('ACCOUNTINGALLOCATIONS.LIST')) != money(item.findtext('AMOUNT')):

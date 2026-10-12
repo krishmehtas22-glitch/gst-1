@@ -49,6 +49,12 @@ def read_party_roles(text,warnings):
             if state:put(role+'_state',state[1],line)
             reg=re.fullmatch(r'(?:GST registration|registration type)\s*:\s*(.+)',line,re.I)
             if reg:put(role+'_registration',reg[1],line)
+            address=re.fullmatch(r'Address\s*:\s*(.+)',line,re.I)
+            if address:
+                put(role+'_address',address[1],line)
+                from .accounting import state_code
+                try:put(role+'_state',state_code(address[1].rsplit(',',1)[-1].strip()),line)
+                except ValueError:pass
             if expect_name and ':' in line:
                 expect_name=False
             if expect_name and not gst and not state and ':' not in line:
@@ -83,8 +89,7 @@ def legal_name_key(name):
 def read_seller_masthead(text,warnings):
     """Read the printed business before the buyer, corroborated by GST/signature."""
     lines=[line.strip() for line in text.splitlines() if line.strip()]
-    boundary=next((i for i,line in enumerate(lines) if role_heading(line.rstrip(':'))=='buyer'
-        or role_heading(line.split(':',1)[0])=='buyer'),None)
+    boundary=next((i for i,line in enumerate(lines) if any(role_heading(cell.rstrip(':'))=='buyer' or role_heading(cell.split(':',1)[0])=='buyer' for cell in re.split(r'\s{2,}|\s*\|\s*',line))),None)
     if boundary is None:return {}
     header=lines[:boundary];printed=' '.join(header);candidates=[]
     for line in header:

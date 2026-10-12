@@ -41,6 +41,9 @@ def apply_printed_treatment(invoice,text,warnings):
         if state.casefold() in ('n/a','na','outside india','foreign country','overseas') or state.casefold() in EXPORT_COUNTRIES:
             invoice['buyer_state']='Outside India'
             if state.casefold() in EXPORT_COUNTRIES and EXPORT_COUNTRIES[state.casefold()]!='India':invoice.setdefault('buyer_country',EXPORT_COUNTRIES[state.casefold()])
+        if invoice.get('buyer_country'):
+            tail=str(invoice['buyer_country']).rsplit(',',1)[-1].strip()
+            invoice['buyer_country']=EXPORT_COUNTRIES.get(tail.casefold(),tail)
         if not invoice.get('buyer_country'):
             # Country must be printed, not inferred from an overseas buyer's name.
             for line in text.splitlines():
@@ -54,7 +57,7 @@ def apply_printed_treatment(invoice,text,warnings):
                     country=EXPORT_COUNTRIES.get(candidate.casefold())
                     if country and country!='India':invoice['buyer_country']=country;break
         return
-    explicit_exempt=classification=='exempt' or simple=='EXEMPT' or bool(re.search(r'\bexempt supply\s*:\s*(?:no gst|gst exempt)|\bgst exempt\b',compact))
+    explicit_exempt=classification=='exempt' or simple in ('EXEMPT','EXEMPT SUPPLY') or bool(re.search(r'\bexempt supply\s*:\s*(?:no gst|gst exempt)|\bgst exempt\b',compact))
     explicit_nil=classification=='nil_rated' or simple in ('NIL','NIL RATED','NIL RATED SUPPLY')
     if explicit_exempt and explicit_nil:
         warnings.append('Conflicting exempt and nil-rated classifications');return

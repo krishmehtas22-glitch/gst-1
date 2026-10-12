@@ -21,7 +21,7 @@ from .processing_lock import client_lock
 from .supplier_identity import restore_known_supplier
 
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','tax_treatment.py','country_catalog.py','supplier_layouts.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','document_structure.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','tax_treatment.py','country_catalog.py','supplier_layouts.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):
@@ -197,7 +197,7 @@ def save_review(root, record, invoice, resolve_warnings=True):
     remember_units(root,record,edited)
 
 
-def process_sources(root, demo=True, client_names=None, auto_units=True):
+def process_sources(root, demo=True, client_names=None, auto_units=True, summary_accounting=False):
     records = inspect_sources(root,client_names,demo,auto_units)
     workspace = root/'.invoice_app'/'companies'
     workspace.mkdir(parents=True,exist_ok=True)
@@ -210,6 +210,8 @@ def process_sources(root, demo=True, client_names=None, auto_units=True):
                 raise ValueError('Reviewed export treatment must match the source PDF; it cannot be changed to a domestic sale')
             if record['errors']:
                 continue
+            if raw.get('tax_accounting_basis')=='invoice_summary' and not summary_accounting and not all(all(item.get(tax+'_rate') not in (None,'') for tax in ('cgst','sgst','igst')) for item in raw.get('items',[])):
+                raise ValueError('Item GST rates are not printed; enable Summary GST accounting or review item rates for inventory')
             if not record.get('digest'):
                 raise ValueError('Unreadable source PDF')
             if source.get('dummy_document'):
@@ -276,6 +278,9 @@ def process_sources(root, demo=True, client_names=None, auto_units=True):
                 if any(unit not in config.get('units',{}) for unit in UNITS):
                     config.setdefault('units',{})
                     for unit,mapping in UNITS.items():config['units'].setdefault(unit,dict(mapping))
+                    write_json(company/'client.json',config)
+                if config.get('allow_invoice_summary_accounting',False)!=bool(summary_accounting):
+                    config['allow_invoice_summary_accounting']=bool(summary_accounting)
                     write_json(company/'client.json',config)
                 if 'unified_sales_ledger' not in config:
                     # Add the desktop default without replacing identity, history,
@@ -350,6 +355,9 @@ def process_sources(root, demo=True, client_names=None, auto_units=True):
                     record['display_status'] = ('Already confirmed imported' if status == 'imported' else
                         'Sales XML prepared; import not confirmed' if status == 'generated' else
                         scope_report['export'])
+                if record['invoice'].get('tax_accounting_basis')=='invoice_summary' and not record['errors']:
+                    record['display_status']='Summary GST accounting XML prepared; no stock movement'
+                    record.setdefault('notices',[]).append(record['invoice']['tax_accounting_note'])
                 if record['invoice'].get('classification') in EXPORT_MODES and not record['errors']:
                     record['export'] = 'Export accounting voucher prepared; verify GST in Tally'
                     if history.get(key) != 'imported':
