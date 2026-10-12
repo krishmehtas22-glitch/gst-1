@@ -220,3 +220,34 @@ def test_review_cannot_remove_an_explicit_source_fictional_marker(tmp_path):
     current=process_sources(tmp_path,demo=False)[0]
     assert 'fictional' in '; '.join(current['errors'])
     assert not current.get('output_path')
+
+
+def test_retained_demo_review_without_layout_metadata_uses_its_checked_facts(tmp_path):
+    from Common_Rules.engine import read_json,write_json
+    from Common_Rules.demo import prepare_demo_invoice
+    from Common_Rules.accounting import validate
+    folder=tmp_path/'Client';folder.mkdir();shutil.copy2(FIXTURES/'client15/Sales_Invoice_11_INTRA.pdf',folder/'one.pdf')
+    record=inspect_sources(tmp_path)[0];edited=deepcopy(record['invoice']);edited['items'][0]['unit']='Nos'
+    save_review(tmp_path,record,edited)
+    processed=process_sources(tmp_path)[0];assert not processed['errors']
+    config=read_json(Path(processed['company_path'])/'client.json')
+    retained=deepcopy(edited);retained.pop('source_layout');retained.pop('seller_state');retained.pop('supply')
+    prepared=prepare_demo_invoice(retained,config)
+    assert validate(prepared,config)[1]==[]
+    assert prepared['demo_source_invoice']==retained
+    assert prepared['supply']=='INTRA' and prepared['seller_state']=='27'
+    # Reproduce the old unbaselined review which hides current layout metadata.
+    write_json(tmp_path/'.invoice_app/reviews'/(record['digest']+'.json'),
+        {'source_sha256':record['digest'],'approved':True,'invoice':{**retained,'source_layout':'legacy_review'}})
+    updated=process_sources(tmp_path)[0]
+    assert not updated['errors'] and updated['batch_voucher_count']==1
+
+
+def test_legacy_demo_review_does_not_bypass_source_identity_or_unit_checks(tmp_path):
+    from Common_Rules.engine import read_json
+    from Common_Rules.demo import prepare_demo_invoice
+    records=install_units(tmp_path);record=records[0];raw=deepcopy(record['invoice']);raw.pop('source_layout')
+    config=read_json(Path(record['company_path'])/'client.json')
+    with pytest.raises(ValueError,match='quantity unit'):prepare_demo_invoice(raw,config)
+    raw['items'][0]['unit']='Nos';raw['seller_gstin']='29ABCDE1234F1Z0'
+    with pytest.raises(ValueError,match='differs from the source seller'):prepare_demo_invoice(raw,config)

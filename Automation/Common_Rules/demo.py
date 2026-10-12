@@ -21,7 +21,11 @@ def test_gstin(base):
 
 
 def prepare_demo_invoice(raw, config):
-    if raw.get('source_layout')=='flexible_roles_v1':
+    if raw.get('source_layout') in ('paired_columns_v1','section_panels_v1','supplier_mapping_v1','tabular_roles_v1','receipt_items_v1','ordered_roles_v1'):
+        return prepare_paired_demo(raw, config)
+    if raw.get('source_layout')=='flexible_roles_v1' or config['demo_profile'].get('version')==2:
+        # Retained reviews can predate source-layout metadata. Eligibility
+        # depends on their checked facts, not an old adapter's layout name.
         adapted=deepcopy(raw);derived=[]
         if not adapted.get('seller_state'):
             adapted['seller_state']=raw.get('seller_gstin','')[:2]
@@ -36,8 +40,6 @@ def prepare_demo_invoice(raw, config):
         prepared['demo_source_invoice']=deepcopy(raw)
         prepared['demo_adjustments']=derived+prepared['demo_adjustments']
         return prepared
-    if raw.get('source_layout') in ('paired_columns_v1','section_panels_v1','supplier_mapping_v1','tabular_roles_v1','receipt_items_v1','ordered_roles_v1'):
-        return prepare_paired_demo(raw, config)
     if config['demo_profile'].get('version') != 1:
         raise ValueError('This seller-specific demo configuration requires the paired seller/buyer layout')
     profile = config['demo_profile']

@@ -8,7 +8,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 from Common_Rules.desktop import process_sources, save_review, reset_source_reviews, UNITS
-from Common_Rules.source_documents import confirm_test_document
+from Common_Rules.source_documents import confirm_test_document, verify_source
 from Common_Rules.workflow_status import invoice_status, scan_summary
 from Common_Rules.unit_choices import open_unit_choices
 from Common_Rules.engine import discover
@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 4'
+APP_VERSION='Reader 4.1'
 
 
 class InvoiceApp:
@@ -87,6 +87,7 @@ class InvoiceApp:
         self.table.pack(side='left',fill='both',expand=True)
         bar.pack(side='right',fill='y')
         self.table.bind('<<TreeviewSelect>>',self.details)
+        self.table.bind('<Control-a>',self.select_all)
         self.table.bind('<Double-1>',lambda event:self.review())
         self.detail = tk.Text(window,height=7,wrap='word')
         self.detail.pack(fill='x',padx=10,pady=10)
@@ -137,19 +138,26 @@ class InvoiceApp:
             self.window.destroy()
 
     def confirm_test(self):
-        record=self.selected()
-        if self.busy or not record:return
+        records=[self.records[int(item)] for item in self.table.selection()]
+        if self.busy or not records:return
         if not self.demo.get():
             messagebox.showinfo('Test PDF','Select Dummy PDFs to process fictional test documents.');return
-        if not record.get('digest'):return
+        if any(not record.get('digest') for record in records):return
+        documents={record.get('source_sha256',record['digest']):record for record in records}
+        names=[record.get('source_path',record['path']) for record in documents.values()]
         if not messagebox.askyesno('Confirm fictional test data',
-                'Confirm that this entire PDF contains fictional test invoices. This permits demo GSTIN substitutions for its invoices.\n\n'+record.get('source_path',record['path'])):
+                f'Confirm that all {len(documents)} selected PDFs contain only fictional test invoices. This permits demo GSTIN substitutions for their invoices.\n\n'+'\n'.join(names[:8])+(' \n…' if len(names)>8 else '')):
             return
         try:
-            confirm_test_document(self.root,record)
+            for record in records:verify_source(self.root,record)
+            for record in documents.values():confirm_test_document(self.root,record)
         except (ValueError,OSError) as exc:
             messagebox.showerror('Test PDF',str(exc));return
         self.reset();self.start()
+
+    def select_all(self,event=None):
+        self.table.selection_set(self.table.get_children())
+        return 'break'
 
     def choose(self):
         if self.busy:

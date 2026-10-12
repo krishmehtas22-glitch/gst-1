@@ -2,7 +2,7 @@
 
 ## Reader 4: recurring extraction and setup issues
 
-The title bar shows **Reader 4** so a replaced installation can be identified.
+The title bar shows **Reader 4.1** so a replaced installation can be identified.
 The reader recognizes explicit supplier/vendor/exporter and customer/billing
 roles, standalone or inline names, and separate party columns. A seller banner
 can be recovered from a single business name and GSTIN before the billing party,
@@ -10,6 +10,14 @@ or a matching printed signatory. Ambiguous banners/signatories remain blocked.
 When geometric PDF spacing loses key fields, ordered embedded text is compared
 and used if it recovers more complete printed facts. Supplier names are read from
 the document; there is no list of sample seller names or guessed spelling.
+
+Reader 4.1 also accepts checked legacy demo reviews whose original layout name
+is missing, using their seller, state, supply and item facts. The old paired-layout
+configuration gate no longer rejects an otherwise valid review. Source identity,
+GST, unit and total checks still run. To confirm several fictional PDFs at once,
+click the invoice table, press **Ctrl+A**, then **Confirm test PDF**. Read the
+confirmation and accept only when every selected PDF contains fictional data.
+The declaration is bound to each complete source PDF's exact bytes.
 
 The table shows the actual outstanding action: **Choose quantity unit**,
 **Confirm test PDF**, **Choose invoice mode**, **Choose GST treatment**,
