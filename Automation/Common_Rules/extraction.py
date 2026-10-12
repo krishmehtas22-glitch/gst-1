@@ -6,6 +6,7 @@ from .accounting import money
 from .paired_layout import parse_paired_layout
 from .section_layout import parse_section_layout
 from .ocr import MARKER, read_page
+from .supplier_layouts import layout_text
 
 FIELDS = {
     'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no'),
@@ -22,6 +23,15 @@ FIELDS = {
     'total': ('grand total', 'invoice total', 'total invoice amount', 'total amount'),
     'round_off': ('round off', 'rounding'),
     'cess': ('cess',),
+    'seller_state': ('seller state', 'supplier state'),
+    'seller_address': ('seller address', 'supplier address'),
+    'buyer_address': ('buyer address', 'customer address'),
+    'buyer_country': ('buyer country', 'country of destination'),
+    'supply': ('supply',),
+    'export_mode': ('export mode',),
+    'shipping_bill_port': ('shipping bill / port',),
+    'currency': ('currency',),
+    'cgst': ('cgst',), 'sgst': ('sgst',), 'igst': ('igst',),
 }
 HEADERS = {
     'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description'),
@@ -58,21 +68,25 @@ def text_from_pdf(path):
     return (MARKER+'\n'+text) if used_ocr else text
 
 
-def split_label_lines(text):
+def split_label_lines(text, fields=None):
     """Separate known key/value pairs that share a row; never split item rows."""
-    aliases = sorted({alias for values in FIELDS.values() for alias in values},key=len,reverse=True)
+    aliases = sorted({alias for values in (fields or FIELDS).values() for alias in values},key=len,reverse=True)
     pattern = '|'.join(re.escape(alias) for alias in aliases)
     lines = []
     original = text.splitlines()
+    def segments(line):
+        # Consume longest labels first: Supply must not split Place of Supply.
+        matches=list(re.finditer(rf'(?<!\w)(?:{pattern})\s*[:=]',line,flags=re.I))
+        boundaries=[0]+[match.start() for match in matches if match.start()>0 and line[match.start()-1:match.start()].isspace()]+[len(line)]
+        return [line[start:end] for start,end in zip(boundaries,boundaries[1:])]
     for index,line in enumerate(original):
-        segments = re.split(rf'\s+(?=(?:{pattern})\s*[:=])',line,flags=re.I)
-        for segment in segments:
+        for segment in segments(line):
             lines.append(segment)
             if re.fullmatch(rf'\s*(?:{pattern})\s*[:=]?\s*',segment,re.I) and index+1<len(original):
                 next_line = original[index+1].strip()
                 if next_line and not re.match(rf'(?:{pattern})\s*[:=]',next_line,re.I):
                     lines[-1] = segment.rstrip(' :=')+': '+next_line
-    return '\n'.join(lines)
+    return '\n'.join(segment for line in lines for segment in segments(line))
 
 
 def unique_field(text, aliases, field, warnings):
@@ -185,13 +199,54 @@ def normalize_ocr_labels(text):
     return text
 
 
-def parse_text(text):
+def normalize_basic_fields(inv, warnings):
+    if inv.get('date'):
+        for fmt in ('%Y-%m-%d','%d/%m/%Y','%d-%m-%Y','%d.%m.%Y','%d %b %Y','%d-%b-%Y','%d %B %Y'):
+            try:
+                inv['date'] = datetime.strptime(inv['date'], fmt).date().isoformat()
+                break
+            except ValueError:
+                pass
+    if inv.get('buyer_registration'):
+        inv['buyer_registration'] = inv['buyer_registration'].strip().title()
+    if (inv.get('buyer_gstin') or '').casefold() == 'unregistered':
+        inv['buyer_gstin'] = ''
+        if inv.get('buyer_registration') not in (None, 'Unregistered', 'Consumer'):
+            warnings.append('Buyer registration conflicts with explicit Unregistered label')
+        else:
+            inv['buyer_registration'] = 'Unregistered'
+    if inv.get('classification'):
+        normalized = inv['classification'].strip().lower().replace('-', '_').replace(' ', '_')
+        inv['classification'] = {'nil':'nil_rated', 'nilrated':'nil_rated', 'exempted':'exempt', 'non_taxable':'non_gst'}.get(normalized, normalized)
+
+
+def mapped_field(text,rule,key,fields,warnings):
+    scoped=layout_text(text,rule,warnings)
+    if rule.get('position')=='first_line':
+        return next((line.strip() for line in scoped.splitlines() if line.strip()),None)
+    return unique_field(split_label_lines(scoped,fields),(rule['label'],),key,warnings)
+
+
+def parse_text(text, field_mappings=None, header_aliases=None):
+    field_mappings=field_mappings or {}
+    field_aliases=dict(FIELDS)
+    field_aliases.update({key:(rule['label'],) for key,rule in field_mappings.items() if rule.get('label')})
+    headers={key:tuple(aliases)+tuple(alias.strip().casefold() for alias in (header_aliases or {}).get(key,())) for key,aliases in HEADERS.items()}
     if MARKER in text:
         text = normalize_ocr_labels(text)
-    paired = parse_section_layout(text, HEADERS)
+    original_text=text
+    paired = parse_section_layout(text, headers)
     if paired is None:
-        paired = parse_paired_layout(text)
+        paired = parse_paired_layout(text,headers)
     if paired is not None:
+        for key,rule in field_mappings.items():
+            value=mapped_field(text,rule,key,field_aliases,paired['extraction_warnings'])
+            if value is not None:
+                paired[key]=value
+            else:
+                paired.pop(key,None)
+                paired['extraction_warnings'].append('Mapped field missing: '+key)
+        normalize_basic_fields(paired,paired['extraction_warnings'])
         if MARKER in text:
             paired['source_ocr'] = True
             paired['extraction_warnings'].append('OCR-derived fields must be checked against the PDF in Review')
@@ -199,8 +254,11 @@ def parse_text(text):
     warnings = []
     if MARKER in text:
         warnings.append('OCR-derived fields must be checked against the PDF in Review')
-    text = split_label_lines(text)
-    inv = {key: unique_field(text, aliases, key, warnings) for key, aliases in FIELDS.items()}
+    text = split_label_lines(text,field_aliases)
+    inv = {key:(mapped_field(original_text,field_mappings[key],key,field_aliases,warnings)
+                if key in field_mappings else unique_field(text,aliases,key,warnings))
+           for key,aliases in field_aliases.items()}
+    warnings.extend('Mapped field missing: '+key for key in field_mappings if inv.get(key) is None)
     extracted = layout_fields(text, warnings)
     for key,value in party_blocks(text,warnings).items():
         if key in extracted and extracted[key] != value:
@@ -209,30 +267,14 @@ def parse_text(text):
         else:
             extracted[key] = value
     for key, value in extracted.items():
+        if key in field_mappings:
+            continue  # Explicit role/section mapping supplies this field.
         if inv.get(key) is not None and inv[key] != value:
             warnings.append(f'Ambiguous {key}: label and layout values differ')
             inv[key] = None
         else:
             inv[key] = value
-    if inv['date']:
-        for fmt in ('%Y-%m-%d','%d/%m/%Y','%d-%m-%Y','%d.%m.%Y','%d %b %Y','%d-%b-%Y','%d %B %Y'):
-            try:
-                inv['date'] = datetime.strptime(inv['date'], fmt).date().isoformat()
-                break
-            except ValueError:
-                pass
-    # A missing GSTIN is never used to classify the supply or buyer registration.
-    if inv['buyer_registration']:
-        inv['buyer_registration'] = inv['buyer_registration'].strip().title()
-    if (inv.get('buyer_gstin') or '').casefold() == 'unregistered':
-        inv['buyer_gstin'] = ''
-        if inv.get('buyer_registration') not in (None, 'Unregistered', 'Consumer'):
-            warnings.append('Buyer registration conflicts with explicit Unregistered label')
-        else:
-            inv['buyer_registration'] = 'Unregistered'
-    if inv['classification']:
-        normalized = inv['classification'].strip().lower().replace('-', '_').replace(' ', '_')
-        inv['classification'] = {'nil':'nil_rated', 'nilrated':'nil_rated', 'exempted':'exempt', 'non_taxable':'non_gst'}.get(normalized, normalized)
+    normalize_basic_fields(inv,warnings)
     rates = {}
     for tax in ('cgst','sgst','igst'):
         # Examples: CGST: 180, CGST (9%): 180, CGST @ 9%: 180.
@@ -240,7 +282,7 @@ def parse_text(text):
         amounts = list(dict.fromkeys(a.strip() for _, a in matches))
         if len(amounts) > 1:
             warnings.append(f'Ambiguous {tax.upper()} total')
-        if len(amounts) == 1:
+        if len(amounts) == 1 and tax not in field_mappings:
             inv[tax] = amounts[0]
         rate_values = list(dict.fromkeys(rate for rate, _ in matches if rate))
         if len(rate_values) == 1:
@@ -250,7 +292,7 @@ def parse_text(text):
     # Positive printed GST establishes taxable treatment, never exemption.
     if not inv.get('classification'):
         try:
-            if any(money(inv[tax]) > 0 for tax in ('cgst','sgst','igst') if tax in inv):
+            if any(money(inv[tax]) > 0 for tax in ('cgst','sgst','igst') if inv.get(tax) is not None):
                 inv['classification'] = 'taxable'
         except (ValueError, ArithmeticError):
             pass  # Validation reports malformed printed amounts.
@@ -260,7 +302,7 @@ def parse_text(text):
         row = cells(line)
         decoded = []
         for cell in row:
-            decoded.append(next((key for key, aliases in HEADERS.items() if cell.casefold() in aliases), None))
+            decoded.append(next((key for key, aliases in headers.items() if cell.casefold() in aliases), None))
         if all(field in decoded for field in ('name','quantity','rate','value')):
             columns = decoded
             continue
@@ -294,6 +336,8 @@ def parse_text(text):
     if all(marker.casefold() in text.casefold() for marker in (
             'TEST DOCUMENT - NOT VALID FOR FILING', 'DUMMY / NOT FOR COMMERCIAL USE',
             'All parties, GSTINs, HSN mappings and rates are synthetic examples')):
+        inv['dummy_document'] = True
+    if 'synthetic test document - not for real gst filing or commercial use. gstins and identifiers are fictional.' in ' '.join(original_text.lower().split()):
         inv['dummy_document'] = True
     inv['extraction_warnings'] = warnings
     if MARKER in text:

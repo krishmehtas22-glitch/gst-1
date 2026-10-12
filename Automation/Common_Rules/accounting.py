@@ -92,6 +92,8 @@ def validate(raw, config):
     if errors:
         return inv, errors
     try:
+        if inv.get('currency') and str(inv['currency']).strip().upper()!='INR':
+            errors.append('Only INR accounting amounts are supported')
         inv['number'] = str(inv['number']).strip()
         inv['date'] = datetime.strptime(inv['date'], '%Y-%m-%d').date().isoformat()
         inv['seller_gstin'] = str(inv['seller_gstin']).strip().upper()

@@ -11,6 +11,7 @@ from .demo import test_gstin
 from .engine import (discover, init_client, invoice_paths, process_client,
                      read_json, write_json)
 from .extraction import parse_text, text_from_pdf
+from .supplier_layouts import load_layouts, layouts_revision, extract_with_layouts
 
 UNITS = {
     'Nos': {'formal_name':'Numbers','uqc':'NOS','decimal_places':0},
@@ -19,7 +20,7 @@ UNITS = {
     'SET': {'formal_name':'Sets','uqc':'SET','decimal_places':0},
 }
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','paired_layout.py','section_layout.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','paired_layout.py','section_layout.py','supplier_layouts.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):
@@ -90,13 +91,19 @@ def reset_source_reviews(root, records):
     return archived
 
 
-def inspect_sources(root, client_names=None):
+def inspect_sources(root, client_names=None, demo=True):
     records = []
+    layout_errors=[]
+    try:
+        layouts=load_layouts(root)
+    except (ValueError,OSError) as exc:
+        layouts=[];layout_errors=[str(exc)]
+    revision=PARSER_REVISION+'|'+layouts_revision(layouts)+'|'+str(demo)
     for folder in discover(root):
         if client_names is not None and folder.name not in client_names:
             continue
         for path in invoice_paths(folder):
-            record = {'path':str(path),'client':folder.name,'errors':[],'invoice':{}}
+            record = {'path':str(path),'client':folder.name,'errors':list(layout_errors),'invoice':{}}
             try:
                 if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
                     raise ValueError('Source path escapes the selected folder')
@@ -105,11 +112,15 @@ def inspect_sources(root, client_names=None):
                 try:
                     cache = root/'.invoice_app'/'extraction'/(digest+'.json')
                     saved = read_json(cache) if cache.exists() else {}
-                    if saved.get('parser_revision') == PARSER_REVISION and saved.get('source_sha256') == digest:
+                    if saved.get('parser_revision') == revision and saved.get('source_sha256') == digest:
                         record['invoice'] = saved['invoice']
                     else:
-                        record['invoice'] = parse_text(text_from_pdf(path))
-                        write_json(cache,{'parser_revision':PARSER_REVISION,'source_sha256':digest,'invoice':record['invoice']})
+                        text=(saved.get('text') if saved.get('source_sha256')==digest and saved.get('reader_revision')==PARSER_REVISION else None)
+                        if text is None:
+                            text=text_from_pdf(path)
+                        record['invoice'] = extract_with_layouts(text,layouts,demo)
+                        write_json(cache,{'parser_revision':revision,'reader_revision':PARSER_REVISION,
+                                         'source_sha256':digest,'text':text,'invoice':record['invoice']})
                 except Exception as exc:
                     record['errors'].append(f'PDF extraction failed: {exc}')
                 record['source_invoice'] = record['invoice']
@@ -128,7 +139,7 @@ def inspect_sources(root, client_names=None):
                         # normalize it only when the PDF explicitly states LUT.
                         record['invoice'] = {**record['invoice'],'classification':'export_lut'}
                     record['reviewed'] = True
-                    record['errors'] = []
+                    record['errors'] = list(layout_errors)
                 record['errors'].extend(record['invoice'].get('extraction_warnings',[]))
             except (ValueError,OSError,KeyError,TypeError) as exc:
                 record['errors'].append(str(exc))
@@ -151,7 +162,7 @@ def save_review(root, record, invoice):
 
 
 def process_sources(root, demo=True, client_names=None):
-    records = inspect_sources(root,client_names)
+    records = inspect_sources(root,client_names,demo)
     workspace = root/'.invoice_app'/'companies'
     workspace.mkdir(parents=True,exist_ok=True)
     groups = {}

@@ -28,6 +28,61 @@ The app displays extracted invoice summaries and errors. Select an invoice and
 click **Review selected invoice** to correct fields/items in a form, then
 **Approve corrections and revalidate**. Approval binds the corrections to the
 exact PDF SHA256 and never bypasses GST, total, unit or master-conflict checks.
+
+### Save a supplier layout once
+
+Select a readable text invoice and click **Save supplier layout**. The editor
+shows its extracted PDF text beside the mapping form. For a layout the reader
+already recognizes (including CLIENT 11), leave the mappings blank, check the
+supplier name/GSTIN and layout headings, then **Preview mapping** and **Save
+supplier layout**. Pick a clean taxable invoice as the sample: a layout does
+not resolve "exempt / nil-rated" ambiguity or approve future OCR.
+
+For a new layout, correct the sample's invoice values in Review first if they
+were wrong. In the layout editor, enter only the mappings needing help:
+
+- **PDF label** is the printed label, not its value: Number → `Reference`,
+  Date → `Issued`, Total → `Invoice Value`, for example.
+- **Start heading / End heading** restrict the field to a party/metadata
+  section. Seller GSTIN → `Registration ID`, between `VENDOR` and `BILLING
+  PARTY`; Buyer GSTIN → the same label, between `BILLING PARTY` and `DELIVERY`.
+- **Column** selects Both, Left or Right for side-by-side panels.
+- **Read** normally uses After label. Use First line to read a party name on
+  its own line after a heading; a name merged with its address still needs a
+  supported structural anchor or review.
+- **Item columns** accepts alternative printed table headings, separated by
+  semicolons: Quantity → `Pieces; Count`, HSN → `Tariff`. This maps headers,
+  not fixed column numbers, quantities, units or rates. Pipe-separated or
+  consistently spaced table cells are supported. Wrapped/complex tables may
+  still require review.
+- **Layout headings** are stable identifying text separated by semicolons;
+  they must appear in future PDFs. Use headings such as `TAX BILL; VENDOR`,
+  never an invoice number, date or amount.
+
+Preview shows the newly extracted parties, identifiers, classification, totals,
+GST and item values. Compare them with the original PDF before saving. A sample
+that does not balance or differs from already checked invoice/item values is
+blocked. The mapping stores labels, sections, header aliases and supplier/mode
+identity; sample invoice numbers, amounts and buyer values are not copied into
+future invoices. New PDFs are independently read and validated. Mappings cannot
+create missing data or replace explicit export treatment.
+
+Layouts are kept in `.invoice_app/supplier_layouts/`, scoped to the printed
+seller GSTIN and real/dummy mode, and reused across source client folders. Each
+layout requires its headings and configured labels. Overlapping layouts require
+editing/narrowing instead of guessing which one to use. The selected invoice's
+details show the applied layout name. Saving/editing/removing a layout refreshes
+the extraction cache and triggers a scan. Existing PDF-specific corrections
+remain retained; use Re-read selected PDFs if an old override is blocking the
+new mapping. Company identity/history and import confirmations are preserved.
+Reopen **Save supplier layout** to edit a saved layout or remove it; changes and
+removals are archived in its `backups` folder. Back up `.invoice_app` with the
+client data. This feature is used by the desktop workflow.
+
+Every OCR invoice still requires human review. Supplier layouts reduce repeated
+label/column corrections; they are not universal invoice recognition or tax
+classification rules. Unknown units need company unit/UQC configuration.
+
 When a reader update recovers previously missing fields, unchanged fields from
 an older native-PDF review refresh from the source; explicit human corrections
 remain retained. Existing OCR approvals and older reviews without a baseline

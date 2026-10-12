@@ -7,6 +7,8 @@ if not exist "Common_Rules\desktop.py" goto incomplete
 if not exist "Common_Rules\ocr.py" goto incomplete
 if not exist "Common_Rules\paired_layout.py" goto incomplete
 if not exist "Common_Rules\section_layout.py" goto incomplete
+if not exist "Common_Rules\supplier_layouts.py" goto incomplete
+if not exist "Common_Rules\supplier_editor.py" goto incomplete
 if not exist "requirements-ocr.txt" goto incomplete
 if not exist ".venv\Scripts\python.exe" (
     py -3 -m venv .venv

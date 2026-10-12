@@ -5,7 +5,7 @@ import re
 from .accounting import cents, EXPORT_COUNTRIES
 
 
-def parse_paired_layout(text):
+def parse_paired_layout(text, headers=None):
     if not re.search(r'SELLER / SUPPLIER\s{2,}BUYER / RECIPIENT', text):
         return None
     warnings = []
@@ -101,6 +101,13 @@ def parse_paired_layout(text):
     in_table = False
     for line in lines:
         row = split(line)
+        if headers and len(row)==len(expected):
+            keys=('name','hsn','quantity','unit','rate','value','gst_rate','printed_cgst','printed_sgst','printed_igst')
+            decoded=[keys[index] if cell==expected[index] else
+                     next((key for key,aliases in headers.items() if cell.casefold() in aliases),None)
+                     for index,cell in enumerate(row)]
+            if decoded==list(keys):
+                row=list(expected)
         if len(row)==10 and row[:6]==expected[:6] and row[6:]==['GST','CGST','SGST','IGST']:
             row[6]='GST %'
         if in_table and row==['%']:

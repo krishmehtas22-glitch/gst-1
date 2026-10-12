@@ -10,6 +10,7 @@ from tkinter import ttk, filedialog, messagebox
 from Common_Rules.desktop import process_sources, save_review, reset_source_reviews
 from Common_Rules.engine import discover
 from Common_Rules.watcher import source_signature
+from Common_Rules.supplier_editor import open_layout_editor
 
 FIELDS = ['number','date','seller_name','seller_gstin','seller_state','seller_address',
           'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address',
@@ -53,6 +54,7 @@ class InvoiceApp:
         self.client_picker.pack(side='left',padx=8)
         self.client_picker.bind('<<ComboboxSelected>>',lambda event:self.reset())
         ttk.Button(scope,text='Re-read selected PDFs',command=self.reread).pack(side='left')
+        ttk.Button(scope,text='Save supplier layout',command=self.supplier_layout).pack(side='left',padx=8)
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
@@ -171,7 +173,8 @@ class InvoiceApp:
             self.refresh_clients()
             try:
                 signature = (self.demo.get(),self.client_scope.get(),source_signature(self.root),
-                             tuple((str(p),p.stat().st_mtime_ns) for p in sorted((self.root/'.invoice_app/reviews').glob('*.json'))))
+                             tuple((str(p),p.stat().st_mtime_ns) for folder in ('reviews','supplier_layouts')
+                                   for p in sorted((self.root/'.invoice_app'/folder).glob('*.json'))))
                 if signature == self.observed and signature != self.last:
                     self.last = signature
                     self.start()
@@ -189,8 +192,10 @@ class InvoiceApp:
         self.detail.delete('1.0','end')
         if record:
             evidence=record['invoice'].get('rate_evidence')
+            layout=record['invoice'].get('supplier_layout_name')
             self.detail.insert('end',record['path']+'\n'+'\n'.join(record['errors']+record.get('notices',[]))+
                 ('\n'+evidence if evidence else '')+
+                ('\nSupplier layout: '+layout if layout else '')+
                 '\nCompany pending batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
                 '\nOutput: '+record.get('company_path','Not generated'))
 
@@ -289,6 +294,18 @@ class InvoiceApp:
             self.reset()
             self.auto.set(True)
         ttk.Button(buttons,text='Approve corrections and revalidate',command=approve).pack(side='left')
+
+    def supplier_layout(self):
+        record=self.selected()
+        if self.busy or not record:return
+        if not record.get('digest'):
+            messagebox.showerror('Supplier layout','Scan a readable sample PDF first.');return
+        watching=self.auto.get();self.auto.set(False)
+        def done(changed):
+            self.auto.set(watching)
+            if changed:
+                self.reset();self.start()
+        open_layout_editor(self.window,self.root,record,self.demo.get(),done)
 
 
 if __name__ == '__main__':
