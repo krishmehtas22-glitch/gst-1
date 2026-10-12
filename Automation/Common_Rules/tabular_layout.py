@@ -17,7 +17,8 @@ def marked_sample(text):
     normalized=' '.join(text.casefold().split())
     return (('synthetic test invoice - not valid for gst filing or commercial use' in normalized and
              ('all business names, gstins, references and transactions are fictitious' in normalized or
-              'fictional identities and gstins' in normalized)) or SAMPLE_NOTICE.casefold() in normalized or
+              'fictional identities and gstins' in normalized)) or
+            ('synthetic sample only - not for gst filing or commercial use' in normalized and 'fictional gstins' in normalized) or SAMPLE_NOTICE.casefold() in normalized or
             'sample invoice for software testing. fictional data.' in normalized or
             ('synthetic sample for ocr/accounting automation testing only.' in normalized and
              'not a valid tax invoice. all gstins and buyer identities are fictional.' in normalized))

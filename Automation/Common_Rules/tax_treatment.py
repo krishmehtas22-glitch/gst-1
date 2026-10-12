@@ -45,6 +45,10 @@ def apply_printed_treatment(invoice,text,warnings):
             tail=str(invoice['buyer_country']).rsplit(',',1)[-1].strip()
             invoice['buyer_country']=EXPORT_COUNTRIES.get(tail.casefold(),tail)
         if not invoice.get('buyer_country'):
+            tail=str(invoice.get('buyer_address') or '').rsplit(',',1)[-1].strip()
+            country=EXPORT_COUNTRIES.get(tail.casefold())
+            if country and country!='India':invoice['buyer_country']=country
+        if not invoice.get('buyer_country'):
             # Country must be printed, not inferred from an overseas buyer's name.
             for line in text.splitlines():
                 match=re.search(r'\b(?:buyer country|country of destination|destination country|country)\s*:\s*(.+)',line,re.I)

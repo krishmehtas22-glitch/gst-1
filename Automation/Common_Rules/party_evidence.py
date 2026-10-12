@@ -6,8 +6,8 @@ SELLER_ROLES={'seller','supplier','vendor','exporter','issued by','sold by','bil
     'seller supplier','supplier seller','seller exporter','exporter seller'}
 BUYER_ROLES={'buyer','recipient','customer','bill to','billed to','sold to','buyer details','recipient details','customer details',
     'buyer information','customer information','buyer recipient','recipient buyer','buyer bill to','bill to buyer',
-    'billed to buyer','billed to recipient','consignee buyer','billing party'}
-STOPS=r'^(?:invoice|inv\b|bill no|date\b|dated\b|item\b|description\b|particulars\b|place of supply\b|ship to\b|delivery\b|supply details|supply information|tax summary|bank details|payment|terms|authori[sz]ed)'
+    'billed to buyer','billed to recipient','consignee buyer','billing party','customer name','customer ship to'}
+STOPS=r'^(?:invoice|document|inv\b|bill no|date\b|dated\b|item\b|description\b|particulars\b|place of supply\b|ship to\b|delivery\b|supply details|supply information|tax summary|bank details|payment|terms|authori[sz]ed)'
 
 
 def role_heading(value):
@@ -41,6 +41,10 @@ def read_party_roles(text,warnings):
                 continue
             if re.match(STOPS,line,re.I):role=None;expect_name=False
             if role is None:continue
+            if not expect_name:
+                from .accounting import EXPORT_COUNTRIES
+                country=EXPORT_COUNTRIES.get(line.casefold())
+                if country and country!='India':put(role+'_country',country,line)
             named=re.fullmatch(r'(?:legal name|registered name|trade name|business name|company name|name)\s*:\s*(.+)',line,re.I)
             if named:put(role+'_name',named[1],line);expect_name=False;continue
             gst=re.search(r'(?:^|\s)(?:GSTIN(?:/UIN)?|GST\s*(?:No\.?|Number|Registration\s*(?:No\.?|Number)))(?:\s*\(fictional\))?\s*[:=]\s*(NOT ASSIGNED|Not applicable(?:\s*-\s*overseas buyer)?|N/A(?:\s*-\s*overseas buyer)?|Unregistered|\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9])\b',line,re.I)
@@ -103,7 +107,7 @@ def read_seller_masthead(text,warnings):
             if re.search(r'\b\d{6}\b|\b(?:Road|Street|Floor|Plot|Address|Industrial Estate)\b',cell,re.I):continue
             if re.search(r'\b(?:Limited|Ltd\.?|LLP|Enterprises|Traders|Trading|Supplies|Distributors|Industries|Corporation|Manufacturers)\b',cell,re.I):candidates.append(cell.strip())
     candidates=list(dict.fromkeys(candidates))
-    ids=list(dict.fromkeys(re.findall(r'\bGSTIN(?:/UIN)?\s*[:=]\s*(\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9])\b',printed,re.I)))
+    ids=list(dict.fromkeys(re.findall(r'\bGSTIN(?:/UIN)?(?:\s*\(Supplier\))?\s*[:=]\s*(\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9])\b',printed,re.I)))
     signatories=[]
     for name in re.findall(r'^\s*For\s+([^\n]+)',text,re.I|re.M):
         name=re.split(r'\s*(?:\||[-–,:])?\s*authori[sz]ed signat(?:ory|ure)\b',name,flags=re.I)[0].strip(' |:-–')

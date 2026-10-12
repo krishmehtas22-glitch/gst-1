@@ -15,45 +15,45 @@ from .tax_treatment import apply_printed_treatment
 from .document_structure import gst_identifier, header_key, unlabelled_invoice_number, positional_cells
 
 FIELDS = {
-    'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no', 'invoice reference', 'invoice ref', 'document no', 'document number', 'invoice id'),
-    'date': ('invoice date', 'date', 'dated', 'inv date'),
+    'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no', 'invoice reference', 'invoice ref', 'document no', 'document number', 'invoice id', 'document id', 'reference'),
+    'date': ('invoice date', 'date', 'dated', 'inv date', 'issued on'),
     'seller_name': ('seller', 'seller name', 'supplier', 'supplier name', 'vendor', 'vendor name', 'exporter', 'issued by', 'sold by', 'bill from', 'seller details', 'supplier details', 'vendor details'),
-    'seller_gstin': ('seller gstin', 'supplier gstin', 'vendor gstin', 'seller gst no', 'supplier gst no'),
+    'seller_gstin': ('seller gstin', 'supplier gstin', 'vendor gstin', 'seller gst no', 'supplier gst no', 'gstin (supplier)'),
     'buyer_name': ('buyer', 'buyer name', 'customer', 'customer name', 'bill to', 'billed to', 'sold to', 'recipient', 'recipient name', 'purchaser'),
-    'buyer_gstin': ('buyer gstin', 'customer gstin', 'recipient gstin'),
+    'buyer_gstin': ('buyer gstin', 'customer gstin', 'recipient gstin', 'gst reg no.'),
     'buyer_registration': ('buyer registration', 'registration type', 'buyer registration type'),
     'buyer_state': ('buyer state', 'customer state'),
-    'place_of_supply': ('place of supply', 'place of supply (state code)', 'pos'),
-    'classification': ('tax treatment', 'gst classification', 'supply classification'),
-    'taxable': ('taxable value', 'taxable amount', 'taxable total', 'taxable / supply value', 'taxable / exempt value', 'subtotal', 'sub total', 'net taxable value'),
-    'total': ('grand total', 'invoice total', 'total invoice amount', 'total amount', 'total payable', 'amount payable', 'net payable', 'invoice value'),
+    'place_of_supply': ('place of supply', 'place of supply (state code)', 'pos', 'supply state'),
+    'classification': ('tax treatment', 'gst classification', 'supply classification', 'supply category', 'transaction', 'type'),
+    'taxable': ('taxable value', 'taxable amount', 'taxable total', 'taxable / supply value', 'taxable / exempt value', 'subtotal', 'sub total', 'net taxable value', 'sub-total / supply value', 'amount before tax'),
+    'total': ('grand total', 'invoice total', 'total invoice amount', 'total amount', 'total payable', 'amount payable', 'net payable', 'invoice value', 'invoice total (inr)'),
     'round_off': ('round off', 'rounding'),
     'cess': ('cess',),
     'seller_state': ('seller state', 'supplier state'),
     'seller_address': ('seller address', 'supplier address'),
-    'buyer_address': ('buyer address', 'customer address'),
+    'buyer_address': ('buyer address', 'customer address', 'address', 'location', 'deliver to'),
     'buyer_country': ('buyer country', 'country of destination', 'destination country', 'destination'),
     'supply': ('supply', 'supply type'),
     'export_mode': ('export mode',),
     'shipping_bill_port': ('shipping bill / port',),
-    'currency': ('currency',),
+    'currency': ('currency', 'ccy', 'denomination'),
     'reverse_charge': ('reverse charge',),
     'foreign_currency': ('foreign currency',),
     'exchange_rate': ('exchange rate',),
     'foreign_invoice_value': ('foreign invoice value',),
-    'cgst': ('cgst',), 'sgst': ('sgst',), 'igst': ('igst',),
+    'cgst': ('cgst', 'central gst (cgst)', 'cgst amount'), 'sgst': ('sgst', 'state gst (sgst)', 'sgst amount'), 'igst': ('igst', 'integrated gst (igst)', 'igst amount'),
 }
 HEADERS = {
-    'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description', 'item description', 'item / description', 'goods / description', 'description of goods/services', 'product / description', 'item / particulars'),
+    'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description', 'item description', 'item / description', 'goods / description', 'description of goods/services', 'product / description', 'item / particulars', 'product / particulars', 'goods / service'),
     'hsn': ('hsn', 'hsn/sac', 'sac', 'hsn code', 'hsn / sac', 'hsn/sac code'),
     'quantity': ('qty', 'qty.', 'quantity'),
     'unit': ('unit', 'uom', 'units', 'u/q', 'uqc', 'unit of measurement'),
-    'rate': ('rate', 'unit rate', 'price', 'rate (inr)', 'unit price', 'unit price (inr)', 'price (inr)', 'rate/unit'),
-    'value': ('value', 'taxable value', 'taxable amount', 'amount', 'item value', 'net amount', 'taxable (inr)', 'amount (inr)', 'taxable', 'net value'),
+    'rate': ('rate', 'unit rate', 'price', 'rate (inr)', 'unit price', 'unit price (inr)', 'price (inr)', 'rate/unit', 'price per unit'),
+    'value': ('value', 'taxable value', 'taxable amount', 'amount', 'item value', 'net amount', 'taxable (inr)', 'amount (inr)', 'taxable', 'net value', 'line value'),
     'cgst_rate': ('cgst %', 'cgst rate', 'cgst%'),
     'sgst_rate': ('sgst %', 'sgst rate', 'sgst%'),
     'igst_rate': ('igst %', 'igst rate', 'igst%'),
-    'gst_rate': ('gst %', 'gst%', 'gst rate', 'tax %'),
+    'gst_rate': ('gst %', 'gst%', 'gst rate', 'tax %', 'gst (%)', 'tax rate'),
     'printed_cgst': ('cgst', 'cgst amount', 'cgst amt'),
     'printed_sgst': ('sgst', 'sgst amount', 'sgst amt'),
     'printed_igst': ('igst', 'igst amount', 'igst amt'),
@@ -91,10 +91,14 @@ def split_label_lines(text, fields=None):
     def segments(line):
         # Consume longest labels first: Supply must not split Place of Supply.
         matches=list(re.finditer(rf'(?<!\w)(?:{pattern})\s*[:=]',line,flags=re.I))
-        matches=[match for match in matches if not (re.fullmatch(r'supply\s*[:=]',match[0],re.I) and re.search(r'\b(?:exempt|taxable|nil-rated|non-gst|intra[ -]state|inter[ -]state)\s+$',line[:match.start()],re.I))]
+        matches=[match for match in matches if not (re.fullmatch(r'supply\s*[:=]',match[0],re.I) and re.search(r'\b(?:local|exempt|taxable|nil-rated|non-gst|(?:intra|inter|outside)[ -]state)\s+$',line[:match.start()],re.I))]
         boundaries=[0]+[match.start() for match in matches if match.start()>0 and line[match.start()-1:match.start()].isspace()]+[len(line)]
         return [line[start:end] for start,end in zip(boundaries,boundaries[1:])]
     for index,line in enumerate(original):
+        row=cells(line)
+        if len(row)>=4 and len(row)%2==0 and all(re.fullmatch(pattern,row[i],re.I) and not re.fullmatch(pattern,row[i+1],re.I) for i in range(0,len(row),2)):
+            lines.extend(row[i]+': '+row[i+1] for i in range(0,len(row),2))
+            continue
         # A printed two-column form is also a key/value pair. Only recognize
         # an entire known label, so item descriptions and party names stay intact.
         pair=re.fullmatch(rf'\s*({pattern})\s{{2,}}(\S.*?)\s*',line,re.I)
@@ -375,6 +379,10 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                     if key=='quantity':row_quantity_unit=hint[2] or hint[3]
                     else:row_rate_unit=hint[2] or hint[3]
             decoded.append(key)
+        # Some tables label their numeric quantity column "Units". It is
+        # quantity only when the other core columns exist and Qty is absent.
+        if 'quantity' not in decoded and 'unit' in decoded and all(key in decoded for key in ('name','rate','value')):
+            decoded[decoded.index('unit')]='quantity'
         if all(field in decoded for field in ('name','quantity','rate','value')):
             columns = decoded;header_line=line
             quantity_header_unit,rate_header_unit=row_quantity_unit,row_rate_unit
@@ -389,6 +397,8 @@ def parse_text(text, field_mappings=None, header_aliases=None):
         if columns and len(row) == len(columns) and len(row) >= 4:
             item = {key: value for key, value in zip(columns, row) if key}
             for key in ('gst_rate','cgst_rate','sgst_rate','igst_rate'):
+                if item.get(key) and re.fullmatch(r'\d+(?:\.\d+)?\s*%',item[key]):
+                    item['printed_'+key]=item[key];item[key]=item[key].rstrip('%').strip()
                 if item.get(key) and re.fullmatch(r'\d+(?:\.\d+)?\s*%?\s*[*†‡]+',item[key]):
                     item['printed_'+key]=item[key]
                     item[key]=re.sub(r'\s*%?\s*[*†‡]+$','',item[key])

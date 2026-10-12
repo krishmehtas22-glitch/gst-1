@@ -1,4 +1,4 @@
-# Reader 6.1 extraction logic
+# Reader 6.2 extraction logic
 
 ## 1. Preserve document structure
 
@@ -103,3 +103,15 @@ alias. Existing confirmed master identities are preserved; real master conflicts
 continue to require review. All units in this batch are estimates because the
 PDFs omit their actual selling units. Live Tally acceptance and GSTR-1 results
 still require verification in Tally.
+
+Reader 6.2 supports the supplied four 166–185 layouts using shared semantic
+field/header aliases, alternating label/value form cells, explicit supplier
+GSTIN labels, party roles, and numeric quantity columns labelled Units.
+Percentage/footnote values retain their printed evidence. A printed country
+in the buyer block/address supplies export country; an overseas-looking name
+alone never does. All 20 prepare XML with all 38 rows under the existing
+financial checks. This batch was used for the fix and is not an unseen test.
+
+Optional Gemini extraction is invoked explicitly for one PDF, cached by digest
+and model, and requires approval in Review. Normal scanning never calls an API.
+See GEMINI_SETUP.md. No live API benchmark has been performed without a key.

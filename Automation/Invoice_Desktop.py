@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 6.1'
+APP_VERSION='Reader 6.2'
 
 
 def quantity_unit_summary(invoice):
@@ -71,6 +71,7 @@ class InvoiceApp:
         ttk.Button(scope,text='Confirm test PDF',command=self.confirm_test).pack(side='left')
         ttk.Button(scope,text='Check / change units',command=self.units).pack(side='left',padx=8)
         ttk.Button(scope,text='Recover processing lock',command=self.recover_lock).pack(side='left')
+        ttk.Button(scope,text='Read selected with Gemini',command=self.read_gemini).pack(side='left',padx=8)
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
@@ -196,6 +197,25 @@ class InvoiceApp:
                 self.events.put(('ok',process_sources(root,demo,clients,auto_units,summary_accounting)))
             except Exception as exc:
                 self.events.put(('error',str(exc)))
+        threading.Thread(target=worker,daemon=True).start()
+
+    def read_gemini(self):
+        record=self.selected()
+        if self.busy or not record:return
+        if not record.get('digest'):
+            messagebox.showerror('Gemini','Replace the unreadable PDF before requesting API extraction.');return
+        if not messagebox.askyesno('Gemini PDF extraction','Send this selected PDF to Google Gemini? API quota and data-use terms apply. The result will need verification in Review. Cached results are reused.'):
+            return
+        self.auto.set(False);self.busy=True
+        self.status.config(text='Reading selected PDF with Gemini…')
+        root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
+        selected=self.client_scope.get();clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
+        def worker():
+            try:
+                from Common_Rules.gemini_reader import extract_selected
+                extract_selected(root,record)
+                self.events.put(('ok',process_sources(root,demo,clients,units,summary)))
+            except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
     def tick(self):

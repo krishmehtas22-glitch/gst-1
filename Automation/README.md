@@ -1,8 +1,22 @@
 # Sales invoice automation
 
-## Reader 6.1: column forms and stable fictional buyer ledgers
+## Reader 6.2: broader form labels and optional Gemini extraction
 
-The title bar shows **Reader 6.1** so a replaced installation can be identified.
+The title bar shows **Reader 6.2** so a replaced installation can be identified.
+Shared labels cover supplier GSTIN, document IDs, references, transaction
+categories and alternate GST total names. Paired form cells are processed as
+label/value pairs while full item tables retain their column positions. Numeric
+`Units` columns represent quantity when Qty is absent; percentage and footnote
+rate evidence is retained. The four supplied 166–185 layouts now prepare all
+20 XML vouchers with all 38 item rows. This batch was used to improve the code,
+so it is a regression result rather than proof about unseen layouts.
+
+The optional **Read selected with Gemini** button sends one selected PDF to
+Google after confirmation, caches the result, and requires verification in
+Review before XML. No API calls happen during normal scans. See
+[Gemini setup](docs/GEMINI_SETUP.md) for private Windows key configuration,
+model availability, quota handling and verification limits. No live API accuracy
+test has been performed; the cloud environment does not have your key.
 Colon-free form rows such as `Invoice number    DM/26-27/0126` are read as
 label/value pairs without treating a multi-column table header as a form row.
 Buyer/value rows remain separate from side-by-side party headers. GST rate

@@ -38,7 +38,7 @@ def refresh_review(source, saved):
     original=saved.get('original_extraction')
     # Without a baseline, never guess which fields the user intentionally set.
     # Keep prior OCR approvals intact rather than replacing them with new OCR.
-    if source.get('source_ocr') or reviewed.get('source_ocr') or (isinstance(original,dict) and original.get('source_ocr')):
+    if source.get('source_ocr') or reviewed.get('source_ocr') or source.get('source_api') or reviewed.get('source_api') or (isinstance(original,dict) and (original.get('source_ocr') or original.get('source_api'))):
         return dict(reviewed)
     if not isinstance(original,dict):
         refreshed=deepcopy(reviewed)
@@ -144,6 +144,9 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                                          'source_sha256':digest,'text':text,'invoice':record['invoice']})
                 except Exception as exc:
                     record['errors'].append(f'PDF extraction failed: {exc}')
+                from .gemini_reader import candidate
+                api_candidate=candidate(root,record)
+                if api_candidate is not None:record['invoice']=api_candidate
                 restore_known_supplier(root,record,demo)
                 declared_test=confirmed_test(root,record)
                 if declared_test:
