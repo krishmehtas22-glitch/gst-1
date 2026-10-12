@@ -42,6 +42,7 @@ class InvoiceApp:
         ttk.Button(actions,text='Scan and generate XML',command=self.start).pack(side='left')
         ttk.Button(actions,text='Review selected invoice',command=self.review).pack(side='left',padx=8)
         ttk.Button(actions,text='Open selected XML folder',command=self.open_output).pack(side='left')
+        ttk.Button(actions,text='Open source PDF',command=self.open_source).pack(side='left',padx=8)
         self.auto = tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Watch for new PDFs',variable=self.auto).pack(side='right')
         ttk.Label(window,text='Put PDFs in client folders under the selected parent. Separate sellers get separate company outputs.').pack(anchor='w',padx=10)
@@ -157,6 +158,18 @@ class InvoiceApp:
         else:
             subprocess.Popen(['xdg-open',path])
 
+    def open_source(self):
+        record = self.selected()
+        if not record:
+            return
+        try:
+            if os.name == 'nt':
+                os.startfile(record['path'])
+            else:
+                subprocess.Popen(['xdg-open',record['path']])
+        except OSError as exc:
+            messagebox.showerror('PDF',str(exc))
+
     def review(self):
         record = self.selected()
         if self.busy or not record:
@@ -203,6 +216,7 @@ class InvoiceApp:
             add_item(item)
         buttons = ttk.Frame(form)
         buttons.grid(row=base+1,column=0,columnspan=4,pady=12)
+        ttk.Button(buttons,text='Open source PDF',command=self.open_source).pack(side='left',padx=8)
         ttk.Button(buttons,text='Add item',command=add_item).pack(side='left')
         def remove_item():
             if item_values:

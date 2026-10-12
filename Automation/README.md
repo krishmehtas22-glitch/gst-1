@@ -8,8 +8,18 @@ to process stable file changes automatically. The **Dummy PDFs** checkbox is for
 the supplied fictional documents; uncheck it for real invoices. Real invoices
 must contain valid GSTINs and explicit registration/tax details, or require review.
 The application reads supported text layouts, not every possible invoice style.
-Scanned PDFs currently require a readable text copy or manual review; OCR is not
-bundled in this version.
+Image-only pages are rendered locally and read with bundled RapidOCR models.
+No external OCR service or API key is used. OCR may miss or misread fields; every
+OCR-derived invoice must be checked in Review before it can generate XML. Use
+**Open source PDF** to compare the original. Extracted records are cached by PDF
+digest and parser revision, so unchanged scans do not repeatedly run OCR.
+
+The reader also recognizes alternate invoice/date labels, separate seller/buyer
+blocks with role-specific GSTIN/state fields, and reordered item columns with
+combined GST rates or separate component rates. Multiple labels on one row and
+standalone labels above their values are supported. Arbitrary layouts, complex
+multi-page tables, handwriting, ambiguous OCR and unsupported GST treatments
+still require review; automatic recognition of every invoice is not guaranteed.
 
 The app displays extracted invoice summaries and errors. Select an invoice and
 click **Review selected invoice** to correct fields/items in a form, then

@@ -16,6 +16,8 @@ UNITS = {
     'ROLL': {'formal_name':'Rolls','uqc':'ROL','decimal_places':0,'tally_uqc':'ROL-ROLLS'},
     'SET': {'formal_name':'Sets','uqc':'SET','decimal_places':0},
 }
+PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
+    for name in ('extraction.py','paired_layout.py','ocr.py'))).hexdigest()
 
 
 def inspect_sources(root):
@@ -29,7 +31,13 @@ def inspect_sources(root):
                 digest = hashlib.sha256(path.read_bytes()).hexdigest()
                 record['digest'] = digest
                 try:
-                    record['invoice'] = parse_text(text_from_pdf(path))
+                    cache = root/'.invoice_app'/'extraction'/(digest+'.json')
+                    saved = read_json(cache) if cache.exists() else {}
+                    if saved.get('parser_revision') == PARSER_REVISION and saved.get('source_sha256') == digest:
+                        record['invoice'] = saved['invoice']
+                    else:
+                        record['invoice'] = parse_text(text_from_pdf(path))
+                        write_json(cache,{'parser_revision':PARSER_REVISION,'source_sha256':digest,'invoice':record['invoice']})
                 except Exception as exc:
                     record['errors'].append(f'PDF extraction failed: {exc}')
                 record['source_invoice'] = record['invoice']
@@ -58,7 +66,8 @@ def save_review(root, record, invoice):
     edited = dict(invoice)
     edited['extraction_warnings'] = []
     write_json(root/'.invoice_app'/'reviews'/(digest+'.json'),
-               {'source_sha256':digest,'approved':True,'invoice':edited})
+               {'source_sha256':digest,'approved':True,'invoice':edited,
+                'original_extraction':record.get('source_invoice',record['invoice'])})
 
 
 def process_sources(root, demo=True):

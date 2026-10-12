@@ -133,7 +133,8 @@ def parse_paired_layout(text):
         warnings.append('No recognized item rows')
     if not any(re.fullmatch(r'Currency: INR\s{2,}Payment terms: .*?\s{2,}Reverse charge: No',line) for line in lines):
         warnings.append('Explicit INR currency and no reverse charge required for this layout')
-    if all(marker in text for marker in (
+    compact = re.sub(r'\s+','',text).casefold()
+    if all(re.sub(r'\s+','',marker).casefold() in compact for marker in (
         'DEMO DOCUMENT - NOT VALID FOR GST FILING OR COMMERCIAL USE',
         'GSTIN (fictional):',
         'Computer-generated dummy invoice. No actual goods supplied, tax collected or export made.')):

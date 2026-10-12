@@ -5,7 +5,7 @@ if not exist ".venv\Scripts\python.exe" (
     py -3 -m venv .venv
     if errorlevel 1 goto failed
 )
-".venv\Scripts\python.exe" -c "import pypdf, openpyxl, tkinter"
+".venv\Scripts\python.exe" -c "import pypdf, openpyxl, tkinter, rapidocr_onnxruntime, pypdfium2"
 if errorlevel 1 (
     ".venv\Scripts\python.exe" -m pip install -r requirements.txt
     if errorlevel 1 goto failed
