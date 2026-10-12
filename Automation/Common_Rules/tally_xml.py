@@ -162,7 +162,7 @@ def sales_document(config, invoices):
             'DATE':inv['date'].replace('-',''),'EFFECTIVEDATE':inv['date'].replace('-',''),
             'GUID':remote_id,'VOUCHERTYPENAME':'Sales','VOUCHERNUMBER':inv['number'],
             'REFERENCE':inv['number'],'REFERENCEDATE':inv['date'].replace('-',''),
-            'PARTYLEDGERNAME':inv['buyer_name'],'PARTYNAME':inv['buyer_name'],
+            'PARTYLEDGERNAME':inv.get('buyer_ledger_name',inv['buyer_name']),'PARTYNAME':inv['buyer_name'],
             'BASICBUYERNAME':inv['buyer_name'],'PERSISTEDVIEW':view,
             'ISINVOICE':'No' if accounting_only else 'Yes','ISOPTIONAL':'No','ISCANCELLED':'No',
             'GSTREGISTRATIONTYPE':registration_type(inv['buyer_registration']),

@@ -93,6 +93,7 @@ def previous_financial_fingerprint(inv):
 def validate(raw, config):
     """Return normalized invoice and errors. Uncertainty never becomes a voucher."""
     inv = dict(raw)
+    inv.pop('buyer_ledger_name',None)
     inv.pop('accounting_only_export',None)
     inv.pop('export_accounting_notice',None)
     for key in ('foreign_currency','exchange_rate','foreign_invoice_value'):
@@ -299,7 +300,7 @@ def export_notice(config):
 
 
 def accounting_entries(inv, config):
-    rows = [{'ledger': inv['buyer_name'], 'debit': inv['total'], 'credit': '0.00'}]
+    rows = [{'ledger': inv.get('buyer_ledger_name',inv['buyer_name']), 'debit': inv['total'], 'credit': '0.00'}]
     rows.append({'ledger': sales_ledger(inv, config), 'debit': '0.00', 'credit': inv['taxable']})
     for tax in TAXES:
         if money(inv[tax]):

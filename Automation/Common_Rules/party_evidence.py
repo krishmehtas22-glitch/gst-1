@@ -69,6 +69,11 @@ def read_party_roles(text,warnings):
         cells=re.split(r'\s{2,}|\s*\|\s*|\t+',line)
         roles=[role_heading(cell) for cell in cells]
         if len(roles)!=2 or not any(roles):continue
+        # A role label beside a value is a form row, not a header above two
+        # party columns. Do not consume subsequent address rows as its name.
+        if roles[0] and not roles[1] and not re.match(STOPS,cells[1],re.I):
+            put(roles[0]+'_name',cells[1],line)
+            continue
         columns=[[],[]]
         for following in lines[index+1:]:
             if re.match(STOPS,following,re.I):break

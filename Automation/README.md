@@ -1,8 +1,23 @@
 # Sales invoice automation
 
-## Reader 6: structure-based extraction and summary GST accounting
+## Reader 6.1: column forms and stable fictional buyer ledgers
 
-The title bar shows **Reader 6** so a replaced installation can be identified.
+The title bar shows **Reader 6.1** so a replaced installation can be identified.
+Colon-free form rows such as `Invoice number    DM/26-27/0126` are read as
+label/value pairs without treating a multi-column table header as a form row.
+Buyer/value rows remain separate from side-by-side party headers. GST rate
+footnotes such as `0*` preserve the printed evidence while using numeric zero;
+sentences describing intra-state supply are not interpreted as supply fields.
+
+In demo mode, conflicting fictional buyer identities with the same printed name
+receive separate output ledger names containing `[DEMO ...]`. Their printed
+names and GSTINs remain in the invoice evidence. Ledger bindings are retained in
+`.automation/demo_party_ledgers.json`; existing financial history and confirmed
+masters are preserved. This rule does not bypass production master conflicts.
+The supplied 126–145 batch generates 20 balanced XML vouchers with 46 item rows;
+its omitted units remain editable estimates. Import `Required_Masters.xml`
+successfully before `Sales_Vouchers.xml` into the matching test company.
+
 The reader recognizes explicit supplier/vendor/exporter and customer/billing
 roles, standalone or inline names, and separate party columns. A seller banner
 can be recovered from a single business name and GSTIN before the billing party,

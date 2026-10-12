@@ -12,7 +12,7 @@ from .demo import prepare_demo_invoice, test_gstin
 from .extraction import parse_text, text_from_pdf
 from .history import History
 from .processing_lock import client_lock
-from .masters import plan_masters, required_masters, identity
+from .masters import plan_masters, required_masters, identity, bind_demo_party_ledgers
 from .templates import TemplateError, check_spec, registry, write_workbook
 from .tally_xml import masters_document, sales_document, save_document, verify_references
 
@@ -462,6 +462,10 @@ def _process_client(root, client, export_scopes=None):
             key = issue.get('invoice_key')
             if key:
                 active.pop(key, None)
+        binding_path=client/'.automation'/'demo_party_ledgers.json'
+        bindings=read_json(binding_path) if config.get('demo_only') and binding_path.exists() else {}
+        active,bindings=bind_demo_party_ledgers(active,config,snapshot['masters']+history.confirmed_masters(),bindings)
+        if config.get('demo_only'):write_json(binding_path,bindings)
         masters, master_errors = plan_masters(active, config, snapshot['masters'] + history.confirmed_masters())
         for key, errors in master_errors.items():
             issues.append({'invoice_key':key,'status':'review','errors':errors})

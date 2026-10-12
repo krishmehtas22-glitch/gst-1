@@ -24,7 +24,7 @@ FIELDS = {
     'buyer_registration': ('buyer registration', 'registration type', 'buyer registration type'),
     'buyer_state': ('buyer state', 'customer state'),
     'place_of_supply': ('place of supply', 'place of supply (state code)', 'pos'),
-    'classification': ('tax treatment', 'gst classification'),
+    'classification': ('tax treatment', 'gst classification', 'supply classification'),
     'taxable': ('taxable value', 'taxable amount', 'taxable total', 'taxable / supply value', 'taxable / exempt value', 'subtotal', 'sub total', 'net taxable value'),
     'total': ('grand total', 'invoice total', 'total invoice amount', 'total amount', 'total payable', 'amount payable', 'net payable', 'invoice value'),
     'round_off': ('round off', 'rounding'),
@@ -91,10 +91,15 @@ def split_label_lines(text, fields=None):
     def segments(line):
         # Consume longest labels first: Supply must not split Place of Supply.
         matches=list(re.finditer(rf'(?<!\w)(?:{pattern})\s*[:=]',line,flags=re.I))
-        matches=[match for match in matches if not (re.fullmatch(r'supply\s*[:=]',match[0],re.I) and re.search(r'\b(?:exempt|taxable|nil-rated|non-gst)\s+$',line[:match.start()],re.I))]
+        matches=[match for match in matches if not (re.fullmatch(r'supply\s*[:=]',match[0],re.I) and re.search(r'\b(?:exempt|taxable|nil-rated|non-gst|intra[ -]state|inter[ -]state)\s+$',line[:match.start()],re.I))]
         boundaries=[0]+[match.start() for match in matches if match.start()>0 and line[match.start()-1:match.start()].isspace()]+[len(line)]
         return [line[start:end] for start,end in zip(boundaries,boundaries[1:])]
     for index,line in enumerate(original):
+        # A printed two-column form is also a key/value pair. Only recognize
+        # an entire known label, so item descriptions and party names stay intact.
+        pair=re.fullmatch(rf'\s*({pattern})\s{{2,}}(\S.*?)\s*',line,re.I)
+        if pair and len(cells(line))==2 and not re.match(rf'(?:{pattern})(?=$|\s{{2,}}|:)',pair[2],re.I):
+            line=pair[1]+': '+pair[2]
         for segment in segments(line):
             lines.append(segment)
             if re.fullmatch(rf'\s*(?:{pattern})\s*[:=]?\s*',segment,re.I) and index+1<len(original):
@@ -217,7 +222,7 @@ def normalize_basic_fields(inv, warnings):
     from .accounting import state_code
     if inv.get('tax_accounting_basis')=='invoice_summary' and inv.get('items') and all(all(item.get(tax+'_rate') not in (None,'') for tax in ('cgst','sgst','igst')) for item in inv['items']):
         inv.pop('tax_accounting_basis',None);inv.pop('tax_accounting_note',None)
-    if inv.get('currency') and re.fullmatch(r'INR(?:\s*\(Indian Rupees\))?(?:\s+Reverse charge:\s*No)?',inv['currency'],re.I):inv['currency']='INR'
+    if inv.get('currency') and re.fullmatch(r'INR(?:\s*(?:\(Indian Rupees\)|[-–]\s*Indian Rupees))?(?:\s+Reverse charge:\s*No)?',inv['currency'],re.I):inv['currency']='INR'
     if inv.get('reverse_charge') and inv['reverse_charge'].strip().casefold() not in ('no','n','false'):
         warnings.append('Reverse-charge invoice requires supported accounting treatment')
     if inv.get('place_of_supply'):
@@ -383,6 +388,10 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                 except (ValueError,TypeError,ArithmeticError):pass
         if columns and len(row) == len(columns) and len(row) >= 4:
             item = {key: value for key, value in zip(columns, row) if key}
+            for key in ('gst_rate','cgst_rate','sgst_rate','igst_rate'):
+                if item.get(key) and re.fullmatch(r'\d+(?:\.\d+)?\s*%?\s*[*†‡]+',item[key]):
+                    item['printed_'+key]=item[key]
+                    item[key]=re.sub(r'\s*%?\s*[*†‡]+$','',item[key])
             item['tax_rates_printed']=any(item.get(key) not in (None,'') for key in ('gst_rate','cgst_rate','sgst_rate','igst_rate'))
             if not item.get('unit') and (quantity_header_unit or rate_header_unit):
                 item['unit']=quantity_header_unit or rate_header_unit
@@ -420,7 +429,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                 rate = money(item['gst_rate'])
                 treatment=inv.get('classification')
                 if treatment in ('export_lut','exempt','nil_rated','non_gst'):
-                    item['printed_gst_rate']=item['gst_rate']
+                    item.setdefault('printed_gst_rate',item['gst_rate'])
                     derived={'cgst':0,'sgst':0,'igst':0}
                 elif treatment=='export_igst':
                     derived={'cgst':0,'sgst':0,'igst':rate}

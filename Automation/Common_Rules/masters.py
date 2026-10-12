@@ -1,13 +1,59 @@
 """Plan master dependencies without overwriting existing company records."""
 from decimal import Decimal
+import hashlib,json
 from .accounting import STATES, TAXES, EXPORT_MODES, money, sales_ledger
+
+
+def buyer_master(inv):
+    is_export=inv['classification'] in EXPORT_MODES
+    return {'kind':'ledger','name':inv.get('buyer_ledger_name',inv['buyer_name']),
+            'group':'Sundry Debtors','gstin':inv['buyer_gstin'],
+            'registration':inv['buyer_registration'],
+            'state':'Not Applicable' if is_export else STATES[inv['buyer_state']],
+            'country':inv['buyer_country'] if is_export else 'India'}
+
+
+def bind_demo_party_ledgers(invoices, config, known, bindings):
+    """Separate conflicting fictional identities; retain prior ledger bindings.
+
+    This only changes an output ledger reference, never the printed party or
+    financial fingerprint. Production conflicts still require review.
+    """
+    if not config.get('demo_only'):return invoices,bindings
+    bindings=dict(bindings);groups={};facts={}
+    def signature(master):
+        fields=('name','gstin','registration','state','country')
+        values={key:str(master.get(key,'')).strip().casefold() for key in fields}
+        return hashlib.sha256(json.dumps(values,sort_keys=True).encode()).hexdigest()
+    for key,inv in invoices.items():
+        master=buyer_master(inv);sig=signature(master)
+        facts[key]=(master,sig);groups.setdefault(master['name'].casefold(),set()).add(sig)
+    for master in known:
+        if master.get('kind')=='ledger' and master.get('group')=='Sundry Debtors':
+            sig=signature(master);groups.setdefault(master['name'].casefold(),set()).add(sig)
+            bindings.setdefault(sig,{'name':master['name'],'ledger':master['name']})
+    for sig,binding in bindings.items():groups.setdefault(binding['name'].casefold(),set()).add(sig)
+    result={}
+    for key,inv in invoices.items():
+        master,sig=facts[key];name=master['name']
+        if sig not in bindings:
+            suffix=master.get('gstin') or master.get('country') or sig[:10]
+            ledger=name+' [DEMO '+suffix+' '+sig[:8]+']' if len(groups[name.casefold()])>1 else name
+            bindings[sig]={'name':name,'ledger':ledger}
+        ledger=bindings[sig]['ledger']
+        result[key]={**inv,'buyer_ledger_name':ledger}
+        if ledger!=name:
+            result[key]['demo_adjustments']=[*inv.get('demo_adjustments',[]),{
+                'location':'invoice','field':'buyer_ledger_name','printed':name,'demo_value':ledger,
+                'reason':'Separate fictional buyer identities with conflicting GSTIN, registration, state or country'}]
+    return result,bindings
 
 
 def required_masters(inv, config):
     is_export = inv['classification'] in EXPORT_MODES
     accounting_only=is_export or inv.get('tax_accounting_basis')=='invoice_summary'
     masters = [
-        {'kind':'ledger','name':inv['buyer_name'],'group':'Sundry Debtors','gstin':inv['buyer_gstin'], 'registration':inv['buyer_registration'], 'state':'Not Applicable' if is_export else STATES[inv['buyer_state']], 'country':inv['buyer_country'] if is_export else 'India'},
+        buyer_master(inv),
         {'kind':'ledger','name':sales_ledger(inv, config),'group':'Sales Accounts','classification':'taxable' if config.get('unified_sales_ledger') else inv['classification']},
     ]
     for tax in TAXES:

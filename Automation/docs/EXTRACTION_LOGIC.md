@@ -1,4 +1,4 @@
-# Reader 6 extraction logic
+# Reader 6.1 extraction logic
 
 ## 1. Preserve document structure
 
@@ -36,6 +36,12 @@ in README.md. Buyer names are never substituted for seller names.
 Headers identify description, HSN, quantity, unit, rate, value and tax fields,
 even with different column order. Currency annotations such as RATE INR and
 AMOUNT INR are handled as annotations, not separate field definitions.
+
+Known labels followed by a value in a two-column form do not need a colon.
+Multi-column header grids remain grids. A buyer label beside a name is a form
+row, rather than the beginning of two party columns. Explanatory sentences
+about intra-state/inter-state supply do not override the printed classification.
+Numeric GST rates with footnotes (`0*`, `18†`) retain their original evidence.
 
 Ordinary aligned cells are read first. If spaces inside a description break the
 usual split, column positions from the header provide a fallback. Numeric
@@ -82,3 +88,18 @@ GSTR-1 reporting. The system does not need an API for this batch.
 With the requested default (inventory item-rate review), all 20 are extracted,
 but 15 need item GST rates and 5 prepare XML automatically. A reviewed rate set
 enables the inventory voucher, checked against source tax and invoice totals.
+
+The subsequent 126–145 batch initially produced 0/20 XML in unchanged Reader 6.
+Reader 6.1 extracts all 46 printed item rows and generates 20/20 balanced XML
+vouchers using the default inventory-rate policy. These PDFs do print rates;
+no summary-accounting fallback or manual test confirmations are required.
+
+This fictional batch reuses buyer names with different GSTINs and for both
+domestic and overseas parties. Demo output distinguishes these identities with
+separate ledger references, preserving the printed buyer name in PARTYNAME and
+BASICBUYERNAME. Bindings persist across runs and financial fingerprints remain
+based on the source party facts. The demo adjustments report records every
+alias. Existing confirmed master identities are preserved; real master conflicts
+continue to require review. All units in this batch are estimates because the
+PDFs omit their actual selling units. Live Tally acceptance and GSTR-1 results
+still require verification in Tally.

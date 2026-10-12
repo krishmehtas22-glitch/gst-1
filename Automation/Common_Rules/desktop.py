@@ -334,6 +334,7 @@ def process_sources(root, demo=True, client_names=None, auto_units=True, summary
             issues = {}
             for issue in report['issues']:
                 issues.setdefault(issue.get('source'),[]).extend(issue.get('errors',[]))
+            validated={entry['invoice_key']:entry['invoice'] for entry in read_json(company/'reports/validated_invoices.json')}
             for record in group:
                 record['errors'].extend(issues.get(record['digest']+'.pdf',[]))
                 scope_report=report['scopes'][record['client']]
@@ -341,6 +342,10 @@ def process_sources(root, demo=True, client_names=None, auto_units=True, summary
                     key=invoice_key({**record['invoice'],'seller_gstin':config['seller_gstin']})
                 except (ValueError,KeyError,TypeError):
                     key=None
+                ledger=validated.get(key,{}).get('buyer_ledger_name')
+                if ledger and ledger!=record['invoice'].get('buyer_name'):
+                    record['buyer_ledger_name']=ledger
+                    record.setdefault('notices',[]).append('Separate fictional buyer ledger: '+ledger+'; printed buyer name retained')
                 for issue in report['issues']+scope_report['issues']:
                     if not issue.get('source') and (not issue.get('invoice_key') or issue['invoice_key']==key):
                         record['errors'].extend(issue.get('errors',[]))
