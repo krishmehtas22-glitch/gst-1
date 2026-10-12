@@ -351,4 +351,10 @@ def process_sources(root, demo=True, client_names=None, auto_units=True):
         except Exception as exc:
             for record in group:
                 record['errors'].append(str(exc))
+    try:
+        from .inspection_export import export_inspection
+        report_path=export_inspection(root,records)
+        for record in records:record['inspection_excel']=str(report_path)
+    except (OSError,ValueError,ImportError) as exc:
+        for record in records:record['inspection_export_error']=str(exc)
     return records

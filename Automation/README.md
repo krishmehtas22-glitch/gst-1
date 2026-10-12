@@ -623,3 +623,16 @@ conflicting transaction details go to review.
 
 No running service is required. If a crash leaves `.automation/run.lock`, confirm
 no process is using the client before removing that empty lock directory.
+
+## Reader 5.2: Excel output includes invoices needing review
+
+## Excel inspection output for every scanned invoice
+
+Each desktop scan also writes `Invoice_Inspection.xlsx` in the selected parent
+folder, including invoices that cannot pass XML validation. The workbook has one
+row per extracted item (and one row for an invoice with no extracted items),
+with seller/buyer, invoice amounts, individual CGST/SGST/IGST rates and values,
+source PDF, status, parser warnings and processing errors. Use **Open inspection
+Excel** to open it. Scanning one client refreshes those source rows while keeping
+previously scanned client rows in the same workbook. XML remains available for
+rows that pass accounting validation.
