@@ -7,7 +7,8 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-from Common_Rules.desktop import process_sources, save_review, reset_source_reviews
+from Common_Rules.desktop import process_sources, save_review, reset_source_reviews, UNITS
+from Common_Rules.source_documents import confirm_test_document
 from Common_Rules.engine import discover
 from Common_Rules.watcher import source_signature
 from Common_Rules.supplier_editor import open_layout_editor
@@ -58,6 +59,7 @@ class InvoiceApp:
         self.client_picker.bind('<<ComboboxSelected>>',lambda event:self.reset())
         ttk.Button(scope,text='Re-read selected PDFs',command=self.reread).pack(side='left')
         ttk.Button(scope,text='Save supplier layout',command=self.supplier_layout).pack(side='left',padx=8)
+        ttk.Button(scope,text='Confirm test PDF',command=self.confirm_test).pack(side='left')
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
@@ -122,6 +124,21 @@ class InvoiceApp:
         else:
             self.window.destroy()
 
+    def confirm_test(self):
+        record=self.selected()
+        if self.busy or not record:return
+        if not self.demo.get():
+            messagebox.showinfo('Test PDF','Select Dummy PDFs to process fictional test documents.');return
+        if not record.get('digest'):return
+        if not messagebox.askyesno('Confirm fictional test data',
+                'Confirm that this entire PDF contains fictional test invoices. This permits demo GSTIN substitutions for its invoices.\n\n'+record.get('source_path',record['path'])):
+            return
+        try:
+            confirm_test_document(self.root,record)
+        except (ValueError,OSError) as exc:
+            messagebox.showerror('Test PDF',str(exc));return
+        self.reset();self.start()
+
     def choose(self):
         if self.busy:
             return
@@ -164,7 +181,8 @@ class InvoiceApp:
                     state = 'Needs review' if record['errors'] else record.get('display_status',record.get('export','Inspected'))
                     self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name',''),inv.get('total',''),state))
                 count = sum(bool(record['errors']) for record in value)
-                self.status.config(text=f'{len(value)} PDFs inspected; {count} need review. XML is prepared, not imported into Tally.')
+                pdf_count=len({record.get('source_path',record['path']) for record in value})
+                self.status.config(text=f'{pdf_count} PDFs; {len(value)} invoices inspected; {count} need review. XML is prepared, not imported into Tally.')
                 # Use the signature from before processing, so PDFs arriving
                 # during a run are noticed at the next stable scan.
         except queue.Empty:
@@ -176,7 +194,7 @@ class InvoiceApp:
             self.refresh_clients()
             try:
                 signature = (self.demo.get(),self.client_scope.get(),source_signature(self.root),
-                             tuple((str(p),p.stat().st_mtime_ns) for folder in ('reviews','supplier_layouts')
+                             tuple((str(p),p.stat().st_mtime_ns) for folder in ('reviews','supplier_layouts','document_settings')
                                    for p in sorted((self.root/'.invoice_app'/folder).glob('*.json'))))
                 if signature == self.observed and signature != self.last:
                     self.last = signature
@@ -198,10 +216,13 @@ class InvoiceApp:
             layout=record['invoice'].get('supplier_layout_name')
             price_note=('\nDiscounted items use net unit rates; printed list rates/discounts are retained.' if any(item.get('discount_rate') for item in record['invoice'].get('items',[])) else '')
             price_note+=('\nINR accounting values converted using the printed '+record['invoice']['foreign_currency']+' exchange rate '+str(record['invoice'].get('exchange_rate','')) if record['invoice'].get('foreign_currency') else '')
-            self.detail.insert('end',record['path']+'\n'+'\n'.join(record['errors']+record.get('notices',[]))+
+            source_note=record.get('source_path',record['path'])
+            if record.get('page_number'):source_note+=f" (page {record['page_number']} of {record['page_count']})"
+            self.detail.insert('end',source_note+'\n'+'\n'.join(record['errors']+record.get('notices',[]))+
                 ('\n'+evidence if evidence else '')+
                 ('\nSupplier layout: '+layout if layout else '')+
                 price_note+
+                ('\nPrinted unit: '+record['invoice']['source_unit_note'] if record['invoice'].get('source_unit_note') else '')+
                 '\nCompany pending batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
                 '\nOutput: '+record.get('company_path','Not generated'))
 
@@ -253,6 +274,8 @@ class InvoiceApp:
         ttk.Label(form,text='Compare all fields with the PDF. Export vouchers have no inventory movement; verify export GST reporting in Tally.').grid(row=0,column=0,columnspan=4,sticky='w')
         values = {}
         invoice = record['invoice']
+        if invoice.get('source_unit_note'):
+            ttk.Label(form,text='Printed '+invoice['source_unit_note']+' — choose the actual unit for each item.').grid(row=0,column=0,columnspan=4,sticky='w')
         for index,field in enumerate(FIELDS):
             row,col = index//2+1,(index%2)*2
             ttk.Label(form,text=field.replace('_',' ').title()).grid(row=row,column=col,sticky='w',padx=5)
@@ -275,7 +298,11 @@ class InvoiceApp:
                 row,col = index//3,(index%3)*2
                 ttk.Label(frame,text=field.replace('_',' ').title()).grid(row=row,column=col,sticky='w',padx=3)
                 variables[field] = tk.StringVar(value=str(item.get(field,'')))
-                ttk.Entry(frame,textvariable=variables[field],width=24).grid(row=row,column=col+1)
+                if field=='unit':
+                    widget=ttk.Combobox(frame,textvariable=variables[field],values=tuple(UNITS),width=22)
+                else:
+                    widget=ttk.Entry(frame,textvariable=variables[field],width=24)
+                widget.grid(row=row,column=col+1)
             item_values.append((dict(item),variables,frame))
         for item in invoice.get('items',[]):
             add_item(item)

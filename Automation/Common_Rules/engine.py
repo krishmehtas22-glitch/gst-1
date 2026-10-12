@@ -366,7 +366,7 @@ def _process_client(root, client):
                 parsed = parse_text(text_from_pdf(path))
             except Exception:
                 continue  # The per-document review path reports unreadable PDFs.
-            if parsed.get('source_layout') in ('paired_columns_v1','section_panels_v1','tabular_roles_v1','receipt_items_v1'):
+            if parsed.get('source_layout') in ('paired_columns_v1','section_panels_v1','tabular_roles_v1','receipt_items_v1','ordered_roles_v1'):
                 paired_sellers.add(parsed.get('seller_gstin'))
         if len(paired_sellers) > 1:
             raise ValueError('Multiple sellers in this folder; use Open_Invoice_App.bat to create separate seller companies without changing existing history')

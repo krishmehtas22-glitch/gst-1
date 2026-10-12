@@ -29,6 +29,44 @@ click **Review selected invoice** to correct fields/items in a form, then
 **Approve corrections and revalidate**. Approval binds the corrections to the
 exact PDF SHA256 and never bypasses GST, total, unit or master-conflict checks.
 
+### Missing units and PDFs containing multiple invoices
+
+The supplied `Sales_Invoice_11` through `Sales_Invoice_25` layouts are read using
+ordered embedded text, avoiding word breaks introduced by PDF layout spacing.
+Seller/buyer, GSTIN, date, invoice number, HSN, quantity, rates and totals are
+extracted. Their printed `Unit: Nos / Kg (as applicable)` leaves the actual unit
+unspecified. Select each invoice, click **Review selected invoice**, choose its
+actual **Unit** from the item dropdown, then **Approve corrections and revalidate**.
+There is no automatic Nos assumption. Unit choices belong to that exact invoice,
+not every later invoice from the supplier. Missing or ambiguous units always
+require review. `SYNTHETIC TEST DATA - NOT A VALID TAX DOCUMENT OR GST REGISTRATION`
+is recognized as an explicit fictional marker.
+
+The desktop reader expands the supplied twenty-page `GSTR1_Test_Invoices.pdf`
+into twenty separate invoice rows with original PDF/page references. Splitting
+requires every page to contain a complete recognized invoice header with a
+unique seller/number/date. Continuations, covers, repeated headers or unsupported
+mixed documents are not blindly split. Ordinary multi-page invoices remain one
+source. Generated page copies are retained under `.invoice_app/source_pages/`;
+the original PDF is unchanged. Review and layout saves verify both the page and
+the original PDF. Keep this directory with the company's other retained data.
+The desktop header counts original PDFs separately from invoice rows.
+
+A title such as “GSTR-1 Test Page” does not by itself authorize fictional GSTIN
+substitutions. If this entire PDF is fictional test data, select one of its rows
+and click **Confirm test PDF** once. The confirmation applies only to those exact
+source bytes and all their invoice pages. Real documents must use real-invoice
+mode; a test-confirmed document is blocked in that mode. The first five invoices
+in this bundle omit units: choose their units separately in Review. The other
+pages retain their printed Nos, Units, Vials, Packs, Tubes or Liters. Supported
+LUT invoices use zero payable GST even when a statutory product rate is printed;
+source tax totals must still reconcile.
+
+Fictional suppliers may share a made-up GSTIN. A different fictional supplier
+name gets a separate retained demo workspace when that GSTIN already belongs to
+another demo supplier. Existing company IDs, PDF routing and import history are
+preserved. Real GSTIN identities continue to require consistent supplier names.
+
 ### Save a supplier layout once
 
 Select a readable text invoice and click **Save supplier layout**. The editor

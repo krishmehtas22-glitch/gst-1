@@ -12,7 +12,7 @@ TAXES = ('cgst', 'sgst', 'igst')
 EXPORT_MODES = {'export_lut':'LUT_without_payment','export_igst':'with_payment_of_IGST'}
 EXPORT_ACCOUNTING_NOTICE = ('Export accounting voucher only: no inventory movement. '
     'Configure/check the export sales ledger GST nature and GSTR-1 treatment in Tally before filing.')
-EXPORT_COUNTRIES = {'uae':'United Arab Emirates','united arab emirates':'United Arab Emirates',
+EXPORT_COUNTRIES = {'uk':'United Kingdom','united kingdom':'United Kingdom','uae':'United Arab Emirates','united arab emirates':'United Arab Emirates',
     'usa':'United States of America','us':'United States of America',
     'united states':'United States of America','united states of america':'United States of America'}
 

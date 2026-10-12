@@ -21,7 +21,7 @@ def test_gstin(base):
 
 
 def prepare_demo_invoice(raw, config):
-    if raw.get('source_layout') in ('paired_columns_v1','section_panels_v1','supplier_mapping_v1','tabular_roles_v1','receipt_items_v1'):
+    if raw.get('source_layout') in ('paired_columns_v1','section_panels_v1','supplier_mapping_v1','tabular_roles_v1','receipt_items_v1','ordered_roles_v1'):
         return prepare_paired_demo(raw, config)
     if config['demo_profile'].get('version') != 1:
         raise ValueError('This seller-specific demo configuration requires the paired seller/buyer layout')
@@ -135,6 +135,8 @@ def prepare_paired_demo(raw, config):
     for index, item in enumerate(inv['items'],1):
         unit = next((unit for unit in config['units'] if unit.casefold() == item.get('unit','').casefold()),None)
         if not unit:
+            if item.get('unit_choice_required') and not item.get('unit'):
+                raise ValueError(f'Item {index}: choose the quantity unit in Review; the PDF omits it or prints alternatives')
             raise ValueError('Printed unit needs a configured unit mapping')
         change(item,'unit',unit,'Normalize printed unit capitalization',f'item {index}')
         full_rate = sum(money(item[tax+'_rate']) for tax in TAXES)

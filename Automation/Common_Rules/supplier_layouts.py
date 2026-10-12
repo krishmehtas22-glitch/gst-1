@@ -196,6 +196,8 @@ def save_layout(root,record,layout,demo):
     from .extraction import text_from_pdf
     validate_layout(layout)
     path=Path(record['path'])
+    from .source_documents import verify_source
+    verify_source(root,record)
     if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()) or hashlib.sha256(path.read_bytes()).hexdigest()!=record.get('digest'):
         raise ValueError('The sample PDF changed or is outside the invoice folder; scan again')
     if demo!=layout['demo']:

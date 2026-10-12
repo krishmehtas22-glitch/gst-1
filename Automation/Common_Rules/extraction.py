@@ -8,6 +8,7 @@ from .section_layout import parse_section_layout
 from .tabular_layout import parse_role_table, parse_receipt, marked_sample
 from .ocr import MARKER, read_page
 from .supplier_layouts import layout_text
+from .flat_layout import parse_flat_layout, supported_flat
 
 FIELDS = {
     'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no'),
@@ -64,7 +65,8 @@ def text_from_pdf(path):
     pages = []
     used_ocr = False
     for index,page in enumerate(reader.pages):
-        text = page.extract_text(extraction_mode='layout') or ''
+        plain = page.extract_text() or ''
+        text = plain if supported_flat(plain) else (page.extract_text(extraction_mode='layout') or '')
         if len(text.strip()) < 30:
             text = read_page(path,index)
             used_ocr = True
@@ -243,7 +245,9 @@ def parse_text(text, field_mappings=None, header_aliases=None):
     if MARKER in text:
         text = normalize_ocr_labels(text)
     original_text=text
-    paired = parse_role_table(text,headers)
+    paired = parse_flat_layout(text)
+    if paired is None:
+        paired = parse_role_table(text,headers)
     if paired is None:
         paired = parse_receipt(text)
     if paired is None:

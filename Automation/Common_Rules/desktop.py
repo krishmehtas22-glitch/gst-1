@@ -12,6 +12,7 @@ from .engine import (discover, init_client, invoice_paths, process_client,
                      read_json, write_json)
 from .extraction import parse_text, text_from_pdf
 from .supplier_layouts import load_layouts, layouts_revision, extract_with_layouts
+from .source_documents import expand_source, verify_source, confirmed_test
 
 UNITS = {
     'Nos': {'formal_name':'Numbers','uqc':'NOS','decimal_places':0},
@@ -24,9 +25,14 @@ UNITS = {
     'PKT': {'formal_name':'Packets','uqc':'PAC','decimal_places':0,'tally_uqc':'PAC-PACKS'},
     'KGS': {'formal_name':'Kilograms','uqc':'KGS','decimal_places':3},
     'DOZ': {'formal_name':'Dozens','uqc':'DOZ','decimal_places':0,'tally_uqc':'DOZ-DOZENS'},
+    'Units': {'formal_name':'Units','uqc':'UNT','decimal_places':0},
+    'Vials': {'formal_name':'Vials','uqc':'OTH','decimal_places':0},
+    'Packs': {'formal_name':'Packs','uqc':'PAC','decimal_places':0,'tally_uqc':'PAC-PACKS'},
+    'Tubes': {'formal_name':'Tubes','uqc':'TUB','decimal_places':0,'tally_uqc':'TUB-TUBES'},
+    'Liters': {'formal_name':'Liters','uqc':'LTR','decimal_places':3},
 }
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','supplier_layouts.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','supplier_layouts.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):
@@ -82,9 +88,7 @@ def reset_source_reviews(root, records):
         digest=record.get('digest','')
         if not re.fullmatch(r'[a-f0-9]{64}',digest):
             raise ValueError('Scan the selected PDF before re-reading it')
-        path=Path(record['path'])
-        if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:
-            raise ValueError('The selected PDF changed or is outside the invoice folder; scan again')
+        verify_source(root, record)
         digests.add(digest)
     for digest in sorted(digests):
         for folder in ('reviews','extraction'):
@@ -108,8 +112,15 @@ def inspect_sources(root, client_names=None, demo=True):
     for folder in discover(root):
         if client_names is not None and folder.name not in client_names:
             continue
-        for path in invoice_paths(folder):
-            record = {'path':str(path),'client':folder.name,'errors':list(layout_errors),'invoice':{}}
+        sources=[]
+        for original in invoice_paths(folder):
+            try:
+                sources.extend(expand_source(root,original,folder.name))
+            except Exception as exc:
+                records.append({'path':str(original),'client':folder.name,'invoice':{},'errors':[f'PDF extraction failed: {exc}']})
+        for source_record in sources:
+            path=Path(source_record['path'])
+            record = {**source_record,'errors':list(layout_errors),'invoice':{}}
             try:
                 if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()):
                     raise ValueError('Source path escapes the selected folder')
@@ -129,6 +140,9 @@ def inspect_sources(root, client_names=None, demo=True):
                                          'source_sha256':digest,'text':text,'invoice':record['invoice']})
                 except Exception as exc:
                     record['errors'].append(f'PDF extraction failed: {exc}')
+                declared_test=confirmed_test(root,record)
+                if declared_test:
+                    record['invoice']={**record['invoice'],'dummy_document':True,'test_data_confirmed':True}
                 record['source_invoice'] = record['invoice']
                 review = root/'.invoice_app'/'reviews'/(digest+'.json')
                 if review.exists():
@@ -146,6 +160,8 @@ def inspect_sources(root, client_names=None, demo=True):
                         record['invoice'] = {**record['invoice'],'classification':'export_lut'}
                     record['reviewed'] = True
                     record['errors'] = list(layout_errors)
+                if declared_test:
+                    record['invoice']={**record['invoice'],'dummy_document':True,'test_data_confirmed':True}
                 record['errors'].extend(record['invoice'].get('extraction_warnings',[]))
             except (ValueError,OSError,KeyError,TypeError) as exc:
                 record['errors'].append(str(exc))
@@ -156,10 +172,8 @@ def inspect_sources(root, client_names=None, demo=True):
 
 
 def save_review(root, record, invoice):
-    path = Path(record['path'])
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    if digest != record['digest']:
-        raise ValueError('The source PDF changed. Scan again before saving its review.')
+    verify_source(root,record)
+    digest=record['digest']
     edited = dict(invoice)
     edited['extraction_warnings'] = []
     write_json(root/'.invoice_app'/'reviews'/(digest+'.json'),
@@ -182,8 +196,9 @@ def process_sources(root, demo=True, client_names=None):
                 continue
             if not record.get('digest'):
                 raise ValueError('Unreadable source PDF')
+            verify_source(root,record)
             if demo and not raw.get('dummy_document'):
-                raise ValueError('Select real-invoice mode for real documents; dummy mode requires explicit fictional markers')
+                raise ValueError('For fictional test PDFs, select the row and click Confirm test PDF. For real invoices, switch off Dummy PDFs.')
             if not demo and raw.get('dummy_document'):
                 raise ValueError('This document is explicitly fictional; use dummy mode')
             if raw.get('supply') == 'EXPORT':
@@ -205,11 +220,19 @@ def process_sources(root, demo=True, client_names=None):
                     raise ValueError('Seller GSTIN fails validation; correct it in the review form')
                 canonical = seller
                 code = seller[:2]
-            # Same GSTIN stays one company. Mode is part of the identity.
+            # Real GSTIN identities stay strict. Fictional suppliers can reuse
+            # a made-up GSTIN; preserve existing companies and source bindings.
             identity = ('demo|' if demo else 'real|')+seller
             if seller == 'NOT ASSIGNED':
                 identity += '|'+name+'|'+code
             binding = root/'.invoice_app'/'routing'/(record['digest']+'.json')
+            if demo and seller != 'NOT ASSIGNED':
+                base_suffix=hashlib.sha256(identity.encode()).hexdigest()[:16]
+                legacy=list(workspace.glob('*_'+base_suffix))
+                if legacy and (legacy[0]/'client.json').exists():
+                    existing=read_json(legacy[0]/'client.json')
+                    if existing.get('source_seller_name','').casefold()!=name.casefold():
+                        identity+='|'+name.casefold()
             if binding.exists() and read_json(binding).get('identity') != identity:
                 raise ValueError('This PDF already belongs to another retained company/mode; restore its seller identity before processing')
             suffix = hashlib.sha256(identity.encode()).hexdigest()[:16]
