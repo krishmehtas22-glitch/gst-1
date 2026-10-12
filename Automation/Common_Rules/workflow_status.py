@@ -10,6 +10,7 @@ def invoice_status(record):
             status+='; estimated unit'
         return status
     joined='; '.join(errors).casefold()
+    if 'locked' in joined:return 'Recover processing lock'
     if 'confirm test pdf' in joined:
         return 'Confirm test PDF' if record.get('demo_mode') or record.get('invoice',{}).get('test_document') else 'Choose invoice mode'
     if 'explicitly fictional; use dummy mode' in joined:return 'Use test-invoice mode'

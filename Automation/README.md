@@ -1,8 +1,8 @@
 # Sales invoice automation
 
-## Reader 5.4: buyer masters and export destinations
+## Reader 5.5: processing recovery and supplier identity
 
-The title bar shows **Reader 5.4** so a replaced installation can be identified.
+The title bar shows **Reader 5.5** so a replaced installation can be identified.
 The reader recognizes explicit supplier/vendor/exporter and customer/billing
 roles, standalone or inline names, and separate party columns. A seller banner
 can be recovered from a single business name and GSTIN before the billing party,
@@ -675,3 +675,37 @@ manifest.json but is separate from the normal import_order.
 Screenshots containing SI-0026 through SI-0045 refer to an earlier batch; these
 uploads contain SI-0066 through SI-0085. Select the matching client in the app
 and open its XML folder to avoid importing another batch's master/voucher files.
+
+## Reader 5.5: crashes, source names and visible units
+
+Processing is guarded by an OS lock (flock on Linux, msvcrt on Windows). The OS
+releases the guard after a process dies. Markers owned by this new protocol are
+recovered on the next run. The old empty run.lock directory has no process
+identity, so it is not automatically removed. Close other invoice-app windows,
+click **Recover processing lock**, and confirm once to archive that old marker.
+An active new-protocol guard prevents recovery. Source copies/config/reviews
+are staged under the same company lock, preventing a busy second app from
+modifying a company's completed data. A blocked scan cannot open its previous
+XML folder through the app.
+
+Seller banner matching tolerates punctuation, Pvt/Ltd spelling, Authorized
+Signatory suffixes, and non-business 'For testing only' footers. Genuine
+conflicts retain the printed name as a visible **Candidate** while requiring
+identity review. A uniquely read header name can be displayed even if its GSTIN
+is missing. Previously verified supplier identities may supply a missing name
+when the GSTIN matches (real invoices), or an exact prior PDF routing/proven
+candidate supports that identity (demo invoices). Buyer names are never used as
+seller fallbacks.
+
+The generic table recognizes additional description, HSN/SAC, unit, rate and
+net-value headings. Quantity/unit columns remain populated for recognized items;
+**Items not extracted** identifies table extraction failure. Equivalent printed
+Unregistered/Consumer/N/A buyer labels do not create false GSTIN conflicts;
+different actual GSTINs still require review.
+
+For exports with payment, each source's charged IGST posts to Output IGST. LUT
+without payment retains zero payable GST and belongs in the GSTR-1 export
+section. An accounting XML check cannot certify Tally's GST-return classification.
+The latest Tally register is short by 18,031.34: SI-0079 (5,303.00) and SI-0081
+(12,728.34). The twenty supplied 66–85 PDFs remain regression-covered. CLIENT 21
+source PDFs have not been supplied; its exact masthead/item layout is unverified.

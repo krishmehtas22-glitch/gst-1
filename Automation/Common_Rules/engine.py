@@ -11,6 +11,7 @@ from .accounting import accounting_entries, cents, fingerprint, gstin_valid, inv
 from .demo import prepare_demo_invoice, test_gstin
 from .extraction import parse_text, text_from_pdf
 from .history import History
+from .processing_lock import client_lock
 from .masters import plan_masters, required_masters, identity
 from .templates import TemplateError, check_spec, registry, write_workbook
 from .tally_xml import masters_document, sales_document, save_document, verify_references
@@ -138,21 +139,6 @@ def inspect_invoices(client):
     write_json(report, {'summary':summary, 'invoices':records})
     return summary
 
-
-@contextmanager
-def client_lock(client):
-    # Atomic mkdir works on both Windows and Linux. A crash leaves a visible lock;
-    # only remove it after confirming no other process is using this client.
-    lock = client / '.automation' / 'run.lock'
-    lock.parent.mkdir(exist_ok=True)
-    try:
-        lock.mkdir()
-    except FileExistsError:
-        raise ValueError('Client is locked by another run (or a prior crash); inspect .automation/run.lock')
-    try:
-        yield
-    finally:
-        lock.rmdir()
 
 
 def load_config(client):

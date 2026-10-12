@@ -74,32 +74,41 @@ def read_party_roles(text,warnings):
     return found,evidence
 
 
-def read_seller_masthead(text,warnings):
-    """Corroborate a seller banner with the GSTIN before the billing party.
+def legal_name_key(name):
+    name=re.sub(r'\bpvt\.?\b','private',str(name).casefold())
+    name=re.sub(r'\bltd\.?\b','limited',name)
+    return ' '.join(re.sub(r'[^\w\s]',' ',name).split())
 
-    A matching signatory is preferred. Without one, require exactly one
-    business-name line and one GSTIN in that header; marketing slogans or
-    conflicting names cannot become the seller.
-    """
+
+def read_seller_masthead(text,warnings):
+    """Read the printed business before the buyer, corroborated by GST/signature."""
     lines=[line.strip() for line in text.splitlines() if line.strip()]
     boundary=next((i for i,line in enumerate(lines) if role_heading(line.rstrip(':'))=='buyer'
         or role_heading(line.split(':',1)[0])=='buyer'),None)
     if boundary is None:return {}
-    header=lines[:boundary];printed=' '.join(header)
-    ids=list(dict.fromkeys(re.findall(r'\bGSTIN(?:/UIN)?\s*[:=]\s*(\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9])\b',printed,re.I)))
-    if len(ids)!=1:return {}
-    signatories=list(dict.fromkeys(re.findall(r'^\s*For\s+(.+?)(?:\s+[-–]\s+Authori[sz]ed Signatory)?\s*$',text,re.I|re.M)))
-    matches=[name for name in signatories if name.casefold() in printed.casefold()]
-    if len(signatories)>1 or (signatories and not matches):
-        warnings.append('Seller masthead and signatory conflict');return {}
-    if len(matches)==1:return {'seller_name':matches[0],'seller_gstin':ids[0]}
-    candidates=[]
+    header=lines[:boundary];printed=' '.join(header);candidates=[]
     for line in header:
         for cell in re.split(r'\s{2,}|\s*\|\s*',line):
             if ':' in cell or re.match(r'^(?:tax|sales|commercial) invoice\b',cell,re.I):continue
             if re.search(r'\b\d{6}\b|\b(?:Road|Street|Floor|Plot|Address|Industrial Estate)\b',cell,re.I):continue
-            if re.search(r'\b(?:Limited|Ltd\.?|LLP|Enterprises|Traders|Trading|Supplies|Distributors|Industries|Corporation|Manufacturers)\b',cell,re.I):
-                candidates.append(cell.strip())
+            if re.search(r'\b(?:Limited|Ltd\.?|LLP|Enterprises|Traders|Trading|Supplies|Distributors|Industries|Corporation|Manufacturers)\b',cell,re.I):candidates.append(cell.strip())
     candidates=list(dict.fromkeys(candidates))
-    if len(candidates)==1:return {'seller_name':candidates[0],'seller_gstin':ids[0]}
-    return {}
+    ids=list(dict.fromkeys(re.findall(r'\bGSTIN(?:/UIN)?\s*[:=]\s*(\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9])\b',printed,re.I)))
+    signatories=[]
+    for name in re.findall(r'^\s*For\s+([^\n]+)',text,re.I|re.M):
+        name=re.split(r'\s*(?:\||[-–,:])?\s*authori[sz]ed signat(?:ory|ure)\b',name,flags=re.I)[0].strip(' |:-–')
+        if re.match(r'^(?:testing|software testing|reference|information|illustration|demonstration|office use|sample use)\b',name,re.I):continue
+        if name:signatories.append(name)
+    signatories=list({legal_name_key(name):name for name in signatories}.values())
+    matches=[name for name in signatories if legal_name_key(name) in legal_name_key(printed)]
+    candidate={'seller_name_candidate':candidates[0]} if len(candidates)==1 else {}
+    if len(signatories)>1 or (signatories and not matches):
+        warnings.append('Seller masthead and signatory conflict');return candidate
+    if len(ids)>1:
+        warnings.append('Ambiguous seller GSTIN in masthead');return candidate
+    if len(candidates)==1 and (not signatories or legal_name_key(candidates[0])==legal_name_key(signatories[0])):
+        result={'seller_name':candidates[0],'seller_name_source':'Printed seller masthead'}
+        if ids:result['seller_gstin']=ids[0]
+        return result
+    if len(matches)==1 and not candidates and len(ids)==1:return {'seller_name':matches[0],'seller_gstin':ids[0],'seller_name_source':'Printed matching signatory'}
+    return candidate

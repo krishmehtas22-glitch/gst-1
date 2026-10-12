@@ -17,6 +17,8 @@ from .source_documents import expand_source, verify_source, confirmed_test
 from .unit_inference import UnitResolver, remember_units
 
 from .unit_catalog import UNITS
+from .processing_lock import client_lock
+from .supplier_identity import restore_known_supplier
 
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
     for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','tax_treatment.py','country_catalog.py','supplier_layouts.py','ocr.py'))).hexdigest()
@@ -142,6 +144,7 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                                          'source_sha256':digest,'text':text,'invoice':record['invoice']})
                 except Exception as exc:
                     record['errors'].append(f'PDF extraction failed: {exc}')
+                restore_known_supplier(root,record,demo)
                 declared_test=confirmed_test(root,record)
                 if declared_test:
                     record['invoice']={**record['invoice'],'dummy_document':True,'test_data_confirmed':True}
@@ -256,52 +259,55 @@ def process_sources(root, demo=True, client_names=None, auto_units=True):
             # Resolve retained identities independently of a changed display name.
             matches = list(workspace.glob('*_'+suffix))
             company = matches[0] if matches else workspace/(slug+'_'+suffix)
-            if not (company/'client.json').exists():
-                if (company/'.automation/history.sqlite3').exists():
-                    raise ValueError('Existing company history needs its original configuration restored')
-                profile = {'version':1 if seller == 'NOT ASSIGNED' else 2,'seller_state':code,'unit':'Nos'} if demo else None
-                init_client(workspace,company.name,name,canonical,demo_profile=profile)
+            company.mkdir(parents=True,exist_ok=True)
+            record['company_path']=str(company)
+            with client_lock(company):
+                if not (company/'client.json').exists():
+                    if (company/'.automation/history.sqlite3').exists():
+                        raise ValueError('Existing company history needs its original configuration restored')
+                    profile = {'version':1 if seller == 'NOT ASSIGNED' else 2,'seller_state':code,'unit':'Nos'} if demo else None
+                    init_client(workspace,company.name,name,canonical,demo_profile=profile)
+                    config = read_json(company/'client.json')
+                    config['units'] = dict(UNITS)
+                    config['source_seller_gstin'] = seller
+                    config['source_seller_name'] = name
+                    write_json(company/'client.json',config)
                 config = read_json(company/'client.json')
-                config['units'] = dict(UNITS)
-                config['source_seller_gstin'] = seller
-                config['source_seller_name'] = name
-                write_json(company/'client.json',config)
-            config = read_json(company/'client.json')
-            if any(unit not in config.get('units',{}) for unit in UNITS):
-                config.setdefault('units',{})
-                for unit,mapping in UNITS.items():config['units'].setdefault(unit,dict(mapping))
-                write_json(company/'client.json',config)
-            if 'unified_sales_ledger' not in config:
-                # Add the desktop default without replacing identity, history,
-                # unit mappings or any existing explicit ledger preference.
-                config['unified_sales_ledger'] = True
-                write_json(company/'client.json',config)
-            if raw.get('classification') in EXPORT_MODES:
-                record['notices'] = [export_notice(config)]
-            if config.get('source_seller_name','').casefold() != name.casefold():
-                raise ValueError('Seller GSTIN matches a retained company but seller name differs; review the source identity')
-            if not demo:
-                # Unit capitalization is representational; do not change
-                # quantity, scale, or an unknown unit's physical meaning.
-                mapped=[]
-                for item in raw.get('items',[]):
-                    item=dict(item)
-                    unit=next((key for key in config['units'] if key.casefold()==str(item.get('unit','')).casefold()),None)
-                    if unit and unit!=item.get('unit'):
-                        item['printed_unit']=item['unit'];item['unit']=unit
-                    mapped.append(item)
-                raw={**raw,'items':mapped};record['invoice']=raw
-            filename = record['digest']+'.pdf'
-            target = company/filename
-            if not target.exists():
-                shutil.copy2(record['path'],target)
-            if hashlib.sha256(target.read_bytes()).hexdigest() != record['digest']:
-                raise ValueError('Retained source copy differs from the original PDF')
-            write_json(company/'reviews'/(record['digest']+'.json'),
-                       {'source_sha256':record['digest'],'approved':True,'invoice':raw})
-            write_json(binding,{'identity':identity,'company':company.name,'source_client':record['client']})
-            record['company_path'] = str(company)
-            groups.setdefault(company,[]).append(record)
+                if any(unit not in config.get('units',{}) for unit in UNITS):
+                    config.setdefault('units',{})
+                    for unit,mapping in UNITS.items():config['units'].setdefault(unit,dict(mapping))
+                    write_json(company/'client.json',config)
+                if 'unified_sales_ledger' not in config:
+                    # Add the desktop default without replacing identity, history,
+                    # unit mappings or any existing explicit ledger preference.
+                    config['unified_sales_ledger'] = True
+                    write_json(company/'client.json',config)
+                if raw.get('classification') in EXPORT_MODES:
+                    record['notices'] = [export_notice(config)]
+                if config.get('source_seller_name','').casefold() != name.casefold():
+                    raise ValueError('Seller GSTIN matches a retained company but seller name differs; review the source identity')
+                if not demo:
+                    # Unit capitalization is representational; do not change
+                    # quantity, scale, or an unknown unit's physical meaning.
+                    mapped=[]
+                    for item in raw.get('items',[]):
+                        item=dict(item)
+                        unit=next((key for key in config['units'] if key.casefold()==str(item.get('unit','')).casefold()),None)
+                        if unit and unit!=item.get('unit'):
+                            item['printed_unit']=item['unit'];item['unit']=unit
+                        mapped.append(item)
+                    raw={**raw,'items':mapped};record['invoice']=raw
+                filename = record['digest']+'.pdf'
+                target = company/filename
+                if not target.exists():
+                    shutil.copy2(record['path'],target)
+                if hashlib.sha256(target.read_bytes()).hexdigest() != record['digest']:
+                    raise ValueError('Retained source copy differs from the original PDF')
+                write_json(company/'reviews'/(record['digest']+'.json'),
+                           {'source_sha256':record['digest'],'approved':True,'invoice':raw})
+                write_json(binding,{'identity':identity,'company':company.name,'source_client':record['client']})
+                record['company_path'] = str(company)
+                groups.setdefault(company,[]).append(record)
         except (ValueError,OSError,KeyError,TypeError) as exc:
             record['errors'].append(str(exc))
     for company, group in groups.items():

@@ -43,12 +43,12 @@ FIELDS = {
     'cgst': ('cgst',), 'sgst': ('sgst',), 'igst': ('igst',),
 }
 HEADERS = {
-    'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description', 'item description', 'item / description'),
-    'hsn': ('hsn', 'hsn/sac', 'sac', 'hsn code'),
+    'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description', 'item description', 'item / description', 'goods / description', 'description of goods/services', 'product / description', 'item / particulars'),
+    'hsn': ('hsn', 'hsn/sac', 'sac', 'hsn code', 'hsn / sac', 'hsn/sac code'),
     'quantity': ('qty', 'qty.', 'quantity'),
-    'unit': ('unit', 'uom', 'units', 'u/q', 'uqc'),
-    'rate': ('rate', 'unit rate', 'price', 'rate (inr)', 'unit price'),
-    'value': ('value', 'taxable value', 'taxable amount', 'amount', 'item value', 'net amount', 'taxable (inr)', 'amount (inr)'),
+    'unit': ('unit', 'uom', 'units', 'u/q', 'uqc', 'unit of measurement'),
+    'rate': ('rate', 'unit rate', 'price', 'rate (inr)', 'unit price', 'unit price (inr)', 'price (inr)', 'rate/unit'),
+    'value': ('value', 'taxable value', 'taxable amount', 'amount', 'item value', 'net amount', 'taxable (inr)', 'amount (inr)', 'taxable', 'net value'),
     'cgst_rate': ('cgst %', 'cgst rate', 'cgst%'),
     'sgst_rate': ('sgst %', 'sgst rate', 'sgst%'),
     'igst_rate': ('igst %', 'igst rate', 'igst%'),
@@ -105,15 +105,27 @@ def split_label_lines(text, fields=None):
     return '\n'.join(segment for line in lines for segment in segments(line))
 
 
+def party_value(key,value):
+    token=str(value or '').strip()
+    if key in ('seller_gstin','buyer_gstin'):
+        if key=='buyer_gstin' and (re.fullmatch(r'unregistered(?:\s*(?:/\s*consumer|buyer|[-–]\s*export|\(foreign entity\)))?',token,re.I) or re.fullmatch(r'(?:n/a|na|not applicable)(?:\s*[-–]\s*(?:overseas buyer|export))?',token,re.I)):
+            return ''
+        return token.upper()
+    return value
+
+
 def unique_field(text, aliases, field, warnings, mapped=False):
     pattern = '|'.join(re.escape(a) for a in sorted(aliases, key=len, reverse=True))
     delimiter = r'(?:\s*[:=]\s*|\s{2,})' if mapped or field in ('taxable','total','round_off','cess') else r'\s*[:=]\s*'
     anchor=r'(?:^\s*|\s{2,})' if mapped else r'^\s*'
     found = re.findall(rf'{anchor}(?:{pattern}){delimiter}(.*?)\s*$', text, re.I | re.M)
-    unique = list(dict.fromkeys(s.strip() for s in found if s.strip()))
+    values=[s.strip() for s in found if s.strip()]
+    unique=list(dict.fromkeys(party_value(field,value) for value in values)) if field in ('seller_gstin','buyer_gstin') else list(dict.fromkeys(values))
     if len(unique) > 1:
         warnings.append(f'Ambiguous {field}: multiple different values')
         return None
+    if field in ('seller_gstin','buyer_gstin') and unique:
+        return next((v for v in values if v.casefold().startswith('unregistered')),values[0])
     return unique[0] if unique else None
 
 
@@ -224,7 +236,7 @@ def normalize_basic_fields(inv, warnings):
                 pass
     if inv.get('buyer_registration'):
         inv['buyer_registration'] = inv['buyer_registration'].strip().title()
-    if (inv.get('buyer_gstin') or '').casefold() == 'unregistered':
+    if str(inv.get('buyer_gstin') or '').casefold().startswith('unregistered') and party_value('buyer_gstin',inv.get('buyer_gstin'))=='':
         inv['buyer_gstin'] = ''
         if inv.get('buyer_registration') not in (None, 'Unregistered', 'Consumer'):
             warnings.append('Buyer registration conflicts with explicit Unregistered label')
@@ -293,7 +305,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
     for key, value in extracted.items():
         if key in field_mappings:
             continue  # Explicit role/section mapping supplies this field.
-        if inv.get(key) is not None and inv[key] != value:
+        if inv.get(key) is not None and party_value(key,inv[key]) != party_value(key,value):
             warnings.append(f'Ambiguous {key}: label and layout values differ')
             inv[key] = None
         else:

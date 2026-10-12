@@ -30,11 +30,12 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 5.4'
+APP_VERSION='Reader 5.5'
 
 
 def quantity_unit_summary(invoice):
     items=invoice.get('items',[])
+    if not items:return 'Items not extracted'
     return '; '.join(str(item.get('quantity','?'))+' '+str(item.get('unit') or '?')+(' (estimated)' if item.get('unit_auto') else '') for item in items[:3])+(' +'+str(len(items)-3)+' items' if len(items)>3 else '')
 
 
@@ -69,6 +70,7 @@ class InvoiceApp:
         ttk.Button(scope,text='Save supplier layout',command=self.supplier_layout).pack(side='left',padx=8)
         ttk.Button(scope,text='Confirm test PDF',command=self.confirm_test).pack(side='left')
         ttk.Button(scope,text='Check / change units',command=self.units).pack(side='left',padx=8)
+        ttk.Button(scope,text='Recover processing lock',command=self.recover_lock).pack(side='left')
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
@@ -208,7 +210,7 @@ class InvoiceApp:
                 for index, record in enumerate(value):
                     inv = record['invoice']
                     state = invoice_status(record)
-                    self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name',''),inv.get('total',''),quantity_unit_summary(inv),state))
+                    self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name') or ('Candidate: '+inv['seller_name_candidate'] if inv.get('seller_name_candidate') else 'Seller not detected — check PDF'),inv.get('total',''),quantity_unit_summary(inv),state))
                 self.status.config(text=scan_summary(value))
                 if value:
                     selected=next((i for i,r in enumerate(value) if (r.get('digest'),r['client'])==preferred),
@@ -260,11 +262,26 @@ class InvoiceApp:
                 '\nOutput: '+record.get('output_path','Not generated')+
                 ('\nTally import: Masters.xml first, then Sales_Vouchers.xml. Missing-master errors: import Required_Masters.xml with duplicate masters ignored, then retry rejected vouchers.' if not record['errors'] and record.get('output_path') else ''))
 
+    def recover_lock(self):
+        if self.busy:return
+        from Common_Rules.processing_lock import recover_legacy_lock
+        companies={Path(r['company_path']) for r in self.records if r.get('company_path') and any('locked' in error.casefold() for error in r.get('errors',[]))}
+        if not companies:
+            messagebox.showinfo('Processing lock','No locked company is shown in this scan.');return
+        if not messagebox.askyesno('Recover old processing lock','Close all other invoice application windows first. Continue to back up old lock markers and retry this scan?'):return
+        try:
+            for company in companies:recover_legacy_lock(company)
+        except (ValueError,OSError) as exc:
+            messagebox.showerror('Processing lock',str(exc));return
+        self.reset();self.start()
+
     def open_output(self):
         record = self.selected()
         if not record or not record.get('company_path'):
             messagebox.showinfo('XML','Select an invoice with a prepared company output.')
             return
+        if any('locked' in error.casefold() for error in record.get('errors',[])):
+            messagebox.showinfo('XML','The current scan is blocked by a processing lock. Recover the lock and scan before importing this batch.');return
         path = record.get('output_path',str(Path(record['company_path'])/'imports'))
         if not Path(path).is_dir():
             messagebox.showinfo('XML','No XML folder is available yet. Resolve the invoice errors first.')
