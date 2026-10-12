@@ -1,5 +1,43 @@
 # Sales invoice automation
 
+## Desktop workflow: inspection, corrections and seller grouping
+
+On Windows, double-click `Open_Invoice_App.bat` alongside `main.py`. Select the
+parent folder containing the client folders. Leave **Watch for new PDFs** enabled
+to process stable file changes automatically. The **Dummy PDFs** checkbox is for
+the supplied fictional documents; uncheck it for real invoices. Real invoices
+must contain valid GSTINs and explicit registration/tax details, or require review.
+The application reads supported text layouts, not every possible invoice style.
+Scanned PDFs currently require a readable text copy or manual review; OCR is not
+bundled in this version.
+
+The app displays extracted invoice summaries and errors. Select an invoice and
+click **Review selected invoice** to correct fields/items in a form, then
+**Approve corrections and revalidate**. Approval binds the corrections to the
+exact PDF SHA256 and never bypasses GST, total, unit or master-conflict checks.
+Exports remain blocked even if their reviewed supply type is edited to domestic.
+
+Each distinct seller GSTIN gets a retained independent company under
+`.invoice_app/companies/`, with XML in that company's `imports` directory.
+Use **Open selected XML folder** to locate it. Original client folders,
+configurations, PDFs and histories are preserved. Source PDFs are copied into
+the derived workspaces so their source/history survive moves; copies and JSON
+reviews are not moved or deleted automatically. Correcting an already routed
+PDF to a different seller/mode is blocked to avoid creating a duplicate invoice
+in another company. Back up `.invoice_app` along with the original client data.
+Run the desktop app separately from earlier watcher launchers.
+
+The ten uploaded CLIENT 7 PDFs were checked end to end: eight domestic invoices
+produced eight vouchers with fourteen inventory lines across three companies.
+NOS, ROLL, KG and SET have explicit unit mappings; unknown units need review and
+configuration. Two LUT export invoices retain their buyer/country/shipping fields
+for inspection but do not generate XML: export-specific GST handling is not yet
+implemented. Exempt classification follows the document's explicit printed
+statement; this is not an independent HSN exemption determination.
+
+Live TallyPrime import and the Windows desktop launcher are not validated in the
+Linux onboarding machine. XML generation is preparation, never import confirmation.
+
 A central Python engine for independent clients, following the supplied merged
 rules and the user's updated folder location. Extract the contents of
 **Sales_Invoice_Automation_XML.zip** directly into `F:\Downloads\dummy sales invoice`
@@ -39,6 +77,43 @@ sales rules. No direct Tally connection, automatic production import or GSTR-1
 filing is implemented.
 
 ## Install and start (Windows PowerShell)
+
+### Automatic folder processing for the supplied dummy PDFs (Windows)
+
+Double-click **Start_Automatic_XML.bat** once and leave its window open.
+It uses `.venv` (creating it and installing dependencies if needed). Add any
+number of client folders alongside `main.py`, and drop PDFs directly into each
+folder or its `Sales Invoices (PDF)` inbox. No per-client CMD commands are needed.
+After two unchanged scans, the watcher creates missing demo configurations with
+fresh independent company IDs and the folder name as the disposable Tally
+company name, then generates `imports/Masters.xml` and `imports/Sales_Vouchers.xml`.
+It checks every three seconds and reruns only when inputs/configuration change.
+Wait until copying finishes; slow or incomplete PDF copies may require attention.
+
+This launcher explicitly selects the supplied synthetic demo profile:
+Maharashtra seller state and Nos units. Other PDFs still undergo validation and
+may require review. Real client configurations stop the demo watcher; use the
+normal workflow for real invoices. Existing configurations/history are never
+replaced. An existing history without its configuration requires restoration,
+and a company identity mismatch requires the matching original configuration.
+Do not copy another client's history or `client.json` into a new folder.
+
+Generated XML is demo output, not a Tally import confirmation. Use a separate
+disposable Tally company matching each client configuration. Closing the watcher
+stops monitoring; double-click the launcher again to resume. To start it when you
+sign in to Windows, put a shortcut to the launcher in the folder opened by
+`shell:startup` in the Windows Run dialog.
+
+The uploaded CLIENT 7 two-column seller/buyer layout is also
+supported in demo mode, including multiple item rows, printed HSNs, NOS units,
+item GST percentages and CGST/SGST/IGST amounts. Explicit fictional-document
+markers are required. Buyer registration is assumed Regular for fictional B2B
+buyers and fictional GSTIN checksums are adjusted; all substitutions and original
+values are recorded in `reports/demo_adjustments.json`. The desktop workflow uses
+a distinct checksum-adjusted fictional seller identifier for each printed seller.
+Legacy demo configurations retain their configured seller/history and reject
+mixed-seller folders. Taxable INTRA/INTER and explicit EXEMPT supplies are
+supported; EXPORT and reverse charge remain in review.
 
 ```powershell
 cd "F:\Downloads\dummy sales invoice"

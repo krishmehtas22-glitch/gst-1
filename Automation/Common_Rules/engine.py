@@ -169,9 +169,16 @@ def load_config(client):
         raise ValueError('output_format must be xml or excel')
     if config.get('demo_only'):
         profile = config.get('demo_profile', {})
-        if (profile.get('version') != 1 or profile.get('unit') != 'Nos' or
+        if profile.get('version') == 2:
+            source = config.get('source_seller_gstin','')
+            expected_seller = test_gstin(source[:14])
+            if source[:2] != profile.get('seller_state'):
+                raise ValueError('Demo source seller state differs from its profile')
+        else:
+            expected_seller = test_gstin(profile.get('seller_state','') + 'DEMCO0000A1Z')
+        if (profile.get('version') not in (1,2) or profile.get('unit') != 'Nos' or
                 config['company_mode'] != 'new' or config.get('output_format','xml') != 'xml' or
-                config['seller_gstin'] != test_gstin(profile.get('seller_state','') + 'DEMCO0000A1Z')):
+                config['seller_gstin'] != expected_seller):
             raise ValueError('Invalid demo configuration; use a separate new XML test company')
     if not set(DEFAULT_LEDGERS).issubset(config['ledgers']):
         raise ValueError('Missing sales/tax ledger mapping')
@@ -339,6 +346,21 @@ def process_client(root, client):
 def _process_client(root, client):
     invalidate_outputs(client)
     config = load_config(client)
+    if config.get('demo_only') and not config.get('source_seller_gstin'):
+        # Legacy dummy folders may contain several fictional sellers. A single
+        # configured demo seller must never hide that distinction.
+        paired_sellers = set()
+        for path in invoice_paths(client):
+            if path.is_symlink() or not path.resolve().is_relative_to(client.resolve()):
+                continue  # The normal source check reports this below.
+            try:
+                parsed = parse_text(text_from_pdf(path))
+            except Exception:
+                continue  # The per-document review path reports unreadable PDFs.
+            if parsed.get('source_layout') == 'paired_columns_v1':
+                paired_sellers.add(parsed.get('seller_gstin'))
+        if len(paired_sellers) > 1:
+            raise ValueError('Multiple sellers in this folder; use Open_Invoice_App.bat to create separate seller companies without changing existing history')
     snapshot = load_snapshot(client, config)
     tally = tally_vouchers(snapshot, config)
     history = History(client / '.automation' / 'history.sqlite3')

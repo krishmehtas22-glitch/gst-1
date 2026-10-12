@@ -21,6 +21,10 @@ def test_gstin(base):
 
 
 def prepare_demo_invoice(raw, config):
+    if raw.get('source_layout') == 'paired_columns_v1':
+        return prepare_paired_demo(raw, config)
+    if config['demo_profile'].get('version') != 1:
+        raise ValueError('This seller-specific demo configuration requires the paired seller/buyer layout')
     profile = config['demo_profile']
     if raw.get('dummy_document') is not True:
         raise ValueError('Demo mode accepts only PDFs explicitly marked as synthetic dummy documents')
@@ -79,5 +83,55 @@ def prepare_demo_invoice(raw, config):
     full_rate = sum(money(item[f'{tax}_rate']) for tax in TAXES)
     alias = f"{item['name']} [DEMO HSN {item['hsn']} GST {format(full_rate.normalize(), 'f')}%]"
     change(item,'name',alias,'Separate demo stock masters because sample products have varying illustrative GST rates','item 1')
+    inv['demo_adjustments'] = changes
+    return inv
+
+
+def prepare_paired_demo(raw, config):
+    """Audited demo substitutions for the supplied multi-item fictional PDFs."""
+    if raw.get('dummy_document') is not True:
+        raise ValueError('Demo mode accepts only PDFs explicitly marked as synthetic dummy documents')
+    if raw.get('extraction_warnings'):
+        raise ValueError('; '.join(raw['extraction_warnings']))
+    if state_code(raw.get('seller_state','')) != config['demo_profile']['seller_state']:
+        raise ValueError('Printed seller state does not match the demo company state')
+    if raw.get('supply') not in ('INTRA','INTER','EXEMPT'):
+        raise ValueError('This demo layout supports domestic INTRA, INTER and explicit EXEMPT supplies; exports need separate GST XML handling')
+    inv = deepcopy(raw)
+    inv['demo_only'] = True
+    inv['demo_source_invoice'] = deepcopy(raw)
+    changes = []
+
+    def change(record, field, value, reason, location='invoice'):
+        before = record.get(field)
+        if before != value:
+            changes.append({'location':location,'field':field,'printed':before,'demo_value':value,'reason':reason})
+            record[field] = value
+
+    seller = raw.get('seller_gstin','')
+    if config.get('source_seller_gstin') and seller != config['source_seller_gstin']:
+        raise ValueError('Printed seller differs from the source seller assigned to this company')
+    if not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]',seller) or seller[:2] != state_code(raw['seller_state']):
+        raise ValueError('Printed fictional seller GSTIN/state needs review')
+    change(inv,'seller_gstin',config['seller_gstin'],'Use the configured synthetic demo seller identifier')
+    buyer = raw.get('buyer_gstin','')
+    if buyer:
+        if not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]',buyer) or buyer[:2] != state_code(raw.get('buyer_state','')):
+            raise ValueError('Printed fictional buyer GSTIN/state needs review')
+        change(inv,'buyer_gstin',test_gstin(buyer[:14]),'Checksum substitution for explicitly fictional test GSTIN')
+        change(inv,'buyer_registration','Regular','Demo assumption: fictional registered buyer uses Regular registration')
+    elif inv.get('buyer_registration') != 'Unregistered':
+        raise ValueError('Missing explicit buyer registration')
+    intra = state_code(inv['place_of_supply']) == config['demo_profile']['seller_state']
+    if raw['supply'] != 'EXEMPT' and intra != (raw['supply'] == 'INTRA'):
+        raise ValueError('Printed supply conflicts with seller state/place of supply')
+    for index, item in enumerate(inv['items'],1):
+        unit = next((unit for unit in config['units'] if unit.casefold() == item.get('unit','').casefold()),None)
+        if not unit:
+            raise ValueError('Printed unit needs a configured unit mapping')
+        change(item,'unit',unit,'Normalize printed unit capitalization',f'item {index}')
+        full_rate = sum(money(item[tax+'_rate']) for tax in TAXES)
+        alias = f"{item['name']} [DEMO HSN {item['hsn']} GST {format(full_rate.normalize(), 'f')}%]"
+        change(item,'name',alias,'Keep demo stock identity specific to HSN and GST rate',f'item {index}')
     inv['demo_adjustments'] = changes
     return inv

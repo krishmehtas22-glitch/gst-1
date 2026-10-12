@@ -1,0 +1,47 @@
+TAX INVOICE
+
+DEMO DOCUMENT - NOT VALID FOR GST FILING OR COMMERCIAL USE
+
+SELLER / SUPPLIER                                                                   BUYER / RECIPIENT
+
+Western Trade Supplies                                                              Mumbai Retail Mart
+12 Industrial Estate, Mumbai, Maharashtra - 400001                                  45 Market Road, Thane, Maharashtra
+GSTIN (fictional): 27DEMOA1000A1Z5                                                  GSTIN: 27TESTA1000A1Z5
+State code: 27                                                                      State code: 27
+Email: billing@example.invalid                                                      Email: buyer@example.invalid
+
+
+Invoice No: TEST-26-27-001    Date: 02/10/2026
+Supply: INTRA    Place of supply: Maharashtra
+Currency: INR    Payment terms: 30 days    Reverse charge: No
+Dispatch from: Mumbai, Maharashtra    Delivery to: Thane, Maharashtra
+
+
+ Goods / description                    HSN             Qty        UOM        Rate             Taxable             GST %        CGST           SGST          IGST
+
+
+ Steel storage rack                     940320          4          NOS        2,500.00         10,000.00           18%          900.00         900.00        0.00
+
+
+ Office chair                           940130          3          NOS        4,000.00         12,000.00           18%          1,080.00       1,080.00      0.00
+
+
+
+Taxable / exempt value                                                                              INR 22,000.00
+
+CGST                                                                                                INR 1,980.00
+
+SGST                                                                                                INR 1,980.00
+
+IGST                                                                                                INR 0.00
+
+Invoice Total                                                                                       INR 25,960.00
+
+
+
+Bank: Demo Bank | A/c: 000000000000 | IFSC: DEMO0000000 (all fictional)
+
+
+For Western Trade Supplies | Authorized signatory (sample)
+
+Computer-generated dummy invoice. No actual goods supplied, tax collected or export made.

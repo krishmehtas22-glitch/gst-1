@@ -3,6 +3,7 @@ from datetime import datetime
 import re
 from pypdf import PdfReader
 from .accounting import money
+from .paired_layout import parse_paired_layout
 
 FIELDS = {
     'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no'),
@@ -99,6 +100,9 @@ def layout_fields(text, warnings):
 
 
 def parse_text(text):
+    paired = parse_paired_layout(text)
+    if paired is not None:
+        return paired
     warnings = []
     inv = {key: unique_field(text, aliases, key, warnings) for key, aliases in FIELDS.items()}
     for key, value in layout_fields(text, warnings).items():

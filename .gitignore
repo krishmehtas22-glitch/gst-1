@@ -1,6 +1,7 @@
 .venv/
 __pycache__/
 .pytest_cache/
+.invoice_app/
 Automation/*/Sales Invoices (PDF)/
 Automation/*/*.[pP][dD][fF]
 Automation/*/.automation/
