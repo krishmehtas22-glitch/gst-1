@@ -19,7 +19,7 @@ from .unit_inference import UnitResolver, remember_units
 from .unit_catalog import UNITS
 
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','supplier_layouts.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','tax_treatment.py','supplier_layouts.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):
@@ -351,10 +351,4 @@ def process_sources(root, demo=True, client_names=None, auto_units=True):
         except Exception as exc:
             for record in group:
                 record['errors'].append(str(exc))
-    try:
-        from .inspection_export import export_inspection
-        report_path=export_inspection(root,records)
-        for record in records:record['inspection_excel']=str(report_path)
-    except (OSError,ValueError,ImportError) as exc:
-        for record in records:record['inspection_export_error']=str(exc)
     return records

@@ -11,6 +11,7 @@ from .supplier_layouts import layout_text
 from .flat_layout import parse_flat_layout, supported_flat
 from .party_evidence import read_party_roles, role_heading, read_seller_masthead
 from .unit_inference import quantity_parts, canonical_unit
+from .tax_treatment import apply_printed_treatment
 
 FIELDS = {
     'number': ('invoice no', 'invoice number', 'invoice no.', 'bill no', 'bill number', 'inv no', 'inv no.', 'invoice #', 'tax invoice no', 'invoice reference', 'invoice ref', 'document no', 'document number', 'invoice id'),
@@ -30,7 +31,7 @@ FIELDS = {
     'seller_state': ('seller state', 'supplier state'),
     'seller_address': ('seller address', 'supplier address'),
     'buyer_address': ('buyer address', 'customer address'),
-    'buyer_country': ('buyer country', 'country of destination'),
+    'buyer_country': ('buyer country', 'country of destination', 'destination country'),
     'supply': ('supply', 'supply type'),
     'export_mode': ('export mode',),
     'shipping_bill_port': ('shipping bill / port',),
@@ -89,6 +90,7 @@ def split_label_lines(text, fields=None):
     def segments(line):
         # Consume longest labels first: Supply must not split Place of Supply.
         matches=list(re.finditer(rf'(?<!\w)(?:{pattern})\s*[:=]',line,flags=re.I))
+        matches=[match for match in matches if not (re.fullmatch(r'supply\s*[:=]',match[0],re.I) and re.search(r'\b(?:exempt|taxable|nil-rated|non-gst)\s+$',line[:match.start()],re.I))]
         boundaries=[0]+[match.start() for match in matches if match.start()>0 and line[match.start()-1:match.start()].isspace()]+[len(line)]
         return [line[start:end] for start,end in zip(boundaries,boundaries[1:])]
     for index,line in enumerate(original):
@@ -230,7 +232,7 @@ def normalize_basic_fields(inv, warnings):
             inv['buyer_registration'] = 'Unregistered'
     if inv.get('classification'):
         normalized = inv['classification'].strip().lower().replace('-', '_').replace(' ', '_')
-        inv['classification'] = {'nil':'nil_rated', 'nilrated':'nil_rated', 'exempted':'exempt', 'non_taxable':'non_gst'}.get(normalized, normalized)
+        inv['classification'] = {'nil':'nil_rated', 'nilrated':'nil_rated', 'exempted':'exempt', 'exempt_supply':'exempt', 'nil_rated_supply':'nil_rated', 'taxable_supply':'taxable', 'non_taxable':'non_gst'}.get(normalized, normalized)
     for field in ('seller_gstin','buyer_gstin'):
         if inv.get(field):inv[field]=inv[field].strip().upper()
 
@@ -303,6 +305,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             elif key not in field_mappings:
                 inv[key]=value
     normalize_basic_fields(inv,warnings)
+    apply_printed_treatment(inv,original_text,warnings)
     rates = {}
     for tax in ('cgst','sgst','igst'):
         # Examples: CGST: 180, CGST (9%): 180, CGST @ 9%: 180.
@@ -379,8 +382,17 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             try:
                 from .accounting import state_code, cents
                 rate = money(item['gst_rate'])
-                intra = state_code(inv['place_of_supply']) == inv['seller_gstin'][:2]
-                derived = {'cgst':rate/2 if intra else 0,'sgst':rate/2 if intra else 0,'igst':0 if intra else rate}
+                treatment=inv.get('classification')
+                if treatment in ('export_lut','exempt','nil_rated','non_gst'):
+                    item['printed_gst_rate']=item['gst_rate']
+                    derived={'cgst':0,'sgst':0,'igst':0}
+                elif treatment=='export_igst':
+                    derived={'cgst':0,'sgst':0,'igst':rate}
+                elif inv.get('supply')=='EXPORT':
+                    raise ValueError('Export payment mode must be read before splitting GST')
+                else:
+                    intra = state_code(inv['place_of_supply']) == inv['seller_gstin'][:2]
+                    derived = {'cgst':rate/2 if intra else 0,'sgst':rate/2 if intra else 0,'igst':0 if intra else rate}
                 for tax,value in derived.items():
                     if item.get(tax+'_rate') is not None and money(item[tax+'_rate']) != value:
                         warnings.append('Item combined GST rate conflicts with component rate')
@@ -389,7 +401,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                     if item.get('printed_'+tax) is not None and cents(money(item['value'])*money(value)/100) != cents(item['printed_'+tax]):
                         warnings.append('Item printed '+tax.upper()+' does not reconcile to its rate')
             except (KeyError,ValueError,TypeError,ArithmeticError):
-                warnings.append('Item GST split needs seller state and place of supply review')
+                warnings.append('Export GST payment mode needs review' if inv.get('supply')=='EXPORT' else 'Item GST split needs seller state and place of supply review')
     inv['items'] = items
     if items:
         for tax in ('cgst','sgst','igst'):

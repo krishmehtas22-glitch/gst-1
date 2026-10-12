@@ -20,6 +20,7 @@ def invoice_status(record):
     if not record.get('invoice',{}).get('seller_name') and any(word in joined for word in ('seller name','seller_name','seller gstin','seller_gstin')):
         return 'Check seller details'
     if 'transaction details differ' in joined or 'differs from existing tally' in joined:return 'Invoice differs from saved entry'
+    if any(word in joined for word in ('export payment','export gst','export requires','export place','overseas buyer')):return 'Check export GST treatment'
     if 'gstin' in joined:return 'Check GSTIN'
     if any(word in joined for word in ('seller identity','seller banner','seller state','seller name')):return 'Check seller details'
     if any(word in joined for word in ('does not reconcile','does not equal','round off','amount','tax total')):return 'Check amounts / GST'

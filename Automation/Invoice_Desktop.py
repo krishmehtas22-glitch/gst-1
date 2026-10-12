@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 5.2'
+APP_VERSION='Reader 5.3'
 
 
 def quantity_unit_summary(invoice):
@@ -72,10 +72,9 @@ class InvoiceApp:
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
-        ttk.Button(actions,text='Scan PDFs + Excel / XML',command=self.start).pack(side='left')
+        ttk.Button(actions,text='Scan and generate XML',command=self.start).pack(side='left')
         ttk.Button(actions,text='Review selected invoice',command=self.review).pack(side='left',padx=8)
         ttk.Button(actions,text='Open client XML folder',command=self.open_output).pack(side='left')
-        ttk.Button(actions,text='Open inspection Excel',command=self.open_inspection).pack(side='left',padx=8)
         ttk.Button(actions,text='Open source PDF',command=self.open_source).pack(side='left',padx=8)
         self.auto_units=tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Auto-fill units',variable=self.auto_units,command=self.reset).pack(side='left',padx=8)
@@ -210,9 +209,7 @@ class InvoiceApp:
                     inv = record['invoice']
                     state = invoice_status(record)
                     self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name',''),inv.get('total',''),quantity_unit_summary(inv),state))
-                report=next((r.get('inspection_excel') for r in value if r.get('inspection_excel')),None)
-                failed=next((r.get('inspection_export_error') for r in value if r.get('inspection_export_error')),None)
-                self.status.config(text=scan_summary(value)+(' Excel: '+report if report else (' Excel export failed: '+failed if failed else '')))
+                self.status.config(text=scan_summary(value))
                 if value:
                     selected=next((i for i,r in enumerate(value) if (r.get('digest'),r['client'])==preferred),
                                   next((i for i,r in enumerate(value) if r['errors']),0))
@@ -261,13 +258,6 @@ class InvoiceApp:
                 ('\nPrinted unit: '+record['invoice']['source_unit_note'] if record['invoice'].get('source_unit_note') else '')+
                 '\nClient folder batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
                 '\nOutput: '+record.get('output_path','Not generated'))
-
-    def open_inspection(self):
-        path=self.root/'Invoice_Inspection.xlsx'
-        if path.exists():
-            os.startfile(path)
-        else:
-            messagebox.showinfo('Inspection Excel','Scan the PDFs first to create Invoice_Inspection.xlsx.')
 
     def open_output(self):
         record = self.selected()

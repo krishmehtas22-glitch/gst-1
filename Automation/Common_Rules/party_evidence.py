@@ -43,7 +43,7 @@ def read_party_roles(text,warnings):
             if role is None:continue
             named=re.fullmatch(r'(?:legal name|registered name|trade name|business name|company name|name)\s*:\s*(.+)',line,re.I)
             if named:put(role+'_name',named[1],line);expect_name=False;continue
-            gst=re.search(r'(?:^|\s)(?:GSTIN(?:/UIN)?|GST\s*(?:No\.?|Number|Registration\s*(?:No\.?|Number)))(?:\s*\(fictional\))?\s*[:=]\s*(NOT ASSIGNED|Unregistered|\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9])\b',line,re.I)
+            gst=re.search(r'(?:^|\s)(?:GSTIN(?:/UIN)?|GST\s*(?:No\.?|Number|Registration\s*(?:No\.?|Number)))(?:\s*\(fictional\))?\s*[:=]\s*(NOT ASSIGNED|Not applicable(?:\s*-\s*overseas buyer)?|N/A(?:\s*-\s*overseas buyer)?|Unregistered|\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9])\b',line,re.I)
             if gst:put(role+'_gstin',gst[1],line);expect_name=False
             state=re.search(r'(?:^|[|;]\s*|\s{2,})(?:State(?:\s*Code)?)\s*[:=]\s*([^|;]+)',line,re.I)
             if state:put(role+'_state',state[1],line)

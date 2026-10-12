@@ -1,8 +1,8 @@
 # Sales invoice automation
 
-## Reader 5.1: item GST continuation lines and automatic units
+## Reader 5.3: direct PDF to Tally XML
 
-The title bar shows **Reader 5.1** so a replaced installation can be identified.
+The title bar shows **Reader 5.3** so a replaced installation can be identified.
 The reader recognizes explicit supplier/vendor/exporter and customer/billing
 roles, standalone or inline names, and separate party columns. A seller banner
 can be recovered from a single business name and GSTIN before the billing party,
@@ -624,15 +624,27 @@ conflicting transaction details go to review.
 No running service is required. If a crash leaves `.automation/run.lock`, confirm
 no process is using the client before removing that empty lock directory.
 
-## Reader 5.2: Excel output includes invoices needing review
+## Reader 5.3: export and exempt XML from generic tables
 
-## Excel inspection output for every scanned invoice
+The primary workflow is **Scan and generate XML**. New stable PDFs are processed
+when **Watch for new PDFs** is enabled. Excel inspection no longer runs as the
+default scan output. Generic item tables now use printed export/LUT/IGST and
+exempt/nil-rated treatment before splitting each item's GST:
 
-Each desktop scan also writes `Invoice_Inspection.xlsx` in the selected parent
-folder, including invoices that cannot pass XML validation. The workbook has one
-row per extracted item (and one row for an invoice with no extracted items),
-with seller/buyer, invoice amounts, individual CGST/SGST/IGST rates and values,
-source PDF, status, parser warnings and processing errors. Use **Open inspection
-Excel** to open it. Scanning one client refreshes those source rows while keeping
-previously scanned client rows in the same workbook. XML remains available for
-rows that pass accounting validation.
+- Domestic intra-state: CGST and SGST from each printed combined item rate.
+- Domestic inter-state and export with payment: IGST from each printed item rate.
+- Explicit LUT without payment: zero payable GST, retaining printed product rates.
+- Explicit exempt/nil-rated: zero payable GST; exemption wording does not become
+  a second supply field.
+
+Printed overseas GSTIN placeholders, country and outside-India place of supply
+are read without requiring an Indian buyer state. Missing or conflicting payment
+mode, tax totals, identities or confirmed master data still produce a specific
+review error. The generated accounting export vouchers need GST reporting
+configuration checked in Tally, as described above.
+
+Regression coverage includes a batch of 16 invoices: the eight uploaded
+Sales_Invoice_46 through 53 PDFs plus eight generated LUT/IGST/exempt/nil-rated
+variants. The batch generates 16 balanced vouchers and a repeat scan retains
+voucher identities. This does not establish a live Tally import or verify PDFs
+which have not been supplied.
