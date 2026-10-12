@@ -2,7 +2,7 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import re
-from .accounting import cents
+from .accounting import cents, EXPORT_COUNTRIES
 
 
 def parse_paired_layout(text):
@@ -24,6 +24,9 @@ def parse_paired_layout(text):
         else:
             lines.append(line.strip())
     split = lambda line: re.split(r'\s{2,}', line.strip())
+    explicit_lut = bool(re.search(r'Export under LUT without payment of (?:IGST|integrated tax)\b',text,re.I))
+    explicit_exempt = bool(re.search(r'(?:Tax treatment:\s*Exempt supply\s*-\s*no GST charged|Exempt supply:\s*no GST charged)',text,re.I))
+    currency_ok = False
 
     def put(key, value):
         if key in inv and inv[key] != value:
@@ -54,7 +57,10 @@ def parse_paired_layout(text):
         if len(row) == 2 and re.fullmatch(r'State code: \d{2}',row[0]) and re.fullmatch(r'State code: (?:\d{2}|N/A)',row[1]):
             put('seller_state', row[0].split(':')[1].strip())
             put('buyer_state', row[1].split(':')[1].strip())
-        if line.startswith('Export under LUT without payment of IGST'):
+        elif len(row) == 2 and re.fullmatch(r'State code: \d{2}',row[0]) and row[1].startswith('Place of supply:'):
+            put('seller_state',row[0].split(':')[1].strip())
+            put('place_of_supply',row[1].split(':',1)[1].strip())
+        if re.match(r'Export under LUT without payment of (?:IGST|integrated tax)\b',line,re.I):
             put('export_mode','LUT_without_payment')
             if 'Country:' in line:
                 put('buyer_country',line.split('Country:',1)[1].strip())
@@ -73,18 +79,20 @@ def parse_paired_layout(text):
             put('place_of_supply', match[2])
             if match[1] in ('INTRA','INTER'):
                 put('classification','taxable')
-            elif match[1] == 'EXEMPT' and 'Tax treatment: Exempt supply - no GST charged' in text:
+            elif match[1] == 'EXEMPT' and explicit_exempt:
                 put('classification','exempt')
             elif match[1] == 'EXPORT':
-                put('classification','export_lut' if 'Export under LUT without payment of IGST' in text else 'export')
-                if 'Export under LUT without payment of IGST' not in text:
+                put('classification','export_lut' if explicit_lut else 'export')
+                if not explicit_lut:
                     warnings.append('Export mode is not explicitly LUT without payment of IGST')
             else:
                 warnings.append('Unsupported supply treatment: ' + match[1])
         if line.startswith('Currency:'):
-            if not re.fullmatch(r'Currency: INR\s{2,}Payment terms: .*?\s{2,}Reverse charge: No', line):
+            currency_line = re.sub(r'\s*\|\s*','    ',line)
+            currency_ok = bool(re.fullmatch(r'Currency: INR\s{2,}Payment terms: .*?\s{2,}Reverse charge: No', currency_line))
+            if not currency_ok:
                 warnings.append('Currency/reverse charge treatment needs review')
-        match = re.fullmatch(r'(Taxable / exempt value|CGST|SGST|IGST|Invoice Total)\s{2,}(INR [\d,.]+)', line)
+        match = re.fullmatch(r'(Taxable / exempt value|CGST|SGST|IGST|Invoice Total)(?:\s*:\s*|\s{2,})(INR [\d,.]+)', line)
         if match:
             key = {'Taxable / exempt value':'taxable','Invoice Total':'total'}.get(match[1],match[1].lower())
             put(key,amount(match[2]))
@@ -93,6 +101,10 @@ def parse_paired_layout(text):
     in_table = False
     for line in lines:
         row = split(line)
+        if len(row)==10 and row[:6]==expected[:6] and row[6:]==['GST','CGST','SGST','IGST']:
+            row[6]='GST %'
+        if in_table and row==['%']:
+            continue  # Recognized wrapped GST-percent heading, not an item.
         if row == expected:
             in_table = True
             continue
@@ -132,8 +144,12 @@ def parse_paired_layout(text):
         inv['items'].append(item)
     if not inv['items']:
         warnings.append('No recognized item rows')
-    if not any(re.fullmatch(r'Currency: INR\s{2,}Payment terms: .*?\s{2,}Reverse charge: No',line) for line in lines):
+    if not currency_ok:
         warnings.append('Explicit INR currency and no reverse charge required for this layout')
+    if inv.get('supply')=='EXPORT' and not inv.get('buyer_country'):
+        country=inv.get('buyer_address','').rsplit(',',1)[-1].strip()
+        if country.casefold() in EXPORT_COUNTRIES:
+            put('buyer_country',country)  # Country explicitly printed in address.
     compact = re.sub(r'\s+','',text).casefold()
     if all(re.sub(r'\s+','',marker).casefold() in compact for marker in (
         'DEMO DOCUMENT - NOT VALID FOR GST FILING OR COMMERCIAL USE',

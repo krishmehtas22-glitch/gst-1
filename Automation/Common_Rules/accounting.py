@@ -58,9 +58,22 @@ def invoice_key(inv):
     return f"{inv['seller_gstin']}|{year}-{year+1}|{inv['number'].strip().casefold()}"
 
 
-def fingerprint(inv):
+def legacy_fingerprint(inv):
     clean = {k: v for k, v in inv.items() if k not in ('source', 'sha256', 'raw_text', 'extraction_warnings')}
     return hashlib.sha256(json.dumps(clean, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def fingerprint(inv):
+    # Compare validated accounting facts, rather than PDF layout or extraction
+    # audit fields. Those facts still undergo full validation before this call.
+    fields = ('number','date','seller_name','seller_gstin','seller_state','seller_address',
+        'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address','buyer_country',
+        'place_of_supply','classification','supply','taxable','total','round_off',
+        'cgst','sgst','igst','cess','currency','export_mode','demo_only')
+    item_fields = ('name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate')
+    clean = {key:inv[key] for key in fields if key in inv}
+    clean['items'] = [{key:item[key] for key in item_fields if key in item} for item in inv.get('items',[])]
+    return hashlib.sha256(json.dumps(clean,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 
 
 def validate(raw, config):

@@ -119,8 +119,10 @@ def prepare_paired_demo(raw, config):
     change(inv,'seller_gstin',config['seller_gstin'],'Use the configured synthetic demo seller identifier')
     buyer = raw.get('buyer_gstin','')
     if buyer:
-        if not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]',buyer) or buyer[:2] != state_code(raw.get('buyer_state','')):
+        if not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]',buyer) or (raw.get('buyer_state') and buyer[:2] != state_code(raw['buyer_state'])):
             raise ValueError('Printed fictional buyer GSTIN/state needs review')
+        if not raw.get('buyer_state'):
+            change(inv,'buyer_state',buyer[:2],'State from the printed buyer GSTIN')
         change(inv,'buyer_gstin',test_gstin(buyer[:14]),'Checksum substitution for explicitly fictional test GSTIN')
         change(inv,'buyer_registration','Regular','Demo assumption: fictional registered buyer uses Regular registration')
     elif is_export:

@@ -4,6 +4,8 @@ cd /d "%~dp0"
 echo Starting invoice application from "%CD%"
 if not exist "Invoice_Desktop.py" goto incomplete
 if not exist "Common_Rules\desktop.py" goto incomplete
+if not exist "Common_Rules\ocr.py" goto incomplete
+if not exist "requirements-ocr.txt" goto incomplete
 if not exist ".venv\Scripts\python.exe" (
     py -3 -m venv .venv
     if errorlevel 1 goto failed
@@ -17,10 +19,10 @@ if errorlevel 1 (
     ".venv\Scripts\python.exe" -m pip install openpyxl==3.1.5 pypdf==6.1.3
     if errorlevel 1 goto failed
 )
-".venv\Scripts\python.exe" -c "import rapidocr_onnxruntime, pypdfium2"
+".venv\Scripts\python.exe" -c "import rapidocr, onnxruntime, pypdfium2" >nul 2>&1
 if errorlevel 1 (
     echo Installing optional scanned-PDF OCR dependencies...
-    ".venv\Scripts\python.exe" -m pip install rapidocr_onnxruntime==1.4.4 pypdfium2==5.14.0
+    ".venv\Scripts\python.exe" -m pip install -r requirements-ocr.txt
     if errorlevel 1 echo OCR installation failed. The app will open for text PDFs and manual review.
 )
 ".venv\Scripts\python.exe" Invoice_Desktop.py

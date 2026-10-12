@@ -9,6 +9,9 @@ the supplied fictional documents; uncheck it for real invoices. Real invoices
 must contain valid GSTINs and explicit registration/tax details, or require review.
 The application reads supported text layouts, not every possible invoice style.
 Image-only pages are rendered locally and read with bundled RapidOCR models.
+The OCR engine is `rapidocr` 3.10, which supports Python 3.13; the older
+`rapidocr_onnxruntime` 1.4.4 package is no longer used. The Windows launcher
+installs OCR from `requirements-ocr.txt`, keeping an existing `.venv` intact.
 No external OCR service or API key is used. OCR may miss or misread fields; every
 OCR-derived invoice must be checked in Review before it can generate XML. Use
 **Open source PDF** to compare the original. Extracted records are cached by PDF
@@ -58,6 +61,22 @@ handling must be configured/checked per voucher in Tally; they are not establish
 accounting vouchers. Exports with payment of IGST remain unsupported. Exempt
 classification follows the document's explicit printed
 statement; this is not an independent HSN exemption determination.
+
+The revised CLIENT 8 PDFs (all Western Trade Supplies) also generate all ten
+vouchers in a single `Sales_Vouchers.xml`, totaling INR 200,934 in customer debits
+and INR 187,800 in Sales credits. This layout supports wrapped GST-percent
+headings, colon-delimited totals, pipe-separated currency/payment metadata,
+buyer state from the printed GSTIN, an explicit exempt statement, and the
+equivalent LUT wording "without payment of integrated tax". The export country
+is read from the printed address when it is explicitly UAE/USA. Other missing
+countries still require review.
+
+Duplicate comparison now uses validated accounting facts, not PDF layout or
+extraction audit details. Older stored hashes are checked against their retained
+data and read compatibly, preserving history and imported status. A changed
+amount, buyer/seller identity, item, tax rate or supply treatment still conflicts;
+corrupted stored hashes remain errors. Original extraction/adjustment records
+and source copies remain retained.
 
 Live TallyPrime import and the Windows desktop launcher are not validated in the
 Linux onboarding machine. XML generation is preparation, never import confirmation.

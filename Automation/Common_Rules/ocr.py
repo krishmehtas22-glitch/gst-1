@@ -36,20 +36,22 @@ def read_page(path,index):
     try:
         import pypdfium2 as pdfium
         import onnxruntime
-        from rapidocr_onnxruntime import RapidOCR
+        from rapidocr import RapidOCR
     except ImportError as exc:
         raise ValueError('Scanned PDF needs the OCR dependencies. Start Open_Invoice_App.bat to install them, or enter the invoice through Review.') from exc
     global _engine
     with _lock:
         if _engine is None:
             onnxruntime.disable_telemetry_events()
-            _engine = RapidOCR(intra_op_num_threads=2,inter_op_num_threads=1)
+            _engine = RapidOCR(params={'EngineConfig.onnxruntime.intra_op_num_threads':2,
+                'EngineConfig.onnxruntime.inter_op_num_threads':1,'Global.log_level':'error'})
         with pdfium.PdfDocument(str(path)) as document:
             page = document[index]
             bitmap = page.render(scale=3)
             try:
                 image = bitmap.to_numpy().copy()
-                results,_ = _engine(image)
+                output = _engine(image)
+                results = list(zip(output.boxes,output.txts,output.scores)) if output.boxes is not None and output.txts is not None else []
             finally:
                 bitmap.close()
                 page.close()

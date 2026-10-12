@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 import json
 import sqlite3
+from .accounting import fingerprint, legacy_fingerprint
 
 
 class History:
@@ -43,7 +44,13 @@ class History:
     def lookup(self, key):
         row = self.db.execute('SELECT fingerprint,data,status,source_hash FROM invoices WHERE invoice_key=?', (key,)).fetchone()
         if row:
-            return {'fingerprint':row[0],'data':json.loads(row[1]),'status':row[2],'sha256':row[3]}
+            data = json.loads(row[1])
+            current = fingerprint(data)
+            if row[0] not in (current,legacy_fingerprint(data)):
+                raise ValueError('Stored invoice fingerprint does not match its retained data')
+            # Read older hashes compatibly, preserving the original database,
+            # invoice audit data and confirmed import status.
+            return {'fingerprint':current,'data':data,'status':row[2],'sha256':row[3]}
 
     def save(self, key, fp, data, status):
         self.db.execute('INSERT INTO invoices VALUES(?,?,?,?,?)', (key, fp, json.dumps(data, ensure_ascii=False), status, data['sha256']))
