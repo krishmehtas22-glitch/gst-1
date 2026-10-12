@@ -125,3 +125,14 @@ Tally labels (for example NOS to NOS-NUMBERS). For another unit, set its exact
 label using the optional tally_uqc field after verifying it in Tally. Unknown
 codes are flagged, not guessed. The unit's configured decimal precision must
 support the invoice quantities.
+
+## Missing-master recovery
+
+Each XML batch also includes Required_Masters.xml containing all dependency
+masters for its vouchers. This file is available even when the normal Masters.xml
+is omitted because those masters were previously confirmed. If Tally reports
+“Referenced master is missing”, import Required_Masters.xml with duplicate
+masters ignored, check the master import result, and retry rejected vouchers.
+Unregistered and Consumer parties use Tally's Unregistered/Consumer registration
+label. The normal import_order in manifest.json does not include this optional
+recovery file; its digest and file name are retained for validation and cleanup.

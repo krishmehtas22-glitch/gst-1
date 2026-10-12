@@ -267,13 +267,18 @@ def export_xml_imports(client, config, invoices, masters, history, output_folder
             files.append('Masters.xml')
         save_document(sales_document(config,invoices),staging / 'Sales_Vouchers.xml')
         files.append('Sales_Vouchers.xml')
+        import_order=list(files)
+        required={identity(master):master for inv in invoices.values() for master in required_masters(inv,config)}
+        save_document(masters_document(config,list(required.values()),invoices),staging / 'Required_Masters.xml')
+        files.append('Required_Masters.xml')
         write_json(staging / 'manifest.json', {'valid_for_import':True,'output_format':'xml',
              'demo_only':bool(config.get('demo_only')),
              'source_client':source_client,
              'export_scope':folder.relative_to(client/'imports').as_posix() if folder != client/'imports' else None,
              'company_id':config['company_id'],'company_name':config['company_name'],
              'generated_at':datetime.now(timezone.utc).isoformat(),'invoice_keys':list(invoices),
-             'masters':masters,'files':files,'import_order':files,
+             'masters':masters,'files':files,'import_order':import_order,
+             'recovery_master_file':'Required_Masters.xml',
              'file_sha256':{name:hashlib.sha256((staging / name).read_bytes()).hexdigest() for name in files},
              'order':['unit','stock_group','ledger','stock_item','sales'],
              'accounting_only_exports':[{'invoice_key':key,'number':inv['number'],

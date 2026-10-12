@@ -1,8 +1,8 @@
 # Sales invoice automation
 
-## Reader 5.3: direct PDF to Tally XML
+## Reader 5.4: buyer masters and export destinations
 
-The title bar shows **Reader 5.3** so a replaced installation can be identified.
+The title bar shows **Reader 5.4** so a replaced installation can be identified.
 The reader recognizes explicit supplier/vendor/exporter and customer/billing
 roles, standalone or inline names, and separate party columns. A seller banner
 can be recovered from a single business name and GSTIN before the billing party,
@@ -648,3 +648,30 @@ Sales_Invoice_46 through 53 PDFs plus eight generated LUT/IGST/exempt/nil-rated
 variants. The batch generates 16 balanced vouchers and a repeat scan retains
 voucher identities. This does not establish a live Tally import or verify PDFs
 which have not been supplied.
+
+## Reader 5.4: the twenty uploaded invoices and missing buyer ledgers
+
+All uploaded Sales_Invoice_66 through 85 PDFs are covered together, including
+Singapore/Canada exports. Printed country names and two-letter identifiers use a
+bundled ISO 3166 lookup, preserving the earlier UK/UAE/USA aliases. It requires
+no extra package or network connection. Unregistered/Consumer buyers serialize
+as Tally's `Unregistered/Consumer` GST registration label in both ledgers and
+vouchers; accounting/source registration stays unchanged.
+
+The twenty-source regression verifies 20 vouchers, all 20 buyer ledger masters,
+matching invoice gross debits, individual CGST/SGST/IGST credits, balanced
+allocations and repeat-scan identities. Totals: taxable INR 401,911.00, CGST
+14,360.25, SGST 14,360.25, IGST 33,493.74, gross INR 464,125.24. These are XML
+checks; the application cannot observe the user's Tally import result directly.
+
+Import Masters.xml before Sales_Vouchers.xml from the same client output folder.
+The additional Required_Masters.xml contains every dependency needed by that
+batch, including ones previously confirmed. For Tally's “Referenced master is
+missing” exception, import this recovery file with duplicate masters ignored,
+check that master creation has no errors, then retry the rejected vouchers.
+These master records use Create. This recovery file is recorded and hashed in
+manifest.json but is separate from the normal import_order.
+
+Screenshots containing SI-0026 through SI-0045 refer to an earlier batch; these
+uploads contain SI-0066 through SI-0085. Select the matching client in the app
+and open its XML folder to avoid importing another batch's master/voucher files.

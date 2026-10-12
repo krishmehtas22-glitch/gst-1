@@ -19,6 +19,11 @@ UQC = {'NOS':'NOS-NUMBERS','PCS':'PCS-PIECES','KGS':'KGS-KILOGRAMS','GMS':'GMS-G
        'UNT':'UNT-UNITS','OTH':'OTH-OTHERS'}
 
 
+def registration_type(value):
+    # Tally combines these buyer categories in one GST registration selection.
+    return 'Unregistered/Consumer' if value in ('Unregistered','Consumer') else value
+
+
 def text(parent, name, value):
     value = str(value)
     # XML 1.0 forbids these characters, even when encoded as numeric entities.
@@ -103,7 +108,7 @@ def masters_document(config, masters, invoices):
                 text(node,'ISBILLWISEON','Yes')
                 text(node,'COUNTRYNAME',master['country'])
                 text(node,'LEDSTATENAME',master['state'])
-                text(node,'GSTREGISTRATIONTYPE',master['registration'])
+                text(node,'GSTREGISTRATIONTYPE',registration_type(master['registration']))
                 if master['gstin']:
                     text(node,'PARTYGSTIN',master['gstin'])
             elif master['group'] == 'Sales Accounts':
@@ -159,7 +164,7 @@ def sales_document(config, invoices):
             'PARTYLEDGERNAME':inv['buyer_name'],'PARTYNAME':inv['buyer_name'],
             'BASICBUYERNAME':inv['buyer_name'],'PERSISTEDVIEW':view,
             'ISINVOICE':'No' if is_export else 'Yes','ISOPTIONAL':'No','ISCANCELLED':'No',
-            'GSTREGISTRATIONTYPE':inv['buyer_registration'],
+            'GSTREGISTRATIONTYPE':registration_type(inv['buyer_registration']),
             'PLACEOFSUPPLY':'Outside India' if is_export else STATES[inv['place_of_supply']],
             'STATENAME':'Not Applicable' if is_export else STATES[inv['buyer_state']],
             'COUNTRYOFRESIDENCE':inv['buyer_country'] if is_export else 'India',

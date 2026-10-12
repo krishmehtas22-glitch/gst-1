@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 5.3'
+APP_VERSION='Reader 5.4'
 
 
 def quantity_unit_summary(invoice):
@@ -257,7 +257,8 @@ class InvoiceApp:
                 price_note+
                 ('\nPrinted unit: '+record['invoice']['source_unit_note'] if record['invoice'].get('source_unit_note') else '')+
                 '\nClient folder batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
-                '\nOutput: '+record.get('output_path','Not generated'))
+                '\nOutput: '+record.get('output_path','Not generated')+
+                ('\nTally import: Masters.xml first, then Sales_Vouchers.xml. Missing-master errors: import Required_Masters.xml with duplicate masters ignored, then retry rejected vouchers.' if not record['errors'] and record.get('output_path') else ''))
 
     def open_output(self):
         record = self.selected()

@@ -30,6 +30,7 @@ def apply_printed_treatment(invoice,text,warnings):
         foreign=lower in ('outside india','foreign country','overseas','96','96 - foreign country','outside india (96)')
         tail=re.sub(r'\s*\((?:na|n/a|96)\)\s*$','',foreign_pos,flags=re.I).rsplit(',',1)[-1].strip()
         country=EXPORT_COUNTRIES.get(tail.casefold())
+        if country=='India':country=None
         if country:invoice.setdefault('buyer_country',country);foreign=True
         if foreign:invoice['place_of_supply']='Outside India'
         gst=str(invoice.get('buyer_gstin') or '').casefold().strip()
@@ -39,7 +40,7 @@ def apply_printed_treatment(invoice,text,warnings):
         state=str(invoice.get('buyer_state') or '').strip()
         if state.casefold() in ('n/a','na','outside india','foreign country','overseas') or state.casefold() in EXPORT_COUNTRIES:
             invoice['buyer_state']='Outside India'
-            if state.casefold() in EXPORT_COUNTRIES:invoice.setdefault('buyer_country',EXPORT_COUNTRIES[state.casefold()])
+            if state.casefold() in EXPORT_COUNTRIES and EXPORT_COUNTRIES[state.casefold()]!='India':invoice.setdefault('buyer_country',EXPORT_COUNTRIES[state.casefold()])
         if not invoice.get('buyer_country'):
             # Country must be printed, not inferred from an overseas buyer's name.
             for line in text.splitlines():
@@ -51,7 +52,7 @@ def apply_printed_treatment(invoice,text,warnings):
                     if len(columns)!=2:continue
                     candidate=columns[1].rsplit(',',1)[-1].strip()
                     country=EXPORT_COUNTRIES.get(candidate.casefold())
-                    if country:invoice['buyer_country']=country;break
+                    if country and country!='India':invoice['buyer_country']=country;break
         return
     explicit_exempt=classification=='exempt' or simple=='EXEMPT' or bool(re.search(r'\bexempt supply\s*:\s*(?:no gst|gst exempt)|\bgst exempt\b',compact))
     explicit_nil=classification=='nil_rated' or simple in ('NIL','NIL RATED','NIL RATED SUPPLY')
