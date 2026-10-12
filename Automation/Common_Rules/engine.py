@@ -273,6 +273,12 @@ def export_xml_imports(client, config, invoices, masters, history):
              'masters':masters,'files':files,'import_order':files,
              'file_sha256':{name:hashlib.sha256((staging / name).read_bytes()).hexdigest() for name in files},
              'order':['unit','stock_group','ledger','stock_item','sales'],
+             'accounting_only_exports':[{'invoice_key':key,'number':inv['number'],
+                 'buyer_country':inv['buyer_country'],'export_mode':inv['export_mode'],
+                 'shipping_bill_port':inv.get('shipping_bill_port'),
+                 'notice':inv['export_accounting_notice']}
+                 for key,inv in invoices.items() if inv.get('accounting_only_export')],
+             'gst_return_mapping_verified':False,
              'warning':('DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. ' if config.get('demo_only') else '') + 'Import Masters.xml successfully before Sales_Vouchers.xml. Generation is not import confirmation. Verify GST in a dummy Tally company first.'})
         folder.mkdir(exist_ok=True)
         for file in staging.iterdir():

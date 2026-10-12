@@ -19,6 +19,23 @@ There is no extra standalone sales credit that would double the posting.
 
 ## Files generated per client
 
+### LUT export accounting entries
+
+For explicit exports under LUT without payment of IGST, the engine prepares a
+Sales voucher in Accounting Voucher View (`ISINVOICE: No`). The overseas debtor
+is debited and `Export Sales - LUT` is credited; zero GST is required. Customer
+country/address and the printed LUT/shipping reference are retained. These
+vouchers have no inventory allocations and no invented stock tax-rate masters.
+They do not reduce stock. The two uploaded export invoices were verified as
+balanced accounting XML for INR 30,000 and INR 45,000 respectively.
+
+Before filing, configure and check the export ledger's GST nature in your Tally
+release and verify the transactions in its GSTR-1 export section. This change
+does not claim automatic GSTR-1 mapping, customs/LUT validity or a successful
+Tally import. `manifest.json` lists `accounting_only_exports` and sets
+`gst_return_mapping_verified` to false. Export-specific official documentation
+could not be reached during this change; no unverified GST-nature tag was added.
+
 Run main.py after configuring the company and placing PDFs directly in the
 client folder. The engine creates:
 

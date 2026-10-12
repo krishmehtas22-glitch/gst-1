@@ -4,8 +4,9 @@ from .accounting import STATES, TAXES, money, sales_ledger
 
 
 def required_masters(inv, config):
+    is_export = inv['classification'] == 'export_lut'
     masters = [
-        {'kind':'ledger','name':inv['buyer_name'],'group':'Sundry Debtors','gstin':inv['buyer_gstin'], 'registration':inv['buyer_registration'], 'state':STATES[inv['buyer_state']], 'country':'India'},
+        {'kind':'ledger','name':inv['buyer_name'],'group':'Sundry Debtors','gstin':inv['buyer_gstin'], 'registration':inv['buyer_registration'], 'state':'Not Applicable' if is_export else STATES[inv['buyer_state']], 'country':inv['buyer_country'] if is_export else 'India'},
         {'kind':'ledger','name':sales_ledger(inv, config),'group':'Sales Accounts','classification':inv['classification']},
     ]
     for tax in TAXES:
@@ -14,6 +15,8 @@ def required_masters(inv, config):
     if money(inv['round_off']):
         masters.append({'kind':'ledger','name':config['ledgers']['round_off'],'group':'Indirect Expenses'})
     for item in inv['items']:
+        if is_export:
+            continue  # Accounting export vouchers do not create stock masters.
         unit = config.get('units', {}).get(item['unit'])
         if not unit or not all(unit.get(k) is not None for k in ('formal_name','uqc','decimal_places')):
             raise ValueError(f"Unit {item['unit']!r} needs formal_name, UQC and decimal_places in client.json")

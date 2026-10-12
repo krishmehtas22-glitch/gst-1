@@ -76,8 +76,9 @@ def parse_paired_layout(text):
             elif match[1] == 'EXEMPT' and 'Tax treatment: Exempt supply - no GST charged' in text:
                 put('classification','exempt')
             elif match[1] == 'EXPORT':
-                put('classification','export')
-                warnings.append('Export requires separate GST XML handling; details available for inspection')
+                put('classification','export_lut' if 'Export under LUT without payment of IGST' in text else 'export')
+                if 'Export under LUT without payment of IGST' not in text:
+                    warnings.append('Export mode is not explicitly LUT without payment of IGST')
             else:
                 warnings.append('Unsupported supply treatment: ' + match[1])
         if line.startswith('Currency:'):

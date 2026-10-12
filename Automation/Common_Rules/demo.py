@@ -95,8 +95,11 @@ def prepare_paired_demo(raw, config):
         raise ValueError('; '.join(raw['extraction_warnings']))
     if state_code(raw.get('seller_state','')) != config['demo_profile']['seller_state']:
         raise ValueError('Printed seller state does not match the demo company state')
-    if raw.get('supply') not in ('INTRA','INTER','EXEMPT'):
-        raise ValueError('This demo layout supports domestic INTRA, INTER and explicit EXEMPT supplies; exports need separate GST XML handling')
+    if raw.get('supply') not in ('INTRA','INTER','EXEMPT','EXPORT'):
+        raise ValueError('Unsupported supply treatment in this demo layout')
+    is_export = raw.get('supply') == 'EXPORT'
+    if is_export and (raw.get('classification') != 'export_lut' or raw.get('export_mode') != 'LUT_without_payment'):
+        raise ValueError('Only explicit LUT exports without payment of IGST are supported as accounting vouchers')
     inv = deepcopy(raw)
     inv['demo_only'] = True
     inv['demo_source_invoice'] = deepcopy(raw)
@@ -120,10 +123,12 @@ def prepare_paired_demo(raw, config):
             raise ValueError('Printed fictional buyer GSTIN/state needs review')
         change(inv,'buyer_gstin',test_gstin(buyer[:14]),'Checksum substitution for explicitly fictional test GSTIN')
         change(inv,'buyer_registration','Regular','Demo assumption: fictional registered buyer uses Regular registration')
+    elif is_export:
+        change(inv,'buyer_registration','Unregistered','Overseas buyer explicitly has no Indian GSTIN')
     elif inv.get('buyer_registration') != 'Unregistered':
         raise ValueError('Missing explicit buyer registration')
-    intra = state_code(inv['place_of_supply']) == config['demo_profile']['seller_state']
-    if raw['supply'] != 'EXEMPT' and intra != (raw['supply'] == 'INTRA'):
+    intra = False if is_export else state_code(inv['place_of_supply']) == config['demo_profile']['seller_state']
+    if raw['supply'] not in ('EXEMPT','EXPORT') and intra != (raw['supply'] == 'INTRA'):
         raise ValueError('Printed supply conflicts with seller state/place of supply')
     for index, item in enumerate(inv['items'],1):
         unit = next((unit for unit in config['units'] if unit.casefold() == item.get('unit','').casefold()),None)

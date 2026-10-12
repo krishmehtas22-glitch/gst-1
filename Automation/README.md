@@ -25,7 +25,8 @@ The app displays extracted invoice summaries and errors. Select an invoice and
 click **Review selected invoice** to correct fields/items in a form, then
 **Approve corrections and revalidate**. Approval binds the corrections to the
 exact PDF SHA256 and never bypasses GST, total, unit or master-conflict checks.
-Exports remain blocked even if their reviewed supply type is edited to domestic.
+Exports cannot be edited into domestic sales. Explicit LUT exports without
+payment of IGST now generate separate accounting vouchers, described below.
 
 Each distinct seller GSTIN gets a retained independent company under
 `.invoice_app/companies/`, with XML in that company's `imports` directory.
@@ -37,12 +38,17 @@ PDF to a different seller/mode is blocked to avoid creating a duplicate invoice
 in another company. Back up `.invoice_app` along with the original client data.
 Run the desktop app separately from earlier watcher launchers.
 
-The ten uploaded CLIENT 7 PDFs were checked end to end: eight domestic invoices
-produced eight vouchers with fourteen inventory lines across three companies.
+The ten uploaded CLIENT 7 PDFs were checked end to end: eight domestic item
+invoices and two LUT export accounting vouchers across three companies. The
+domestic invoices have fourteen inventory lines; export accounting vouchers
+debit the foreign customer and credit `Export Sales - LUT` without stock movement.
 NOS, ROLL, KG and SET have explicit unit mappings; unknown units need review and
-configuration. Two LUT export invoices retain their buyer/country/shipping fields
-for inspection but do not generate XML: export-specific GST handling is not yet
-implemented. Exempt classification follows the document's explicit printed
+configuration. Export buyer country, LUT mode and shipping references are retained
+in the records, voucher narration and manifest. The manifest explicitly marks
+`gst_return_mapping_verified: false`: correct GSTR-1 classification and inventory
+handling must be configured/checked in Tally; they are not established by these
+accounting vouchers. Exports with payment of IGST remain unsupported. Exempt
+classification follows the document's explicit printed
 statement; this is not an independent HSN exemption determination.
 
 Live TallyPrime import and the Windows desktop launcher are not validated in the
@@ -81,7 +87,7 @@ use explicit labelled fields and a table separated by pipes, tabs or two or more
 spaces. The supplied banner/BILL TO/invoice-grid layout is also supported.
 Other layouts, scanned/encrypted PDFs and uncertain values go to review.
 No OCR guesses or silent exemption classification are made. Discounts, cess,
-exports/SEZ, reverse charge and mixed taxable/exempt invoice rules need separate
+exports with payment of IGST/SEZ, reverse charge and mixed taxable/exempt invoice rules need separate
 implementation; they must not be forced through this phase's ordinary domestic
 sales rules. No direct Tally connection, automatic production import or GSTR-1
 filing is implemented.
@@ -123,7 +129,8 @@ values are recorded in `reports/demo_adjustments.json`. The desktop workflow use
 a distinct checksum-adjusted fictional seller identifier for each printed seller.
 Legacy demo configurations retain their configured seller/history and reject
 mixed-seller folders. Taxable INTRA/INTER and explicit EXEMPT supplies are
-supported; EXPORT and reverse charge remain in review.
+supported. Explicit LUT exports without payment of IGST generate accounting-only
+Sales vouchers; other export modes and reverse charge remain in review.
 
 ```powershell
 cd "F:\Downloads\dummy sales invoice"

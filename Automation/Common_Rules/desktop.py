@@ -5,6 +5,7 @@ import re
 import shutil
 
 from .accounting import gstin_valid, state_code
+from .accounting import EXPORT_ACCOUNTING_NOTICE
 from .demo import test_gstin
 from .engine import (discover, init_client, invoice_paths, process_client,
                      read_json, write_json)
@@ -47,6 +48,14 @@ def inspect_sources(root):
                     if saved.get('source_sha256') != digest or saved.get('approved') is not True:
                         raise ValueError('Review must be approved and match this PDF')
                     record['invoice'] = saved['invoice']
+                    original = record['source_invoice']
+                    if (record['invoice'].get('classification') == 'export' and
+                        original.get('classification') == 'export_lut' and
+                        record['invoice'].get('supply') == original.get('supply') == 'EXPORT' and
+                        record['invoice'].get('export_mode') == original.get('export_mode') == 'LUT_without_payment'):
+                        # Older approved reviews used the general export label;
+                        # normalize it only when the PDF explicitly states LUT.
+                        record['invoice'] = {**record['invoice'],'classification':'export_lut'}
                     record['reviewed'] = True
                     record['errors'] = []
                 record['errors'].extend(record['invoice'].get('extraction_warnings',[]))
@@ -78,9 +87,9 @@ def process_sources(root, demo=True):
     for record in records:
         raw = record['invoice']
         try:
-            if record.get('source_invoice',{}).get('supply') == 'EXPORT':
-                record['errors'] = ['Export extracted for inspection; export-specific GST XML is not implemented']
-                continue
+            source = record.get('source_invoice',{})
+            if source.get('supply') == 'EXPORT' and (raw.get('supply') != 'EXPORT' or raw.get('classification') != source.get('classification') or raw.get('export_mode') != source.get('export_mode')):
+                raise ValueError('Reviewed export treatment must match the source PDF; it cannot be changed to a domestic sale')
             if record['errors']:
                 continue
             if not record.get('digest'):
@@ -89,8 +98,10 @@ def process_sources(root, demo=True):
                 raise ValueError('Select real-invoice mode for real documents; dummy mode requires explicit fictional markers')
             if not demo and raw.get('dummy_document'):
                 raise ValueError('This document is explicitly fictional; use dummy mode')
-            if raw.get('supply') == 'EXPORT' or raw.get('classification') == 'export':
-                raise ValueError('Export extracted for inspection; export-specific GST XML is not implemented')
+            if raw.get('supply') == 'EXPORT':
+                if raw.get('classification') != 'export_lut' or raw.get('export_mode') != 'LUT_without_payment':
+                    raise ValueError('Only explicit LUT without payment exports are supported as accounting vouchers')
+                record['notices'] = [EXPORT_ACCOUNTING_NOTICE]
             seller = raw.get('seller_gstin','').upper()
             name = raw.get('seller_name','').strip()
             if not name or not seller:
@@ -157,6 +168,8 @@ def process_sources(root, demo=True):
                 if report['issues'] and not record['errors']:
                     record['errors'].extend(error for issue in report['issues'] if not issue.get('source') for error in issue.get('errors',[]))
                 record['export'] = report['export']
+                if record['invoice'].get('classification') == 'export_lut' and not record['errors']:
+                    record['export'] = 'Export accounting voucher prepared; verify GST in Tally'
         except Exception as exc:
             for record in group:
                 record['errors'].append(str(exc))

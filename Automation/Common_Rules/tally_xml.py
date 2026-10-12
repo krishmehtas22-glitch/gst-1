@@ -9,7 +9,7 @@ from decimal import Decimal
 import uuid
 import xml.etree.ElementTree as ET
 
-from .accounting import STATES, TAXES, accounting_entries, cents, money, sales_ledger
+from .accounting import STATES, TAXES, EXPORT_ACCOUNTING_NOTICE, accounting_entries, cents, money, sales_ledger
 from .masters import identity, required_masters
 
 HEADS = {'cgst':'Central Tax','sgst':'State Tax','igst':'Integrated Tax'}
@@ -128,8 +128,8 @@ def masters_document(config, masters, invoices):
     return root
 
 
-def allocation(parent, entry, number, party=False):
-    node = ET.SubElement(parent,'LEDGERENTRIES.LIST')
+def allocation(parent, entry, number, party=False, entries_tag='LEDGERENTRIES.LIST'):
+    node = ET.SubElement(parent,entries_tag)
     amount = cents(money(entry['credit']) - money(entry['debit']))
     text(node,'LEDGERNAME',entry['ledger'])
     text(node,'ISDEEMEDPOSITIVE','Yes' if amount < 0 else 'No')
@@ -148,27 +148,43 @@ def sales_document(config, invoices):
     if config.get('demo_only'):
         root.insert(0,ET.Comment(' DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. '))
     for key, inv in sorted(invoices.items(),key=lambda entry:(entry[1]['date'],entry[0])):
+        is_export = inv['classification'] == 'export_lut'
+        view = 'Accounting Voucher View' if is_export else 'Invoice Voucher View'
         remote_id = str(uuid.uuid5(uuid.NAMESPACE_URL,config['company_id'] + '|' + key))
-        voucher = ET.SubElement(message(data),'VOUCHER',{'REMOTEID':remote_id,'VCHTYPE':'Sales','ACTION':'Create','OBJVIEW':'Invoice Voucher View'})
+        voucher = ET.SubElement(message(data),'VOUCHER',{'REMOTEID':remote_id,'VCHTYPE':'Sales','ACTION':'Create','OBJVIEW':view})
         for name,value in {
             'DATE':inv['date'].replace('-',''),'EFFECTIVEDATE':inv['date'].replace('-',''),
             'GUID':remote_id,'VOUCHERTYPENAME':'Sales','VOUCHERNUMBER':inv['number'],
             'REFERENCE':inv['number'],'REFERENCEDATE':inv['date'].replace('-',''),
             'PARTYLEDGERNAME':inv['buyer_name'],'PARTYNAME':inv['buyer_name'],
-            'BASICBUYERNAME':inv['buyer_name'],'PERSISTEDVIEW':'Invoice Voucher View',
-            'ISINVOICE':'Yes','ISOPTIONAL':'No','ISCANCELLED':'No',
+            'BASICBUYERNAME':inv['buyer_name'],'PERSISTEDVIEW':view,
+            'ISINVOICE':'No' if is_export else 'Yes','ISOPTIONAL':'No','ISCANCELLED':'No',
             'GSTREGISTRATIONTYPE':inv['buyer_registration'],
-            'PLACEOFSUPPLY':STATES[inv['place_of_supply']],
-            'STATENAME':STATES[inv['buyer_state']],'COUNTRYOFRESIDENCE':'India',
+            'PLACEOFSUPPLY':'Outside India' if is_export else STATES[inv['place_of_supply']],
+            'STATENAME':'Not Applicable' if is_export else STATES[inv['buyer_state']],
+            'COUNTRYOFRESIDENCE':inv['buyer_country'] if is_export else 'India',
             'NARRATION':('DEMO ONLY; synthetic GSTINs and assumed fields. ' if config.get('demo_only') else '') + f"Sales invoice {inv['number']}; source {inv['source']}",
         }.items():
             text(voucher,name,value)
+        if inv.get('buyer_address'):
+            address = ET.SubElement(voucher,'BASICBUYERADDRESS.LIST',{'TYPE':'String'})
+            text(address,'BASICBUYERADDRESS',inv['buyer_address'])
+        if is_export:
+            narration = voucher.find('NARRATION')
+            narration.text += ('; EXPORT UNDER LUT WITHOUT PAYMENT OF IGST; country '+inv['buyer_country']+
+                               '; shipping bill/port '+str(inv.get('shipping_bill_port','not provided'))+
+                               '; '+EXPORT_ACCOUNTING_NOTICE)
         if inv['buyer_gstin']:
             text(voucher,'PARTYGSTIN',inv['buyer_gstin'])
         entries = accounting_entries(inv,config)
         # The sales credit is in each inventory item's accounting allocation.
         # Adding a second standalone sales credit would double-post it.
-        allocation(voucher,entries[0],inv['number'],party=True)
+        allocation(voucher,entries[0],inv['number'],party=True,
+                   entries_tag='ALLLEDGERENTRIES.LIST' if is_export else 'LEDGERENTRIES.LIST')
+        if is_export:
+            for entry in entries[1:]:
+                allocation(voucher,entry,inv['number'],entries_tag='ALLLEDGERENTRIES.LIST')
+            continue
         for entry in entries[2:]:
             allocation(voucher,entry,inv['number'])
         for item in inv['items']:
@@ -197,16 +213,28 @@ def verify_sales(root, invoices, config):
     vouchers = root.findall('./BODY/IMPORTDATA/REQUESTDATA/TALLYMESSAGE/VOUCHER')
     if len(vouchers) != len(invoices):
         raise ValueError('XML voucher count does not match validated invoices')
+    expected = {str(uuid.uuid5(uuid.NAMESPACE_URL,config['company_id']+'|'+key)):inv for key,inv in invoices.items()}
     for voucher in vouchers:
         if voucher.get('ACTION') != 'Create' or voucher.findtext('VOUCHERTYPENAME') != 'Sales':
             raise ValueError('Only Create Sales vouchers may be generated')
-        entries = voucher.findall('LEDGERENTRIES.LIST')
+        entries = voucher.findall('LEDGERENTRIES.LIST')+voucher.findall('ALLLEDGERENTRIES.LIST')
         items = voucher.findall('ALLINVENTORYENTRIES.LIST')
         credits = sum(money(e.findtext('AMOUNT')) for e in entries)
         credits += sum(money(a.findtext('AMOUNT')) for i in items for a in i.findall('ACCOUNTINGALLOCATIONS.LIST'))
         if credits != Decimal('0'):
             raise ValueError('XML inventory and ledger allocations do not balance exactly')
-        if any(e.findtext('LEDGERNAME') in {config['ledgers'][k] for k in TAXABILITY} for e in entries):
+        inv = expected.get(voucher.get('REMOTEID'))
+        if inv is None:
+            raise ValueError('XML voucher does not match its input invoice identity')
+        is_export = inv['classification'] == 'export_lut'
+        if is_export:
+            if items or voucher.findall('LEDGERENTRIES.LIST') or voucher.get('OBJVIEW') != 'Accounting Voucher View' or voucher.findtext('ISINVOICE') != 'No':
+                raise ValueError('LUT export must use accounting view with no inventory movement')
+            actual = [(e.findtext('LEDGERNAME'),cents(e.findtext('AMOUNT'))) for e in entries]
+            desired = [(e['ledger'],cents(money(e['credit'])-money(e['debit']))) for e in accounting_entries(inv,config)]
+            if actual != desired:
+                raise ValueError('Export XML ledger allocations do not match the validated accounting entry')
+        if not is_export and any(e.findtext('LEDGERNAME') in {config['ledgers'][k] for k in TAXABILITY} for e in entries):
             raise ValueError('Sales ledger was posted outside inventory accounting allocation')
         for item in items:
             if sum(money(a.findtext('AMOUNT')) for a in item.findall('ACCOUNTINGALLOCATIONS.LIST')) != money(item.findtext('AMOUNT')):

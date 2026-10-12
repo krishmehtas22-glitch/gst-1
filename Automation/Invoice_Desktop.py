@@ -13,6 +13,7 @@ from Common_Rules.watcher import source_signature
 FIELDS = ['number','date','seller_name','seller_gstin','seller_state','seller_address',
           'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address',
           'place_of_supply','supply','classification','buyer_country',
+          'export_mode','shipping_bill_port',
           'taxable','cgst','sgst','igst','round_off','total']
 ITEM_FIELDS = ['name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate']
 
@@ -142,7 +143,7 @@ class InvoiceApp:
         record = self.selected()
         self.detail.delete('1.0','end')
         if record:
-            self.detail.insert('end',record['path']+'\n'+'\n'.join(record['errors'])+'\nOutput: '+record.get('company_path','Not generated'))
+            self.detail.insert('end',record['path']+'\n'+'\n'.join(record['errors']+record.get('notices',[]))+'\nOutput: '+record.get('company_path','Not generated'))
 
     def open_output(self):
         record = self.selected()
@@ -189,7 +190,7 @@ class InvoiceApp:
         form = ttk.Frame(canvas,padding=10)
         canvas.create_window((0,0),window=form,anchor='nw')
         form.bind('<Configure>',lambda event:canvas.configure(scrollregion=canvas.bbox('all')))
-        ttk.Label(form,text='Compare all fields with the source PDF before approving. Unsupported export treatment stays in review.').grid(row=0,column=0,columnspan=4,sticky='w')
+        ttk.Label(form,text='Compare all fields with the PDF. LUT exports generate accounting vouchers; inventory and GST reporting require checking in Tally.').grid(row=0,column=0,columnspan=4,sticky='w')
         values = {}
         invoice = record['invoice']
         for index,field in enumerate(FIELDS):

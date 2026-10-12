@@ -21,15 +21,15 @@ def setup_files(root):
     return folder
 
 
-def test_ten_uploaded_pdfs_eight_domestic_vouchers_three_sellers(tmp_path):
+def test_ten_uploaded_pdfs_domestic_and_export_accounting_three_sellers(tmp_path):
     folder = setup_files(tmp_path)
     hashes = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.glob('*.pdf')}
     records = process_sources(tmp_path)
     assert len(records) == 10
     accepted = [r for r in records if not r['errors']]
-    assert len(accepted) == 8
+    assert len(accepted) == 10
     rejected = [r for r in records if r['errors']]
-    assert all('EXPORT' in Path(r['path']).name for r in rejected)
+    assert rejected == []
     companies = {Path(r['company_path']) for r in accepted}
     assert len(companies) == 3
     vouchers = []
@@ -40,26 +40,26 @@ def test_ten_uploaded_pdfs_eight_domestic_vouchers_three_sellers(tmp_path):
         doc = ET.parse(company/'imports/Sales_Vouchers.xml')
         vouchers.extend(doc.findall('.//VOUCHER'))
         assert read_json(company/'imports/manifest.json')['valid_for_import'] is True
-    assert len(vouchers) == 8
+    assert len(vouchers) == 10
     assert sum(len(v.findall('ALLINVENTORYENTRIES.LIST')) for v in vouchers) == 14
     assert {v.findtext('VOUCHERNUMBER') for v in vouchers} == {r['invoice']['number'] for r in accepted}
-    assert all(v.findtext('PLACEOFSUPPLY') != 'Outside India' for v in vouchers)
+    assert len([v for v in vouchers if v.findtext('PLACEOFSUPPLY') == 'Outside India']) == 2
     original_configs = {str(p): (p/'client.json').read_bytes() for p in companies}
     again = process_sources(tmp_path)
-    assert sum(not r['errors'] for r in again) == 8
+    assert sum(not r['errors'] for r in again) == 10
     assert original_configs == {str(p): (p/'client.json').read_bytes() for p in companies}
     assert hashes == {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.glob('*.pdf')}
     assert not (folder/'client.json').exists()
 
 
-def test_exports_keep_details_for_inspection_without_xml(tmp_path):
+def test_exports_keep_details_for_inspection(tmp_path):
     folder = setup_files(tmp_path)
     records = inspect_sources(tmp_path)
     exports = [r for r in records if 'EXPORT' in r['path']]
     assert len(exports) == 2
     assert {r['invoice']['buyer_country'] for r in exports} == {'UAE','USA'}
     assert {r['invoice']['total'] for r in exports} == {'30000.00','45000.00'}
-    assert all(r['invoice']['items'] and r['errors'] for r in exports)
+    assert all(r['invoice']['items'] and not r['errors'] for r in exports)
 
 
 def test_digest_bound_review_corrects_and_revalidates(tmp_path):
@@ -109,7 +109,7 @@ def test_export_cannot_be_approved_as_domestic_by_editing_treatment(tmp_path):
     edited.update(supply='INTRA',classification='taxable',extraction_warnings=[])
     save_review(tmp_path,record,edited)
     report = next(r for r in process_sources(tmp_path) if '005_EXPORT' in r['path'])
-    assert any('export-specific' in error for error in report['errors'])
+    assert any('cannot be changed' in error for error in report['errors'])
     assert not report.get('company_path')
 
 
