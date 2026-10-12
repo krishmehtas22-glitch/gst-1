@@ -41,8 +41,11 @@ Use the **Client folder** dropdown to inspect just CLIENT 8 or CLIENT 9 rather
 than the older sample folders. **All clients** remains the default. Outputs are
 still company-based retained pending batches: selecting a source folder does not
 delete a company's other pending invoices or confirmed history.
-Exports cannot be edited into domestic sales. Explicit LUT exports without
-payment of IGST now generate separate accounting vouchers, described below.
+The review form offers dropdown choices for GST classification, registration,
+supply and export mode. These choices correct a particular invoice; they do not
+teach the reader a new layout. Exports cannot be edited into domestic sales or
+changed between LUT and IGST payment modes. Explicit exports generate accounting
+vouchers, described below.
 
 Each distinct seller GSTIN gets a retained independent company under
 `.invoice_app/companies/`, with XML in that company's `imports` directory.
@@ -71,7 +74,11 @@ configuration. Export buyer country, LUT mode and shipping references are retain
 in the records, voucher narration and manifest. The manifest explicitly marks
 `gst_return_mapping_verified: false`: correct GSTR-1 classification and inventory
 handling must be configured/checked per voucher in Tally; they are not established by these
-accounting vouchers. Exports with payment of IGST remain unsupported. Exempt
+accounting vouchers. Explicit exports with payment of IGST are supported as
+accounting vouchers too: credit Sales for the taxable value, credit Output IGST
+for the printed tax, and debit the foreign customer for the gross total. CGST
+and SGST must be zero, IGST must be positive and reconcile to the item rates.
+Exempt
 classification follows the document's explicit printed
 statement; this is not an independent HSN exemption determination.
 
@@ -83,6 +90,26 @@ buyer state from the printed GSTIN, an explicit exempt statement, and the
 equivalent LUT wording "without payment of integrated tax". The export country
 is read from the printed address when it is explicitly UAE/USA. Other missing
 countries still require review.
+
+The CLIENT 11 seller/invoice and buyer/supply panels also support wrapped
+paragraphs and several labels separated by a single space. The reader keeps
+left/right columns separate before reading fields. Seller names are corroborated
+by the explicit signatory footer; buyer names use a repeated name/address anchor.
+Absent or conflicting name anchors require review rather than a guessed name.
+The explicit synthetic-document notice is recognized in dummy mode. A single
+item with omitted GST percentages can recover component rates from its printed
+tax totals only when its value reconciles to the invoice taxable total and the
+calculated rates reproduce every component amount. This evidence is displayed
+in the selected invoice's details. Multi-item totals without item rates still
+require review. Neither calculation nor HSN alone establishes the legal rate.
+
+All ten uploaded CLIENT 11 PDFs extract seller, buyer, GSTINs, dates, items and
+totals. Eight prepare immediately, including LUT and IGST-paid exports. The
+remaining two say "exempt / nil-rated" in their remarks: select/confirm the
+classification in Review. After approving them as exempt, the verified XML has
+ten vouchers: Sales INR 121,200, CGST INR 2,316, SGST INR 2,316, IGST INR 10,074
+and customer debits INR 135,906. Replacing program files does not change vouchers
+already imported in Tally.
 
 Duplicate comparison now uses validated accounting facts, not PDF layout or
 extraction audit details. Older stored hashes are checked against their retained
@@ -311,8 +338,9 @@ accounting amounts. Round off up to Rs 1 needs a separate mapped ledger.
 Copy it to `reviews/<same SHA256>.json`, correct its canonical `invoice` fields,
 remove extraction_warnings after resolving them, and set `approved` to true.
 Keep `source_sha256` unchanged. Review never bypasses accounting validation.
-For scanned PDFs, fill the canonical record from the PDF manually; no OCR is
-bundled. `Automation/examples/review_record.example.json` is a blank record and
+For scanned PDFs, install the optional OCR dependencies used by the desktop
+launcher or fill the canonical record from the PDF manually. OCR records require
+approval. `Automation/examples/review_record.example.json` is a blank record and
 `validated_invoices.json` shows the canonical format after parsing.
 
 ## Outputs, duplicates and imports

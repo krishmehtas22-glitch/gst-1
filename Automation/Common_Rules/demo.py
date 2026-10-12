@@ -2,7 +2,7 @@
 from copy import deepcopy
 import re
 
-from .accounting import TAXES, gstin_valid, money, state_code
+from .accounting import TAXES, EXPORT_MODES, gstin_valid, money, state_code
 
 
 def test_gstin(base):
@@ -21,7 +21,7 @@ def test_gstin(base):
 
 
 def prepare_demo_invoice(raw, config):
-    if raw.get('source_layout') == 'paired_columns_v1':
+    if raw.get('source_layout') in ('paired_columns_v1','section_panels_v1'):
         return prepare_paired_demo(raw, config)
     if config['demo_profile'].get('version') != 1:
         raise ValueError('This seller-specific demo configuration requires the paired seller/buyer layout')
@@ -98,8 +98,8 @@ def prepare_paired_demo(raw, config):
     if raw.get('supply') not in ('INTRA','INTER','EXEMPT','EXPORT'):
         raise ValueError('Unsupported supply treatment in this demo layout')
     is_export = raw.get('supply') == 'EXPORT'
-    if is_export and (raw.get('classification') != 'export_lut' or raw.get('export_mode') != 'LUT_without_payment'):
-        raise ValueError('Only explicit LUT exports without payment of IGST are supported as accounting vouchers')
+    if is_export and raw.get('export_mode') != EXPORT_MODES.get(raw.get('classification'),False):
+        raise ValueError('Export requires an explicit matching LUT/IGST payment mode')
     inv = deepcopy(raw)
     inv['demo_only'] = True
     inv['demo_source_invoice'] = deepcopy(raw)

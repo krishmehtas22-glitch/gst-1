@@ -17,6 +17,12 @@ FIELDS = ['number','date','seller_name','seller_gstin','seller_state','seller_ad
           'export_mode','shipping_bill_port',
           'taxable','cgst','sgst','igst','round_off','total']
 ITEM_FIELDS = ['name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate']
+REVIEW_CHOICES = {
+    'classification': ('taxable','exempt','nil_rated','non_gst','export_lut','export_igst'),
+    'buyer_registration': ('Regular','Composition','Unregistered','Consumer'),
+    'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
+    'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
+}
 
 
 class InvoiceApp:
@@ -182,7 +188,9 @@ class InvoiceApp:
         record = self.selected()
         self.detail.delete('1.0','end')
         if record:
+            evidence=record['invoice'].get('rate_evidence')
             self.detail.insert('end',record['path']+'\n'+'\n'.join(record['errors']+record.get('notices',[]))+
+                ('\n'+evidence if evidence else '')+
                 '\nCompany pending batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
                 '\nOutput: '+record.get('company_path','Not generated'))
 
@@ -231,14 +239,18 @@ class InvoiceApp:
         form = ttk.Frame(canvas,padding=10)
         canvas.create_window((0,0),window=form,anchor='nw')
         form.bind('<Configure>',lambda event:canvas.configure(scrollregion=canvas.bbox('all')))
-        ttk.Label(form,text='Compare all fields with the PDF. LUT exports generate accounting vouchers; inventory and GST reporting require checking in Tally.').grid(row=0,column=0,columnspan=4,sticky='w')
+        ttk.Label(form,text='Compare all fields with the PDF. Export vouchers have no inventory movement; verify export GST reporting in Tally.').grid(row=0,column=0,columnspan=4,sticky='w')
         values = {}
         invoice = record['invoice']
         for index,field in enumerate(FIELDS):
             row,col = index//2+1,(index%2)*2
             ttk.Label(form,text=field.replace('_',' ').title()).grid(row=row,column=col,sticky='w',padx=5)
             values[field] = tk.StringVar(value=str(invoice.get(field,'0' if field == 'round_off' else '')))
-            ttk.Entry(form,textvariable=values[field],width=38).grid(row=row,column=col+1,pady=3)
+            if field in REVIEW_CHOICES:
+                widget=ttk.Combobox(form,textvariable=values[field],values=REVIEW_CHOICES[field],width=36)
+            else:
+                widget=ttk.Entry(form,textvariable=values[field],width=38)
+            widget.grid(row=row,column=col+1,pady=3)
         base = len(FIELDS)//2+3
         item_frame = ttk.Frame(form)
         item_frame.grid(row=base,column=0,columnspan=4,sticky='w')

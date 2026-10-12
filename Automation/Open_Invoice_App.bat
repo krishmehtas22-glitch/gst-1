@@ -5,6 +5,8 @@ echo Starting invoice application from "%CD%"
 if not exist "Invoice_Desktop.py" goto incomplete
 if not exist "Common_Rules\desktop.py" goto incomplete
 if not exist "Common_Rules\ocr.py" goto incomplete
+if not exist "Common_Rules\paired_layout.py" goto incomplete
+if not exist "Common_Rules\section_layout.py" goto incomplete
 if not exist "requirements-ocr.txt" goto incomplete
 if not exist ".venv\Scripts\python.exe" (
     py -3 -m venv .venv

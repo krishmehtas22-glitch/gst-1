@@ -1,10 +1,10 @@
 """Plan master dependencies without overwriting existing company records."""
 from decimal import Decimal
-from .accounting import STATES, TAXES, money, sales_ledger
+from .accounting import STATES, TAXES, EXPORT_MODES, money, sales_ledger
 
 
 def required_masters(inv, config):
-    is_export = inv['classification'] == 'export_lut'
+    is_export = inv['classification'] in EXPORT_MODES
     masters = [
         {'kind':'ledger','name':inv['buyer_name'],'group':'Sundry Debtors','gstin':inv['buyer_gstin'], 'registration':inv['buyer_registration'], 'state':'Not Applicable' if is_export else STATES[inv['buyer_state']], 'country':inv['buyer_country'] if is_export else 'India'},
         {'kind':'ledger','name':sales_ledger(inv, config),'group':'Sales Accounts','classification':'taxable' if config.get('unified_sales_ledger') else inv['classification']},

@@ -9,7 +9,8 @@ STATES = dict(zip(
     ['01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','26','27','29','30','31','32','33','34','35','36','37','38'],
     ['Jammu and Kashmir','Himachal Pradesh','Punjab','Chandigarh','Uttarakhand','Haryana','Delhi','Rajasthan','Uttar Pradesh','Bihar','Sikkim','Arunachal Pradesh','Nagaland','Manipur','Mizoram','Tripura','Meghalaya','Assam','West Bengal','Jharkhand','Odisha','Chhattisgarh','Madhya Pradesh','Gujarat','Dadra and Nagar Haveli and Daman and Diu','Maharashtra','Karnataka','Goa','Lakshadweep','Kerala','Tamil Nadu','Puducherry','Andaman and Nicobar Islands','Telangana','Andhra Pradesh','Ladakh']))
 TAXES = ('cgst', 'sgst', 'igst')
-EXPORT_ACCOUNTING_NOTICE = ('LUT export accounting voucher only: no inventory movement. '
+EXPORT_MODES = {'export_lut':'LUT_without_payment','export_igst':'with_payment_of_IGST'}
+EXPORT_ACCOUNTING_NOTICE = ('Export accounting voucher only: no inventory movement. '
     'Configure/check the export sales ledger GST nature and GSTR-1 treatment in Tally before filing.')
 EXPORT_COUNTRIES = {'uae':'United Arab Emirates','united arab emirates':'United Arab Emirates',
     'usa':'United States of America','us':'United States of America',
@@ -107,14 +108,14 @@ def validate(raw, config):
             errors.append('Invalid buyer GSTIN (format, state or checksum)')
         if inv['buyer_gstin'] and inv['buyer_registration'] in ('Unregistered','Consumer'):
             errors.append('Buyer GSTIN conflicts with unregistered classification')
-        is_export = inv['classification'] == 'export_lut'
+        is_export = inv['classification'] in EXPORT_MODES
         if is_export:
-            if inv.get('supply') != 'EXPORT' or inv.get('export_mode') != 'LUT_without_payment':
-                errors.append('Export accounting requires explicit EXPORT supply and LUT without payment of IGST')
+            if inv.get('supply') != 'EXPORT' or inv.get('export_mode') != EXPORT_MODES[inv['classification']]:
+                errors.append('Export accounting requires explicit EXPORT supply and a matching LUT/IGST payment mode')
             if str(inv['place_of_supply']).casefold() != 'outside india':
                 errors.append('Export place of supply must be Outside India')
             if inv['buyer_gstin'] or inv['buyer_registration'] != 'Unregistered':
-                errors.append('LUT export requires an overseas buyer without an Indian GSTIN')
+                errors.append('Export requires an overseas buyer without an Indian GSTIN')
             if str(inv.get('buyer_state','')).casefold() not in ('n/a','outside india',''):
                 errors.append('Overseas buyer must not have an Indian buyer state')
             country = str(inv.get('buyer_country','')).strip()
@@ -135,7 +136,7 @@ def validate(raw, config):
             inv['buyer_state'] = inv['buyer_gstin'][:2]
         elif not is_export:
             errors.append('Buyer state required for master creation')
-        if inv['classification'] not in ('taxable','exempt','nil_rated','non_gst','export_lut'):
+        if inv['classification'] not in ('taxable','exempt','nil_rated','non_gst',*EXPORT_MODES):
             errors.append('Uncertain GST classification')
         inv['taxable'] = str(cents(inv['taxable']))
         inv['total'] = str(cents(inv['total']))
@@ -146,8 +147,12 @@ def validate(raw, config):
             if tax not in inv:
                 errors.append(f'Missing explicit {tax} amount (enter 0 if absent after review)')
             inv[tax] = str(cents(inv.get(tax, 0)))
-            if is_export and money(inv[tax]):
+            if inv['classification']=='export_lut' and money(inv[tax]):
                 errors.append('LUT without payment export must have zero '+tax.upper())
+            if inv['classification']=='export_igst' and tax in ('cgst','sgst') and money(inv[tax]):
+                errors.append('Export with IGST must not charge '+tax.upper())
+        if inv['classification']=='export_igst' and money(inv['igst'])<=0:
+            errors.append('Export with payment of IGST requires a positive IGST amount')
         normalized = []
         sums = {tax: Decimal('0') for tax in TAXES}
         for index, item in enumerate(inv['items'], 1):
@@ -183,9 +188,9 @@ def validate(raw, config):
             if not intra and (money(item['cgst_rate']) or money(item['sgst_rate'])):
                 errors.append(f'Item {index}: inter-state sale has CGST/SGST')
             rate_sum = sum(money(item[f'{t}_rate']) for t in TAXES)
-            if inv['classification'] == 'taxable' and rate_sum == 0:
+            if inv['classification'] in ('taxable','export_igst') and rate_sum == 0:
                 errors.append(f'Item {index}: taxable classification requires a GST rate')
-            if inv['classification'] != 'taxable' and rate_sum:
+            if inv['classification'] not in ('taxable','export_igst') and rate_sum:
                 errors.append(f'Item {index}: non-taxable classification conflicts with GST')
             normalized.append(item)
         inv['items'] = normalized
@@ -207,9 +212,10 @@ def validate(raw, config):
 def sales_ledger(inv, config):
     if config.get('unified_sales_ledger'):
         return config['ledgers']['taxable']
-    if inv['classification'] == 'export_lut':
-        name = config['ledgers'].get('export_lut','Export Sales - LUT')
-        if not name.strip() or any(name.casefold()==other.casefold() for key,other in config['ledgers'].items() if key != 'export_lut'):
+    if inv['classification'] in EXPORT_MODES:
+        kind=inv['classification']
+        name = config['ledgers'].get(kind,'Export Sales - LUT' if kind=='export_lut' else 'Export Sales - IGST')
+        if not name.strip() or any(name.casefold()==other.casefold() for key,other in config['ledgers'].items() if key != kind):
             raise ValueError('Export sales ledger must have a distinct nonempty name')
         return name
     return config['ledgers'][inv['classification']]
@@ -217,7 +223,7 @@ def sales_ledger(inv, config):
 
 def export_notice(config):
     if config.get('unified_sales_ledger'):
-        return ('LUT export accounting voucher only: no inventory movement. '
+        return ('Export accounting voucher only: no inventory movement. '
                 'Check the export GST nature on this voucher and verify GSTR-1 in Tally; '
                 'do not change the shared Sales ledger to export-only GST treatment.')
     return EXPORT_ACCOUNTING_NOTICE

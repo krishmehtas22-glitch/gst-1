@@ -4,6 +4,7 @@ import re
 from pypdf import PdfReader
 from .accounting import money
 from .paired_layout import parse_paired_layout
+from .section_layout import parse_section_layout
 from .ocr import MARKER, read_page
 
 FIELDS = {
@@ -11,7 +12,7 @@ FIELDS = {
     'date': ('invoice date', 'date', 'dated', 'inv date'),
     'seller_name': ('seller', 'seller name', 'supplier', 'supplier name'),
     'seller_gstin': ('seller gstin', 'supplier gstin'),
-    'buyer_name': ('buyer', 'buyer name', 'customer', 'customer name', 'bill to', 'billed to', 'recipient'),
+    'buyer_name': ('buyer', 'buyer name', 'customer', 'customer name', 'bill to', 'billed to', 'recipient', 'recipient name', 'purchaser'),
     'buyer_gstin': ('buyer gstin', 'customer gstin'),
     'buyer_registration': ('buyer registration', 'registration type', 'buyer registration type'),
     'buyer_state': ('buyer state', 'customer state'),
@@ -26,9 +27,9 @@ HEADERS = {
     'name': ('item', 'item name', 'description', 'product', 'particulars', 'description of goods', 'goods description', 'product description'),
     'hsn': ('hsn', 'hsn/sac', 'sac', 'hsn code'),
     'quantity': ('qty', 'qty.', 'quantity'),
-    'unit': ('unit', 'uom', 'units', 'u/q'),
-    'rate': ('rate', 'unit rate', 'price'),
-    'value': ('value', 'taxable value', 'taxable amount', 'amount', 'item value', 'net amount'),
+    'unit': ('unit', 'uom', 'units', 'u/q', 'uqc'),
+    'rate': ('rate', 'unit rate', 'price', 'rate (inr)', 'unit price'),
+    'value': ('value', 'taxable value', 'taxable amount', 'amount', 'item value', 'net amount', 'taxable (inr)'),
     'cgst_rate': ('cgst %', 'cgst rate', 'cgst%'),
     'sgst_rate': ('sgst %', 'sgst rate', 'sgst%'),
     'igst_rate': ('igst %', 'igst rate', 'igst%'),
@@ -64,7 +65,7 @@ def split_label_lines(text):
     lines = []
     original = text.splitlines()
     for index,line in enumerate(original):
-        segments = re.split(rf'\s{{2,}}(?=(?:{pattern})\s*[:=])',line,flags=re.I)
+        segments = re.split(rf'\s+(?=(?:{pattern})\s*[:=])',line,flags=re.I)
         for segment in segments:
             lines.append(segment)
             if re.fullmatch(rf'\s*(?:{pattern})\s*[:=]?\s*',segment,re.I) and index+1<len(original):
@@ -187,7 +188,9 @@ def normalize_ocr_labels(text):
 def parse_text(text):
     if MARKER in text:
         text = normalize_ocr_labels(text)
-    paired = parse_paired_layout(text)
+    paired = parse_section_layout(text, HEADERS)
+    if paired is None:
+        paired = parse_paired_layout(text)
     if paired is not None:
         if MARKER in text:
             paired['source_ocr'] = True

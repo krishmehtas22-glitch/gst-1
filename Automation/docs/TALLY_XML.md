@@ -19,7 +19,7 @@ There is no extra standalone sales credit that would double the posting.
 
 ## Files generated per client
 
-### LUT export accounting entries
+### Export accounting entries
 
 For explicit exports under LUT without payment of IGST, the engine prepares a
 Sales voucher in Accounting Voucher View (`ISINVOICE: No`). The overseas debtor
@@ -29,6 +29,14 @@ country/address and the printed LUT/shipping reference are retained. These
 vouchers have no inventory allocations and no invented stock tax-rate masters.
 They do not reduce stock. The two uploaded export invoices were verified as
 balanced accounting XML for INR 30,000 and INR 45,000 respectively.
+
+Explicit exports with payment of IGST use the same accounting view: debit the
+foreign customer for the gross total, credit Sales for the taxable value and
+credit Output IGST for the tax. CGST/SGST must be zero. The CLIENT 11 example
+debits INR 42,480, credits Sales INR 36,000 and credits Output IGST INR 6,480.
+LUT/IGST mode, country and shipping reference stay in the voucher narration and
+manifest. These export vouchers still have no inventory movement and do not
+claim automatic GSTR-1 classification.
 
 Before filing, check each export voucher's GST nature in your Tally
 release and verify the transactions in its GSTR-1 export section. Do not set the

@@ -6,7 +6,7 @@ import shutil
 import uuid
 
 from .accounting import gstin_valid, state_code
-from .accounting import export_notice, invoice_key
+from .accounting import EXPORT_MODES, export_notice, invoice_key
 from .demo import test_gstin
 from .engine import (discover, init_client, invoice_paths, process_client,
                      read_json, write_json)
@@ -19,7 +19,7 @@ UNITS = {
     'SET': {'formal_name':'Sets','uqc':'SET','decimal_places':0},
 }
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','paired_layout.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','paired_layout.py','section_layout.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):
@@ -39,6 +39,9 @@ def refresh_review(source, saved):
     if not isinstance(original,dict) or source.get('source_ocr'):
         return dict(reviewed)
     refreshed=dict(source)
+    if source.get('extraction_warnings',[])==original.get('extraction_warnings',[]):
+        # An approval resolves the same warnings, but not new parser warnings.
+        refreshed['extraction_warnings']=reviewed.get('extraction_warnings',[])
     for field,value in reviewed.items():
         if field in ('items','extraction_warnings'):
             continue
@@ -167,8 +170,8 @@ def process_sources(root, demo=True, client_names=None):
             if not demo and raw.get('dummy_document'):
                 raise ValueError('This document is explicitly fictional; use dummy mode')
             if raw.get('supply') == 'EXPORT':
-                if raw.get('classification') != 'export_lut' or raw.get('export_mode') != 'LUT_without_payment':
-                    raise ValueError('Only explicit LUT without payment exports are supported as accounting vouchers')
+                if raw.get('export_mode') != EXPORT_MODES.get(raw.get('classification'),False):
+                    raise ValueError('Export requires an explicit matching LUT/IGST payment mode')
             seller = raw.get('seller_gstin','').upper()
             name = raw.get('seller_name','').strip()
             if not name or not seller:
@@ -213,7 +216,7 @@ def process_sources(root, demo=True, client_names=None):
                 # unit mappings or any existing explicit ledger preference.
                 config['unified_sales_ledger'] = True
                 write_json(company/'client.json',config)
-            if raw.get('classification') == 'export_lut':
+            if raw.get('classification') in EXPORT_MODES:
                 record['notices'] = [export_notice(config)]
             if config.get('source_seller_name') != name:
                 raise ValueError('Seller GSTIN matches a retained company but seller name differs; review the source identity')
@@ -254,7 +257,7 @@ def process_sources(root, demo=True, client_names=None):
                     record['display_status'] = ('Already confirmed imported' if status == 'imported' else
                         'Sales XML prepared; import not confirmed' if status == 'generated' else
                         report['export'])
-                if record['invoice'].get('classification') == 'export_lut' and not record['errors']:
+                if record['invoice'].get('classification') in EXPORT_MODES and not record['errors']:
                     record['export'] = 'Export accounting voucher prepared; verify GST in Tally'
                     if history.get(key) != 'imported':
                         record['display_status'] = 'Export sales XML prepared; verify GST in Tally'

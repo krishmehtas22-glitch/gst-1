@@ -9,7 +9,7 @@ from decimal import Decimal
 import uuid
 import xml.etree.ElementTree as ET
 
-from .accounting import STATES, TAXES, export_notice, accounting_entries, cents, money, sales_ledger
+from .accounting import STATES, TAXES, EXPORT_MODES, export_notice, accounting_entries, cents, money, sales_ledger
 from .masters import identity, required_masters
 
 HEADS = {'cgst':'Central Tax','sgst':'State Tax','igst':'Integrated Tax'}
@@ -148,7 +148,7 @@ def sales_document(config, invoices):
     if config.get('demo_only'):
         root.insert(0,ET.Comment(' DEMO ONLY: synthetic GSTINs and assumed fields; never use for filing. '))
     for key, inv in sorted(invoices.items(),key=lambda entry:(entry[1]['date'],entry[0])):
-        is_export = inv['classification'] == 'export_lut'
+        is_export = inv['classification'] in EXPORT_MODES
         view = 'Accounting Voucher View' if is_export else 'Invoice Voucher View'
         remote_id = str(uuid.uuid5(uuid.NAMESPACE_URL,config['company_id'] + '|' + key))
         voucher = ET.SubElement(message(data),'VOUCHER',{'REMOTEID':remote_id,'VCHTYPE':'Sales','ACTION':'Create','OBJVIEW':view})
@@ -171,7 +171,8 @@ def sales_document(config, invoices):
             text(address,'BASICBUYERADDRESS',inv['buyer_address'])
         if is_export:
             narration = voucher.find('NARRATION')
-            narration.text += ('; EXPORT UNDER LUT WITHOUT PAYMENT OF IGST; country '+inv['buyer_country']+
+            treatment = 'EXPORT UNDER LUT WITHOUT PAYMENT OF IGST' if inv['classification']=='export_lut' else 'EXPORT WITH PAYMENT OF IGST'
+            narration.text += ('; '+treatment+'; country '+inv['buyer_country']+
                                '; shipping bill/port '+str(inv.get('shipping_bill_port','not provided'))+
                                '; '+export_notice(config))
         if inv['buyer_gstin']:
@@ -226,10 +227,10 @@ def verify_sales(root, invoices, config):
         inv = expected.get(voucher.get('REMOTEID'))
         if inv is None:
             raise ValueError('XML voucher does not match its input invoice identity')
-        is_export = inv['classification'] == 'export_lut'
+        is_export = inv['classification'] in EXPORT_MODES
         if is_export:
             if items or voucher.findall('LEDGERENTRIES.LIST') or voucher.get('OBJVIEW') != 'Accounting Voucher View' or voucher.findtext('ISINVOICE') != 'No':
-                raise ValueError('LUT export must use accounting view with no inventory movement')
+                raise ValueError('Export must use accounting view with no inventory movement')
             actual = [(e.findtext('LEDGERNAME'),cents(e.findtext('AMOUNT'))) for e in entries]
             desired = [(e['ledger'],cents(money(e['credit'])-money(e['debit']))) for e in accounting_entries(inv,config)]
             if actual != desired:
