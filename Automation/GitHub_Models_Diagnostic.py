@@ -11,12 +11,16 @@ def diagnose(transport=api_json):
     try:
         model=configured_model();lines.append('Model used: '+model)
         stage='model-list request (no invoice)'
-        data=transport('models',key,timeout=20)
-        catalog=data if isinstance(data,list) else data.get('data',[])
-        models=[m['id'] for m in catalog if isinstance(m,dict) and isinstance(m.get('id'),str) and m.get('active',True)]
-        lines.append('Model-list request: succeeded')
-        if model not in models:
-            return lines+['Configured model not listed. Set GITHUB_INVOICE_MODEL to a suitable listed text/chat model.']+models[:40]
+        try:
+            data=transport('models',key,timeout=20)
+            catalog=data if isinstance(data,list) else data.get('data',[])
+            models=[m['id'] for m in catalog if isinstance(m,dict) and isinstance(m.get('id'),str) and m.get('active',True)]
+            lines.append('Model-list request: succeeded')
+            if model not in models:
+                return lines+['Configured model not listed. Set GITHUB_INVOICE_MODEL to a suitable listed text/chat model.']+models[:40]
+        except (ValueError,KeyError,TypeError) as exc:
+            lines.append('Model-list request failed: '+str(exc))
+            lines.append('Testing the configured model directly with ONE small JSON request; no invoice is uploaded.')
         payload={'model':model,'messages':[{'role':'user','content':'Return JSON only: {"ok":true}'}],
                  'temperature':0,'max_tokens':64,'response_format':{'type':'json_object'}}
         stage='small JSON generation request (no invoice)'

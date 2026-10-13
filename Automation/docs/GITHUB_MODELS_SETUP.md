@@ -48,3 +48,21 @@ No paid model/tier switch or billing change is enabled by this app.
 
 Tests simulate API responses. Run the diagnostic with your own token to verify
 live access. Share result lines if needed, never the token.
+
+## Unreadable catalog response (Reader 7.7)
+
+The HTTP decoder now supports bounded gzip/deflate decoding, and classifies
+HTML, empty or other non-JSON pages without printing response contents. If the
+catalog request fails, the diagnostic still tests the configured model with
+ONE tiny JSON generation request. No invoice is uploaded. A successful tiny
+request verifies model inference access even if the catalog remains blocked.
+If generation returns 401/403, check token expiry and Models read permission
+privately; a catalog parse failure alone does not establish an invalid token.
+
+## Shared Groq-style reading (Reader 7.7)
+
+Fresh GitHub Models requests reuse Groq prepare_invoice_payload messages
+exactly, adapting only GitHub model/output-token transport fields. Source
+verification, invoice normalization and complete Tally output remain shared.
+Cached successes are retained. Correct input formatting does not bypass
+GitHub authentication, access or response/network failures.

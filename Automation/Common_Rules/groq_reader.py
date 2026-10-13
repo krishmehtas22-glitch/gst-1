@@ -104,6 +104,17 @@ def extract_selected(root,record,transport=None):
     if not key:raise ValueError('Set GROQ_API_KEY privately in Windows User environment variables, then reopen the app. Do not paste the key into chat.')
     data=Path(record['path']).read_bytes()
     if len(data)>8*1024*1024:raise ValueError('Groq extraction supports PDFs up to 8 MiB')
+    payload=prepare_invoice_payload(record,model)
+    inv=normalize_invoice_result((transport or request_invoice)(payload,key,model),record,'Groq')
+    verify_source(root,record)
+    if hashlib.sha256(data).hexdigest()!=record['digest']:raise ValueError('Source changed during Groq extraction')
+    write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],'invoice':inv})
+    activate(root,record,'Groq')
+    return candidate(root,record)
+
+
+def prepare_invoice_payload(record,model):
+    """The original Groq text/OCR reading recipe, shared without changing its payload."""
     from .extraction import text_from_pdf
     text=text_from_pdf(record['path'])
     if len(text)>24000:raise ValueError('Invoice text exceeds the Groq request limit; use Gemini or Review. No text was truncated.')
@@ -125,9 +136,4 @@ def extract_selected(root,record,transport=None):
     payload={'model':model,'temperature':0,'max_completion_tokens':8000,
              'response_format':{'type':'json_object'},
              'messages':[{'role':'system','content':prompt},{'role':'user','content':'INVOICE TEXT\n'+text}]}
-    inv=normalize_invoice_result((transport or request_invoice)(payload,key,model),record,'Groq')
-    verify_source(root,record)
-    if hashlib.sha256(data).hexdigest()!=record['digest']:raise ValueError('Source changed during Groq extraction')
-    write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],'invoice':inv})
-    activate(root,record,'Groq')
-    return candidate(root,record)
+    return payload

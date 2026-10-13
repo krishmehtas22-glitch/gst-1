@@ -110,3 +110,10 @@ medicine strength is rejected as the sold unit. Assumptions remain visible
 in narration and Batch_Report.json without blocking the complete XML output.
 No numeric quantity/rate/value conversion is performed. Existing caches are
 retained without requiring new API requests.
+
+## Shared Groq-style reading (Reader 7.7)
+
+Fresh Gemini requests now use the same PDF text/local OCR and invoice prompt
+as Groq. The API envelope differs but the document content and normalization
+are shared. Existing successful caches are retained without forced API calls.
+This does not guarantee the models produce identical answers.

@@ -32,7 +32,8 @@ def test_api_result_is_cached_and_requires_review_before_xml(tmp_path,monkeypatc
         calls.append(model);assert key=='private-test-key'
         assert model=='gemini-2.5-flash'
         assert payload['generationConfig']['thinkingConfig']=={'thinkingBudget':0}
-        assert payload['contents'][0]['parts'][1]['inlineData']['mimeType']=='application/pdf'
+        assert payload['contents'][0]['parts'][0]['text'].startswith('INVOICE TEXT\n')
+        assert 'inlineData' not in json.dumps(payload)
         assert payload['generationConfig']['responseMimeType']=='application/json'
         return deepcopy(response)
     first=extract_selected(tmp_path,record,transport)

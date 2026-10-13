@@ -118,7 +118,7 @@ def test_every_provider_prompt_contains_same_party_unit_rules(tmp_path,monkeypat
     from Common_Rules.ai_invoice_rules import RULES
     record=setup(tmp_path,monkeypatch)[0]
     def transport(payload,*args):
-        prompt=payload['contents'][0]['parts'][0]['text'] if provider=='Gemini' else payload['messages'][0]['content']
+        prompt=payload['systemInstruction']['parts'][0]['text'] if provider=='Gemini' else payload['messages'][0]['content']
         assert RULES in prompt
         assert 'never copy the seller into buyer' in prompt
         assert 'Printed selling units and explicit quantity suffixes' in prompt

@@ -1,5 +1,31 @@
 # Sales invoice automation
 
+## Reader 7.7: use Groq's reading recipe for Gemini and GitHub Models
+
+All three active APIs now use the exact same Groq PDF text/local OCR recipe
+and prompt. Gemini receives the shared system instruction and document text
+in its native API envelope; it no longer receives a binary PDF attachment.
+GitHub receives Groq's exact messages with its own supported output-token cap.
+Shared field validation, unit reasoning, source verification and normalization
+are retained. Groq's payload-building code is preserved unchanged in the shared
+prepare_invoice_payload helper. Existing successful caches are not forced to
+re-read or charged again; fresh Gemini/GitHub results record groq-text-v1.
+The same input method does not guarantee identical model accuracy or access.
+Seller, buyer, quantity, date and Tally export logic are untouched by this change.
+
+### GitHub Models HTTP response compatibility
+
+GitHub catalog requests use the GitHub JSON media type and explicitly request
+identity encoding. The decoder also handles gzip/deflate if a server/proxy
+still compresses the reply, with bounded decoded size. HTML, empty and non-JSON
+responses are reported without printing their body or token.
+If the catalog fails, Check_GitHub_Models_API.bat tests the configured model
+with exactly one tiny JSON generation request, keeping catalog access separate
+from inference access. No invoice is uploaded by the diagnostic.
+Seller, buyer, date, unit, quantity, stock and Tally export code are unchanged.
+Live access still needs the Windows diagnostic with your private token.
+
+
 ## Reader 7.6: date-only repair from retained source evidence
 
 Invoice dates now normalize short years (13-Oct-26), numeric day/month dates,

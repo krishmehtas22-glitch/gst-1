@@ -84,7 +84,7 @@ def test_github_models_http_redaction_and_fixed_endpoint(monkeypatch):
     def fail(request,timeout):
         assert request.full_url=='https://models.github.ai/inference/chat/completions'
         assert request.get_header('Authorization')=='Bearer '+key
-        assert request.get_header('User-agent')=='InvoiceReader/7.3 (GitHub Models API client)'
+        assert request.get_header('User-agent')=='InvoiceReader/7.7 (GitHub Models API client)'
         body=json.dumps({'error':{'message':'Denied '+key}}).encode()
         raise HTTPError(request.full_url,401,'Unauthorized',{},io.BytesIO(body))
     monkeypatch.setattr(github_models,'urlopen',fail)
@@ -120,7 +120,7 @@ def test_every_provider_prompt_contains_same_party_unit_rules(tmp_path,monkeypat
     from Common_Rules.ai_invoice_rules import RULES
     record=setup(tmp_path,monkeypatch)[0]
     def transport(payload,*args):
-        prompt=payload['contents'][0]['parts'][0]['text'] if provider=='Gemini' else payload['messages'][0]['content']
+        prompt=payload['systemInstruction']['parts'][0]['text'] if provider=='Gemini' else payload['messages'][0]['content']
         assert RULES in prompt
         assert 'never copy the seller into buyer' in prompt
         assert 'Printed selling units and explicit quantity suffixes' in prompt

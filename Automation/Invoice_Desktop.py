@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.6'
+APP_VERSION='Reader 7.7'
 
 
 def quantity_unit_summary(invoice):
@@ -212,7 +212,7 @@ class InvoiceApp:
         if self.busy or not record:return
         if not record.get('digest'):
             messagebox.showerror(provider,'Replace the unreadable PDF before requesting API extraction.');return
-        upload='PDF to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to '+provider
+        upload='PDF text (local OCR for scans) to '+provider
         if not messagebox.askyesno(provider+' extraction',f'Send this selected {upload}? API quota and data-use terms apply. The result will need verification in Review. Cached results are reused.'):
             return
         self.auto.set(False);self.busy=True
@@ -236,7 +236,7 @@ class InvoiceApp:
         records=[r for r in self.records if r['client']==client]
         if not records:
             messagebox.showinfo(provider+' batch','Scan this client folder first.');return
-        upload='PDFs to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to '+provider
+        upload='PDF text (local OCR for scans) to '+provider
         demo=self.demo.get()
         test_note=' Test invoices is enabled: continuing confirms these batch PDFs are fictional test data.' if demo else ''
         if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? If this API stops, use other configured providers among GitHub Models, Groq and Gemini, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):

@@ -40,6 +40,10 @@ The user explicitly requires complete XML batches for review in Tally.
   Bill To separately from Supplier/Seller, Ship To, bank and signatory. Preserve
   the buyer name and exact buyer ledger in the report. Every referenced buyer,
   sales, tax and difference ledger must have a matching exported master.
+- Gemini and GitHub Models must use Groq's shared prepare_invoice_payload
+  text/OCR recipe. Preserve Groq's validated prompt/input behavior; adapt only
+  the provider API envelope/output token cap. Do not force API rereads of saved
+  successful results or change working seller/quantity/date/Tally logic.
 - Preserve prior financial/import history and manual corrections. Keep stable
   voucher GUIDs and do not force-release another live process's OS lock.
 - Date repairs must only change date/audit fields. Normalize actual calendar
