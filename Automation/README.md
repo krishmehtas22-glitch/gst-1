@@ -1,5 +1,24 @@
 # Sales invoice automation
 
+## Reader 7.2: Cerebras and shared buyer-master rules
+
+Use **Read client batch with Cerebras → XML** after privately setting
+`CEREBRAS_API_KEY`. Run **Check_Cerebras_API.bat** to verify your current model
+access; optional `CEREBRAS_INVOICE_MODEL` overrides the initial `llama-3.3-70b`.
+See [Cerebras setup](docs/CEREBRAS_SETUP.md). The pasted free-tier table is not
+verified for your account; request and token quotas both apply.
+
+All AI prompts share party and unit instructions. Buyer/Bill To is separated
+from seller, Ship To, bank and signatory. Each voucher ledger reference must
+match an exported master, and buyer plus exact buyer_ledger are recorded in
+Batch_Report.json. Assumed units retain their reasoning and never scale amounts.
+
+Batch fallback uses the chosen provider first, then other configured providers
+among Cerebras, Groq and Gemini, then Python/OCR. Complete XML output, source
+cache reuse, client/seller isolation and preserved financial history continue.
+Cerebras reads extracted text/OCR, not a raw PDF. No billing change is enabled.
+
+
 ## Reader 7.1: AI selling-unit reasoning
 
 Gemini and Groq may infer missing selling units from product/packaging context

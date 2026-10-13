@@ -8,9 +8,8 @@ from .source_documents import verify_source, confirm_test_document
 
 def read_batch(root, records, progress=lambda message: None, extract=None,
                wait=time.sleep, clock=time.monotonic, provider='Gemini', confirm_test=False):
-    from . import gemini_reader, groq_reader
-    if provider not in ('Gemini','Groq'):raise ValueError('Unknown invoice API provider')
-    reader=gemini_reader if provider=='Gemini' else groq_reader
+    from .ai_providers import reader as get_reader,INTERVALS
+    reader=get_reader(provider)
     extract=extract or reader.extract_selected
     cache_path=reader.cache_path;configured_model=reader.configured_model;REVISION=reader.REVISION
     results=[];last_request=None;model=configured_model();stopped=False
@@ -27,7 +26,7 @@ def read_batch(root, records, progress=lambda message: None, extract=None,
                 results.append(result)
                 continue
             if not cached:
-                if last_request is not None:wait(max(0,13-(clock()-last_request)))
+                if last_request is not None:wait(max(0,INTERVALS[provider]-(clock()-last_request)))
                 last_request=clock()
             extract(root,record)
             verify_source(root,record)
@@ -54,11 +53,12 @@ def read_with_fallback(root,records,primary='Gemini',progress=lambda message:Non
     """Retain each success, then try the other configured API and finally Python."""
     from .tally_review_export import enable
     for client in {r['client'] for r in records}:enable(root,client)
-    providers=[primary,'Groq' if primary=='Gemini' else 'Gemini'];remaining=list(records);results={}
+    from .ai_providers import PROVIDERS,reader as get_reader
+    if primary not in PROVIDERS:raise ValueError('Unknown invoice API provider')
+    providers=[primary]+[p for p in PROVIDERS if p!=primary];remaining=list(records);results={}
     for provider in providers:
         if not remaining:break
-        from . import gemini_reader,groq_reader
-        reader=gemini_reader if provider=='Gemini' else groq_reader
+        reader=get_reader(provider)
         if provider!=primary and not os.environ.get(provider.upper()+'_API_KEY','').strip() and not any(reader.cache_path(root,r).exists() for r in remaining):continue
         progress('Reading remaining invoices with '+provider+'; successful prior reads are retained')
         try:attempts=batch_reader(root,remaining,provider=provider,progress=progress,confirm_test=confirm_test)

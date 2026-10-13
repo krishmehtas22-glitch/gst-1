@@ -155,7 +155,10 @@ def export_all(root,records,demo):
                     text(voucher,'NARRATION',clean(('TEST DATA; ' if demo else '')+'Review in Tally; seller '+seller+'; seller GSTIN '+seller_gstin+'; source '+str(source)+'; '+ '; '.join(dict.fromkeys(notes))))
                     record.update(errors=[],output_path=str(run),group_output_path=str(folder),batch_voucher_count=len(group),display_status='XML prepared; review in Tally',tally_review_warnings=list(dict.fromkeys(notes)))
                     record.setdefault('notices',[]).extend(record['tally_review_warnings'])
-                    report.append({'client':client,'source':str(source),'digest':identity,'invoice_number':no,'provider':inv.get('api_provider','Python'),'seller':seller,'xml_folder':str(folder),'voucher_guid':remote,'inventory_posted':inventory,'warnings':record['tally_review_warnings'],'extracted_invoice':inv})
+                    report.append({'client':client,'source':str(source),'digest':identity,'invoice_number':no,'provider':inv.get('api_provider','Python'),'seller':seller,'buyer':buyer,'buyer_ledger':party,'xml_folder':str(folder),'voucher_guid':remote,'inventory_posted':inventory,'warnings':record['tally_review_warnings'],'extracted_invoice':inv})
+                referenced={node.text for node in vouchers.findall('.//LEDGERNAME')}
+                declared={node.attrib['NAME'] for node in masters.findall('.//LEDGER')}
+                if not referenced.issubset(declared):raise ValueError('Internal batch error: voucher ledger reference has no exported master')
                 save_document(masters,folder/'Masters.xml');save_document(vouchers,folder/'Sales_Vouchers.xml')
                 assert len(vouchers.findall('.//VOUCHER'))==len(rows)
             write_json(run/'Batch_Report.json',{'client':client,'input_count':len(group),'xml_voucher_count':len(report),'invoices':report})

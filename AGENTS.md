@@ -2,10 +2,10 @@
 
 The user explicitly requires complete XML batches for review in Tally.
 
-- All future Gemini, Groq, or other AI batch integrations must use the complete
+- All future Cerebras, Gemini, Groq, or other AI batch integrations must use the complete
   batch workflow (`read_with_fallback`, then `process_sources` with the saved
   client batch policy). Never let API quota expiry discard successful reads.
-- Switch to the other configured provider for remaining sources; use local
+- Switch to other configured providers (Cerebras, Groq, Gemini) for remaining sources; use local
   Python/OCR when configured APIs cannot finish. Do not enable billing, add
   paid providers, or request secrets in chat.
 - Produce one XML voucher element per scanned invoice, including incomplete
@@ -23,6 +23,10 @@ The user explicitly requires complete XML batches for review in Tally.
 - Keep separate clients and sellers isolated. Fresh output paths must contain
   one consolidated Masters.xml and Sales_Vouchers.xml per seller, with an exact
   input/output count. Open client XML folder must show this latest run.
+- Apply shared `ai_invoice_rules.RULES` to every provider prompt. Resolve Buyer/
+  Bill To separately from Supplier/Seller, Ship To, bank and signatory. Preserve
+  the buyer name and exact buyer ledger in the report. Every referenced buyer,
+  sales, tax and difference ledger must have a matching exported master.
 - Preserve prior financial/import history and manual corrections. Keep stable
   voucher GUIDs and do not force-release another live process's OS lock.
 - XML generation is not proof of successful Tally import or correct GSTR-1.

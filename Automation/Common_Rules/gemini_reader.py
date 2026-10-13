@@ -136,6 +136,8 @@ def extract_selected(root,record,transport=None):
             'non_gst, export_lut or export_igst; supply is INTRA, INTER, EXEMPT or EXPORT. '
             'export_mode is LUT_without_payment or with_payment_of_IGST. Never change LUT to IGST payment. '
             'If the PDF contains multiple invoices, return null fields and an empty items array; do not merge them.')
+    from .ai_invoice_rules import RULES
+    prompt+=' '+RULES
     payload={'contents':[{'role':'user','parts':[{'text':prompt},{'inlineData':{'mimeType':'application/pdf','data':base64.b64encode(data).decode()}}]}],
              'generationConfig':{'temperature':0,'responseMimeType':'application/json','responseSchema':schema()}}
     if model==DEFAULT_MODEL:

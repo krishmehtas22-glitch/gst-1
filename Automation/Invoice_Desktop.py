@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.1'
+APP_VERSION='Reader 7.2'
 
 
 def quantity_unit_summary(invoice):
@@ -89,6 +89,9 @@ class InvoiceApp:
         ttk.Button(api_buttons,text='Read client batch with Gemini → XML',command=self.read_gemini_batch).pack(side='left')
         ttk.Button(api_buttons,text='Read selected with Groq',command=lambda:self.read_gemini('Groq')).pack(side='left',padx=8)
         ttk.Button(api_buttons,text='Read client batch with Groq → XML',command=lambda:self.read_gemini_batch('Groq')).pack(side='left')
+        cerebras_buttons=ttk.Frame(window,padding=(10,3));cerebras_buttons.pack(fill='x')
+        ttk.Button(cerebras_buttons,text='Read selected with Cerebras',command=lambda:self.read_gemini('Cerebras')).pack(side='left')
+        ttk.Button(cerebras_buttons,text='Read client batch with Cerebras → XML',command=lambda:self.read_gemini_batch('Cerebras')).pack(side='left',padx=8)
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
         self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10,wraplength=1250)
         self.status.pack(fill='x')
@@ -208,7 +211,7 @@ class InvoiceApp:
         if self.busy or not record:return
         if not record.get('digest'):
             messagebox.showerror(provider,'Replace the unreadable PDF before requesting API extraction.');return
-        upload='PDF to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to Groq'
+        upload='PDF to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to '+provider
         if not messagebox.askyesno(provider+' extraction',f'Send this selected {upload}? API quota and data-use terms apply. The result will need verification in Review. Cached results are reused.'):
             return
         self.auto.set(False);self.busy=True
@@ -217,9 +220,8 @@ class InvoiceApp:
         selected=self.client_scope.get();clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
         def worker():
             try:
-                from Common_Rules.gemini_reader import extract_selected
-                if provider=='Groq':from Common_Rules.groq_reader import extract_selected
-                extract_selected(root,record)
+                from Common_Rules.ai_providers import reader
+                reader(provider).extract_selected(root,record)
                 self.events.put(('ok',process_sources(root,demo,clients,units,summary)))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
@@ -233,10 +235,10 @@ class InvoiceApp:
         records=[r for r in self.records if r['client']==client]
         if not records:
             messagebox.showinfo(provider+' batch','Scan this client folder first.');return
-        upload='PDFs to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to Groq'
+        upload='PDFs to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to '+provider
         demo=self.demo.get()
         test_note=' Test invoices is enabled: continuing confirms these batch PDFs are fictional test data.' if demo else ''
-        if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? If this API stops, use the other configured AI, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
+        if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? If this API stops, use other configured providers among Cerebras, Groq and Gemini, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
             return
         self.auto.set(False);self.busy=True
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()

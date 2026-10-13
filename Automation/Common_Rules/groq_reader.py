@@ -120,6 +120,8 @@ def extract_selected(root,record,transport=None):
             'supply: INTRA, INTER, EXEMPT, EXPORT. export_mode: LUT_without_payment or with_payment_of_IGST. '
             'Preserve printed zero GST and LUT treatment. Do not merge different invoices; return null fields and empty items if multiple invoices appear. '
             'Money strings have no currency symbols. Read both seller and buyer addresses.')
+    from .ai_invoice_rules import RULES
+    prompt+=' '+RULES
     payload={'model':model,'temperature':0,'max_completion_tokens':8000,
              'response_format':{'type':'json_object'},
              'messages':[{'role':'system','content':prompt},{'role':'user','content':'INVOICE TEXT\n'+text}]}
