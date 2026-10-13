@@ -53,3 +53,9 @@ The user explicitly requires complete XML batches for review in Tally.
 - XML generation is not proof of successful Tally import or correct GSTR-1.
   Test partial-provider exhaustion, all-local fallback, master-unit variants,
   missing fields, zero GST, updated output paths, and unchanged retained history.
+
+- A verified successful selected AI cache is terminal for batch scheduling: do not
+  reread it with another provider. Recover cached successes after bookkeeping
+  errors. Stop AI processing cancels pending/paced requests and fallback, retains
+  completed reads and generates XML using Python for remaining invoices. An
+  in-flight request may finish; never discard it or change the Tally writer.

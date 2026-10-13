@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.7'
+APP_VERSION='Reader 7.8'
 
 
 def quantity_unit_summary(invoice):
@@ -45,6 +45,7 @@ class InvoiceApp:
         self.root = Path(__file__).resolve().parent
         self.records = []
         self.busy = False
+        self.ai_stop = None
         self.events = queue.Queue()
         self.last = None
         self.observed = None
@@ -92,6 +93,7 @@ class InvoiceApp:
         github_buttons=ttk.Frame(window,padding=(10,3));github_buttons.pack(fill='x')
         ttk.Button(github_buttons,text='Read selected with GitHub Models',command=lambda:self.read_gemini('GitHub Models')).pack(side='left')
         ttk.Button(github_buttons,text='Read client batch with GitHub Models → XML',command=lambda:self.read_gemini_batch('GitHub Models')).pack(side='left',padx=8)
+        ttk.Button(github_buttons,text='Stop AI processing',command=self.stop_ai).pack(side='left')
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
         ttk.Label(window,text='Complete batch import order: 1 Units.xml → 2 Masters.xml → 3 Sales_Vouchers.xml, in the SAME Tally company.').pack(anchor='w',padx=10)
         self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10,wraplength=1250)
@@ -207,6 +209,11 @@ class InvoiceApp:
                 self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
+    def stop_ai(self):
+        if self.ai_stop is not None:
+            self.ai_stop.set()
+            self.status.config(text='Stopping AI: an active request may finish; completed reads are retained and XML will be prepared. No further provider will start.')
+
     def read_gemini(self,provider='Gemini'):
         record=self.selected()
         if self.busy or not record:return
@@ -216,6 +223,7 @@ class InvoiceApp:
         if not messagebox.askyesno(provider+' extraction',f'Send this selected {upload}? API quota and data-use terms apply. The result will need verification in Review. Cached results are reused.'):
             return
         self.auto.set(False);self.busy=True
+        self.ai_stop=threading.Event()
         self.status.config(text='Reading selected PDF with '+provider+'…')
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
         selected=self.client_scope.get();clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
@@ -242,18 +250,21 @@ class InvoiceApp:
         if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? If this API stops, use other configured providers among GitHub Models, Groq and Gemini, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
             return
         self.auto.set(False);self.busy=True
+        self.ai_stop=threading.Event()
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
+        stop_event=self.ai_stop
         def worker():
             try:
                 from Common_Rules.gemini_batch import read_with_fallback
                 from Common_Rules.tally_review_export import enable
                 enable(root,client)
-                results=read_with_fallback(root,records,progress=lambda message:self.events.put(('progress',message)),primary=provider,confirm_test=demo)
+                results=read_with_fallback(root,records,progress=lambda message:self.events.put(('progress',message)),primary=provider,confirm_test=demo,stop_event=stop_event)
                 self.events.put(('progress','Preparing XML from successful AI results and available local extraction; no further API request is needed…'))
                 updated=process_sources(root,demo,[client],units,summary)
                 success=sum(r['status']=='extracted' for r in results)
                 self.events.put(('ok',updated))
-                self.events.put(('progress',f'Batch complete: {success}/{len(results)} AI reads; {len(results)-success} Python fallback; {sum(not r.get("errors") and bool(r.get("output_path")) for r in updated)} XML vouchers prepared. Open client XML folder for the latest files and Batch_Report.json. Review in Tally.'))
+                label='AI stopped; XML prepared' if stop_event.is_set() else 'Batch complete'
+                self.events.put(('progress',f'{label}: {success}/{len(results)} AI reads; {len(results)-success} Python fallback; {sum(not r.get("errors") and bool(r.get("output_path")) for r in updated)} XML vouchers prepared. Open client XML folder for the latest files and Batch_Report.json. Review in Tally.'))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
@@ -265,6 +276,7 @@ class InvoiceApp:
                 self.window.after(100,self.tick)
                 return
             self.busy = False
+            self.ai_stop = None
             if kind == 'error':
                 self.status.config(text='Needs attention: '+value)
             else:

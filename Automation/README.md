@@ -1005,3 +1005,13 @@ invoice amounts in an accounting voucher without stock movement. The status and
 narration state this explicitly. Leave the option off when inventory posting is
 required; missing item rates then need review. Printed exemption/LUT zero GST
 is handled separately. Units omitted by the PDF stay visibly estimated.
+
+### Reader 7.8: retain successful AI reads and stop the queue
+
+Successful saved AI reads are reused even when a different batch provider is selected.
+Fallback sends only unfinished invoices to the next provider; a report/confirmation
+error cannot discard a verified saved extraction. **Stop AI processing** stops
+pending calls, pacing and provider fallback. An active HTTP request may finish.
+Completed reads remain saved and XML is prepared with local Python extraction for
+remaining invoices. Existing buyer, date, item, quantity, unit and Tally XML logic
+are unchanged.
