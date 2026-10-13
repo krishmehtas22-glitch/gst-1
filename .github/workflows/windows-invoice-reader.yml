@@ -28,7 +28,7 @@ jobs:
       - name: Install build and verification dependencies
         run: python -m pip install -r Automation/requirements-build.txt -r Automation/requirements-dev.txt
       - name: Verify unchanged output and executable paths
-        run: python -m pytest Automation/tests/test_windows_packaging.py Automation/tests/test_complete_batch_output.py Automation/tests/test_tally_direct_import.py Automation/tests/test_large_ai_batch.py Automation/tests/test_openrouter_reader.py -q
+        run: python -m pytest Automation/tests/test_windows_packaging.py Automation/tests/test_complete_batch_output.py Automation/tests/test_tally_direct_import.py Automation/tests/test_large_ai_batch.py Automation/tests/test_openrouter_reader.py Automation/tests/test_shared_groq_reading.py -q
       - name: Build Windows executable
         working-directory: Automation
         run: python -m PyInstaller --noconfirm --clean InvoiceReader.spec

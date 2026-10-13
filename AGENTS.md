@@ -5,7 +5,7 @@ The user explicitly requires complete XML batches for review in Tally.
 - All future Cerebras, Gemini, Groq, or other AI batch integrations must use the complete
   batch workflow (`read_with_fallback`, then `process_sources` with the saved
   client batch policy). Never let API quota expiry discard successful reads.
-- Switch to other configured active providers (GitHub Models, Groq, Gemini) for remaining sources; use local
+- Switch to other configured active providers (GitHub Models, Groq, Gemini, OpenRouter free-only) for remaining sources; use local
   Python/OCR when configured APIs cannot finish. Do not enable billing, add
   paid providers, or request secrets in chat.
 - Cerebras has been replaced in the active user workflow. Retain old cache
@@ -40,7 +40,7 @@ The user explicitly requires complete XML batches for review in Tally.
   Bill To separately from Supplier/Seller, Ship To, bank and signatory. Preserve
   the buyer name and exact buyer ledger in the report. Every referenced buyer,
   sales, tax and difference ledger must have a matching exported master.
-- Gemini and GitHub Models must use Groq's shared prepare_invoice_payload
+- Gemini, GitHub Models and OpenRouter must use Groq's shared prepare_invoice_payload
   text/OCR recipe. Preserve Groq's validated prompt/input behavior; adapt only
   the provider API envelope/output token cap. Do not force API rereads of saved
   successful results or change working seller/quantity/date/Tally logic.
