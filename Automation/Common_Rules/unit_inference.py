@@ -68,6 +68,20 @@ def uncertain_unit(token):
     return text in PLACEHOLDERS or bool(re.search(r'\b(?:as applicable|or)\b|[/|]',text))
 
 
+def default_missing_quantity(item):
+    """User-authorized, visible defaults; zero/invalid printed numbers remain.
+
+    Quantity 1 is an assumption, not a value extracted from the document.
+    An explicitly printed unit always outranks the generic Units fallback.
+    """
+    if item.get('quantity') is None or str(item.get('quantity','')).strip() in ('','-','--','n/a','N/A'):
+        item.update(quantity='1',quantity_assumed=True,quantity_confirmed=False,
+                    quantity_evidence='Quantity omitted: default 1 requested by you')
+        if not item.get('unit'):
+            item.update(unit='Units',unit_auto=True,unit_origin='estimated',unit_confidence=0,
+                        unit_evidence='Quantity and unit omitted: default 1 Units requested by you')
+
+
 def suggest_unit(item,invoice):
     name=str(item.get('name','')).casefold()
     try:quantity=money(item.get('quantity',0));whole=quantity==quantity.to_integral_value()
@@ -148,6 +162,7 @@ class UnitResolver:
         previous=saved.get('items',{}) if saved.get('source_sha256')==record['digest'] else {}
         updates={}
         for index,item in enumerate(invoice.get('items',[])):
+            default_missing_quantity(item)
             parts=quantity_parts(item.get('quantity',''))
             if parts and parts[1]:
                 item.setdefault('printed_quantity',item['quantity']);item['quantity']=parts[0]

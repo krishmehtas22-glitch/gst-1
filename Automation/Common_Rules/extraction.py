@@ -10,7 +10,7 @@ from .ocr import MARKER, read_page
 from .supplier_layouts import layout_text
 from .flat_layout import parse_flat_layout, supported_flat
 from .party_evidence import read_party_roles, role_heading, read_seller_masthead
-from .unit_inference import quantity_parts, canonical_unit
+from .unit_inference import quantity_parts, canonical_unit, default_missing_quantity
 from .tax_treatment import apply_printed_treatment
 from .document_structure import gst_identifier, header_key, unlabelled_invoice_number, positional_cells
 
@@ -298,6 +298,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                 paired['extraction_warnings'].append('Mapped field missing: '+key)
         if marked_sample(original_text):paired['dummy_document']=True
         normalize_basic_fields(paired,paired['extraction_warnings'])
+        for item in paired.get('items',[]):default_missing_quantity(item)
         if MARKER in text:
             paired['source_ocr'] = True
             paired['extraction_warnings'].append('OCR-derived fields must be checked against the PDF in Review')
@@ -348,6 +349,16 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             rates[tax] = rate_values[0]
         elif len(rate_values) > 1:
             warnings.append(f'Multiple {tax.upper()} rates need item-wise review')
+    zero_notice=re.search(r'^\s*(?:(?:total\s+)?GST(?:\s+amount)?\s*(?:[:=]|\s{2,})\s*(?:INR\s*)?0+(?:\.0+)?\s*%?|No GST(?:\s+charged)?)\s*[.]?\s*$',original_text,re.I|re.M)
+    if zero_notice:
+        try:
+            if any(inv.get(tax) not in (None,'') and money(inv[tax])!=0 for tax in ('cgst','sgst','igst')):
+                warnings.append('Printed no-GST declaration conflicts with component tax amounts')
+            else:
+                for tax in ('cgst','sgst','igst'):
+                    if inv.get(tax) in (None,''):inv[tax]='0'
+                inv['zero_gst_evidence']=zero_notice[0].strip()
+        except (ValueError,TypeError,ArithmeticError):pass
     # Positive printed GST establishes taxable treatment, never exemption.
     if not inv.get('classification'):
         try:
@@ -358,6 +369,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
     items = []
     columns = None
     header_line=None
+    numeric_units_column=False
     quantity_header_unit=rate_header_unit=None
     for line in original_text.splitlines():
         row = cells(line)
@@ -381,10 +393,9 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             decoded.append(key)
         # Some tables label their numeric quantity column "Units". It is
         # quantity only when the other core columns exist and Qty is absent.
-        if 'quantity' not in decoded and 'unit' in decoded and all(key in decoded for key in ('name','rate','value')):
-            decoded[decoded.index('unit')]='quantity'
-        if all(field in decoded for field in ('name','quantity','rate','value')):
+        if all(field in decoded for field in ('name','rate','value')):
             columns = decoded;header_line=line
+            numeric_units_column=('quantity' not in decoded and 'unit' in decoded and row[decoded.index('unit')].casefold()=='units')
             quantity_header_unit,rate_header_unit=row_quantity_unit,row_rate_unit
             continue
         if columns and len(row)!=len(columns) and header_line:
@@ -392,10 +403,12 @@ def parse_text(text, field_mappings=None, header_aliases=None):
             if positioned and len(positioned)==len(columns):
                 candidate=dict(zip(columns,positioned))
                 try:
-                    if quantity_parts(candidate.get('quantity','')) and money(candidate.get('rate',''))>=0 and money(candidate.get('value',''))>=0:row=positioned
+                    if quantity_parts(candidate.get('quantity') or '1') and money(candidate.get('rate',''))>=0 and money(candidate.get('value',''))>=0:row=positioned
                 except (ValueError,TypeError,ArithmeticError):pass
-        if columns and len(row) == len(columns) and len(row) >= 4:
+        if columns and len(row) == len(columns) and len(row) >= 3:
             item = {key: value for key, value in zip(columns, row) if key}
+            if numeric_units_column and quantity_parts(item.get('unit','')):
+                item['quantity']=item.pop('unit')
             for key in ('gst_rate','cgst_rate','sgst_rate','igst_rate'):
                 if item.get(key) and re.fullmatch(r'\d+(?:\.\d+)?\s*%',item[key]):
                     item['printed_'+key]=item[key];item[key]=item[key].rstrip('%').strip()
@@ -409,6 +422,7 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                 item['unit_origin']='printed';item['unit_auto']=False
             if quantity_header_unit and rate_header_unit and canonical_unit(quantity_header_unit)!=canonical_unit(rate_header_unit):
                 warnings.append('Quantity and price use different units; unit-price conversion needs review')
+            default_missing_quantity(item)
             parsed_quantity=quantity_parts(item.get('quantity',''))
             if not parsed_quantity:
                 continue
@@ -419,8 +433,12 @@ def parse_text(text, field_mappings=None, header_aliases=None):
                 if not item.get('unit'):item['unit']=parsed_quantity[1]
             items.append(item)
     summary_only=bool(items) and all(not item.get('tax_rates_printed') for item in items) and not rates
+    zero_gst=False
+    try:zero_gst=all(inv.get(tax) not in (None,'') and money(inv[tax])==0 for tax in ('cgst','sgst','igst'))
+    except (ValueError,TypeError,ArithmeticError):pass
+    if zero_gst:inv.setdefault('zero_gst_evidence','Printed CGST, SGST and IGST amounts are all zero')
     if summary_only and all(inv.get(tax) is not None for tax in ('cgst','sgst','igst')):
-        if inv.get('classification') in ('export_lut','exempt','nil_rated','non_gst'):
+        if zero_gst or inv.get('classification') in ('export_lut','exempt','nil_rated','non_gst'):
             for item in items:
                 for tax in ('cgst','sgst','igst'):item[tax+'_rate']='0'
         else:

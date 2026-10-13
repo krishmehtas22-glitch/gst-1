@@ -31,6 +31,7 @@ def save_unit_choices(root,choices):
         updates[key][2][index]=unit
         edited=updates[key][1]
         edited['items'][index].update(unit=unit,unit_origin='manual',unit_auto=False,unit_correction_reviewed=True)
+        if edited['items'][index].get('quantity_assumed'):edited['items'][index]['quantity_confirmed']=True
     for record,edited,_ in updates.values():save_review(root,record,edited,resolve_warnings=False)
     return len(updates)
 

@@ -249,7 +249,8 @@ def validate(raw, config):
             if not intra and (money(item['cgst_rate']) or money(item['sgst_rate'])):
                 errors.append(f'Item {index}: inter-state sale has CGST/SGST')
             rate_sum = sum(money(item[f'{t}_rate']) for t in TAXES)
-            if inv['classification'] in ('taxable','export_igst') and rate_sum == 0:
+            explicit_zero=(inv['classification']=='taxable' and inv.get('zero_gst_evidence') and all(money(inv[tax])==0 for tax in TAXES))
+            if inv['classification'] in ('taxable','export_igst') and rate_sum == 0 and not explicit_zero:
                 errors.append(f'Item {index}: taxable classification requires a GST rate')
             if inv['classification'] not in ('taxable','export_igst') and rate_sum:
                 errors.append(f'Item {index}: non-taxable classification conflicts with GST')

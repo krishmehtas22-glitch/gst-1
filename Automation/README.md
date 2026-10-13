@@ -1,8 +1,24 @@
 # Sales invoice automation
 
-## Reader 6.3: accept quantities/units and preserve saved history
+## Reader 6.4: missing quantity defaults and explicit zero GST
 
-The title bar shows **Reader 6.3** so a replaced installation can be identified.
+The title bar shows **Reader 6.4** so a replaced installation can be identified.
+When an item omits quantity, use the requested default **1**. If it also omits
+its unit, use **Units**. These defaults are marked assumed/estimated in the
+table and details and recorded in XML narration. Printed quantities, suffixes
+and unit headings take priority; zero or invalid printed quantities are not
+replaced. Numeric quantities still reconcile to the printed rate and amount.
+Accepting the item's units also confirms its assumed quantity; Review can
+correct a number. Headers without Qty and numeric/symbolic Units columns are
+handled separately.
+
+Explicit zero CGST/SGST/IGST totals, or a clear `GST: 0` / `No GST charged`
+declaration, produce zero component rates when no item rates are printed. No
+GST ledger entries are generated. Printed exempt/nil/LUT/export treatment is
+preserved. Blank tax fields do not mean zero; positive printed amounts/rates
+must reconcile and contradictory no-GST declarations remain blocked. Exports
+with payment of IGST still require positive IGST. GSTR-1 classification is not
+invented merely because tax is zero.
 Click **Accept / change units** to inspect printed quantities and units. Tick
 individual item rows and use **Accept checked items**, choose an invoice and use
 **Accept this invoice**, or use **Accept all shown invoices** for the current

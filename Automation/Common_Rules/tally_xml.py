@@ -176,6 +176,8 @@ def sales_document(config, invoices):
             address = ET.SubElement(voucher,'BASICBUYERADDRESS.LIST',{'TYPE':'String'})
             text(address,'BASICBUYERADDRESS',inv['buyer_address'])
         for index,item in enumerate(inv['items'],1):
+            if item.get('quantity_assumed'):
+                voucher.find('NARRATION').text+=f"; item {index}: quantity {item['quantity']} assumed because omitted from PDF"+(' (accepted by user)' if item.get('quantity_confirmed') else '')
             if item.get('discount_rate'):
                 voucher.find('NARRATION').text+=f"; item {index}: printed list rate INR {item['list_rate']}, discount {item['discount_rate']}%, net unit rate INR {item['rate']}"
         if inv.get('foreign_currency'):

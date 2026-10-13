@@ -30,13 +30,13 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 6.3'
+APP_VERSION='Reader 6.4'
 
 
 def quantity_unit_summary(invoice):
     items=invoice.get('items',[])
     if not items:return 'Items not extracted'
-    return '; '.join(str(item.get('quantity','?'))+' '+str(item.get('unit') or '?')+(' (estimated)' if item.get('unit_auto') else '') for item in items[:3])+(' +'+str(len(items)-3)+' items' if len(items)>3 else '')
+    return '; '.join(str(item.get('quantity','?'))+' '+str(item.get('unit') or '?')+(' (estimated)' if item.get('unit_auto') else '')+(' (quantity assumed)' if item.get('quantity_assumed') and not item.get('quantity_confirmed') else '') for item in items[:3])+(' +'+str(len(items)-3)+' items' if len(items)>3 else '')
 
 
 class InvoiceApp:
@@ -272,6 +272,7 @@ class InvoiceApp:
             layout=record['invoice'].get('supplier_layout_name')
             price_note=('\nDiscounted items use net unit rates; printed list rates/discounts are retained.' if any(item.get('discount_rate') for item in record['invoice'].get('items',[])) else '')
             price_note+=''.join('\nItem '+str(i+1)+' unit '+str(item.get('unit','?'))+(': estimated — ' if item.get('unit_auto') else ': ')+str(item.get('unit_evidence','printed')) for i,item in enumerate(record['invoice'].get('items',[])))
+            price_note+=''.join('\nItem '+str(i+1)+': '+str(item.get('quantity_evidence','Quantity defaulted to 1'))+(' — accepted by you' if item.get('quantity_confirmed') else ' — assumed, check against PDF') for i,item in enumerate(record['invoice'].get('items',[])) if item.get('quantity_assumed'))
             price_note+=('\nINR accounting values converted using the printed '+record['invoice']['foreign_currency']+' exchange rate '+str(record['invoice'].get('exchange_rate','')) if record['invoice'].get('foreign_currency') else '')
             source_note=record.get('source_path',record['path'])
             if record.get('page_number'):source_note+=f" (page {record['page_number']} of {record['page_count']})"

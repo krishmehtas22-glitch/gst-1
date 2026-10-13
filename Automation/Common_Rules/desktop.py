@@ -188,6 +188,10 @@ def save_review(root, record, invoice, resolve_warnings=True):
     for index,item in enumerate(edited.get('items',[])):
         prior=record.get('invoice',{}).get('items',[])
         old=prior[index] if index<len(prior) else {}
+        if item.get('quantity')!=old.get('quantity'):
+            item.update(quantity_assumed=False,quantity_confirmed=True,quantity_evidence='Quantity corrected by you')
+        elif resolve_warnings and item.get('quantity_assumed'):
+            item['quantity_confirmed']=True
         if item.get('unit') and (resolve_warnings or item.get('unit_correction_reviewed')):
             if record.get('display_status')=='Already confirmed imported' and item.get('unit')!=old.get('unit'):
                 raise ValueError('This invoice is confirmed imported; correct its unit in Tally before changing the retained invoice')
