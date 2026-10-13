@@ -1,5 +1,19 @@
 # Sales invoice automation
 
+## Reader 7.13: OpenRouter free-only integration
+
+Privately set the Windows User environment variable **OPENROUTER_API_KEY**, reopen
+the reader, and use **Read client batch with OpenRouter (free) → XML**. The default
+is **openrouter/free**; optional fixed IDs must end in **:free**. Paid IDs and model
+alternatives/plugins are rejected; prompt/completion provider prices are capped
+at zero. No credit purchase or paid fallback is enabled. Free access still has
+account/provider limits. Run **Check_OpenRouter_API.bat** for a no-invoice access
+check. See [OpenRouter setup](docs/OPENROUTER_SETUP.md).
+
+The shared batch attempt cap, cached-result reuse, Stop/XML checkpoints, unit and
+party/date logic, complete-folder import and Tally output remain in force. Rebuild
+existing EXEs with **Build_Windows_EXE.bat** to get the new buttons/provider.
+
 ## Reader 7.12: bounded AI attempts and XML checkpoints
 
 A batch of 50 invoices now allows at most **50 fresh AI extraction attempts total**

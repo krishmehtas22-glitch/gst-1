@@ -101,3 +101,10 @@ The user explicitly requires complete XML batches for review in Tally.
   failures must not block export. Distinguish skipped queue entries from actual
   new attempts and show success/failure reasons. Preserve all existing invoice,
   unit, buyer, date, XML and Tally import code. EXEs must be rebuilt for fixes.
+
+- OpenRouter is supported only with OPENROUTER_API_KEY and free-only models:
+  openrouter/free or explicit :free IDs. Reject paid model IDs and alternate
+  model/plugin routing before requests; cap provider prompt/completion prices
+  at zero. Never enable billing or request key values in chat. Apply the same
+  Groq text/OCR prompt, normalizer, cache proof, attempt budget, Stop/checkpoint
+  workflow and unchanged Tally output to OpenRouter and future providers.

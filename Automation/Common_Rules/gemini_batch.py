@@ -105,7 +105,7 @@ def read_batch(root, records, progress=lambda message: None, extract=None,
         results.append(result)
         progress(f'{provider} result {index}/{len(records)}: '+result['status']+(' — '+result['error'] if result.get('error') else ''))
         if on_result is not None:on_result(record,result)
-        if any(provider+' HTTP '+str(code) in result.get('error','') for code in (401,403,404,429)):
+        if any(provider+' HTTP '+str(code) in result.get('error','') for code in (401,402,403,404,429)):
             stopped=True  # Keep applying cached successes without more API calls.
     save_report(Path(root)/'.invoice_app'/(provider.lower().replace(' ','_')+'_batch_results.json'),{'provider':provider,'results':results},progress)
     return results

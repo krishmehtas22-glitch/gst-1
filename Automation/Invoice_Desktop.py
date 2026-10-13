@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.12'
+APP_VERSION='Reader 7.13'
 
 
 def quantity_unit_summary(invoice):
@@ -96,6 +96,9 @@ class InvoiceApp:
         ttk.Button(github_buttons,text='Read selected with GitHub Models',command=lambda:self.read_gemini('GitHub Models')).pack(side='left')
         ttk.Button(github_buttons,text='Read client batch with GitHub Models → XML',command=lambda:self.read_gemini_batch('GitHub Models')).pack(side='left',padx=8)
         ttk.Button(github_buttons,text='Stop AI processing',command=self.stop_ai).pack(side='left')
+        router_buttons=ttk.Frame(window,padding=(10,3));router_buttons.pack(fill='x')
+        ttk.Button(router_buttons,text='Read selected with OpenRouter (free)',command=lambda:self.read_gemini('OpenRouter')).pack(side='left')
+        ttk.Button(router_buttons,text='Read client batch with OpenRouter (free) → XML',command=lambda:self.read_gemini_batch('OpenRouter')).pack(side='left',padx=8)
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
         ttk.Label(window,text='Complete batch import order: 1 Units.xml → 2 Masters.xml → 3 Sales_Vouchers.xml, in the SAME Tally company.').pack(anchor='w',padx=10)
         self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10,wraplength=1250)
