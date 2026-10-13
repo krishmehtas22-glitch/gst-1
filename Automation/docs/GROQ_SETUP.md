@@ -67,3 +67,13 @@ to that run. Inventory requires usable fields; otherwise an accounting voucher
 retains extracted items in the report. Missing dates or identity can still be
 rejected by Tally. Inspect differences posted to Invoice differences - review.
 This does not enable billing or claim successful import/correct filing.
+
+## Unit reasoning (Reader 7.1)
+
+The AI prompt now permits missing selling units to be inferred from item and
+packaging context. It returns unit_basis and unit_reason. Printed evidence and
+manual corrections take priority. Qty is not a selling-unit token. Inferred
+medicine strength is rejected as the sold unit. Assumptions remain visible
+in narration and Batch_Report.json without blocking the complete XML output.
+No numeric quantity/rate/value conversion is performed. Existing caches are
+retained without requiring new API requests.

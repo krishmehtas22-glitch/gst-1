@@ -1,5 +1,18 @@
 # Sales invoice automation
 
+## Reader 7.1: AI selling-unit reasoning
+
+Gemini and Groq may infer missing selling units from product/packaging context
+(e.g. pens → PCS, explicitly sold boxes → BOX). Their response includes a
+printed/inferred basis and a reason. Assumptions remain visible in the quantity
+column, voucher narration and Batch_Report.json; they do not block output.
+Printed source units and existing manual corrections take priority. Qty is
+treated as a heading, and medicine strength does not become sold mass/volume.
+Numeric quantities, rates and values are never scaled. Successful old caches
+remain usable without a new request; ambiguous Qty units receive local reasoning.
+Reader 7.0 complete-output/fallback rules remain in force.
+
+
 ## Reader 7.0: every batch invoice gets XML for Tally review
 
 **Read client batch with Gemini/Groq → XML** now enables a retained complete-output

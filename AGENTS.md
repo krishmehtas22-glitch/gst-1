@@ -15,6 +15,11 @@ The user explicitly requires complete XML batches for review in Tally.
   printed GST components and amounts; record any explicit unresolved values,
   placeholders or difference ledger postings. Do not claim fabricated fields
   are extracted facts or AI batch acceptance is individual human approval.
+- AI may infer missing selling units from product/packaging context. Retain
+  the reason, mark the unit assumed, and include it in narration/report.
+  Printed units and human corrections outrank assumptions. Qty is a heading,
+  not a selling unit. Never scale quantities/rates or confuse medicine strength
+  with sold weight/volume. Retain explicit custom printed units.
 - Keep separate clients and sellers isolated. Fresh output paths must contain
   one consolidated Masters.xml and Sales_Vouchers.xml per seller, with an exact
   input/output count. Open client XML folder must show this latest run.

@@ -72,6 +72,8 @@ def export_all(root,records,demo):
                 ledger('Invoice differences - review','Indirect Expenses')
                 for record in rows:
                     inv=record.get('invoice') or {};notes=list(record.get('errors',[]))+list(inv.get('extraction_warnings',[]))
+                    for i,item in enumerate(inv.get('items',[]),1):
+                        if item.get('unit_auto'):notes.append('Item '+str(i)+' unit '+str(item.get('unit','Units'))+' assumed: '+str(item.get('unit_evidence','Product-context reasoning')))
                     source=record.get('source_path',record['path']);identity=record.get('digest') or hashlib.sha256(str(source).encode()).hexdigest()
                     no=clean(inv.get('number')) or 'UNREAD-'+identity[:12]
                     if not inv.get('number'):notes.append('Invoice number missing; explicit UNREAD reference used')
