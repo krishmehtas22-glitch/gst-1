@@ -42,6 +42,10 @@ The user explicitly requires complete XML batches for review in Tally.
   sales, tax and difference ledger must have a matching exported master.
 - Preserve prior financial/import history and manual corrections. Keep stable
   voucher GUIDs and do not force-release another live process's OS lock.
+- Date repairs must only change date/audit fields. Normalize actual calendar
+  dates to YYYY-MM-DD and write Tally YYYYMMDD. Recover missing AI dates only
+  from verified source invoice-date evidence, not due dates or today's date.
+  Keep working seller, buyer, quantity, rate, unit and stock logic unchanged.
 - XML generation is not proof of successful Tally import or correct GSTR-1.
   Test partial-provider exhaustion, all-local fallback, master-unit variants,
   missing fields, zero GST, updated output paths, and unchanged retained history.

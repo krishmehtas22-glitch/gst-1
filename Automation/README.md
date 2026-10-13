@@ -1,5 +1,21 @@
 # Sales invoice automation
 
+## Reader 7.6: date-only repair from retained source evidence
+
+Invoice dates now normalize short years (13-Oct-26), numeric day/month dates,
+compact YYYYMMDD, written months and ISO timestamps before writing Tally
+DATE/EFFECTIVEDATE as YYYYMMDD. Invalid calendar dates are not accepted.
+If the retained AI date is missing/invalid, a digest-verified local extraction
+or source PDF invoice-date label can recover it. Due/shipping dates and today
+are not substituted. Recovery affects only date/audit fields; working seller,
+buyer, quantity, unit, rate and stock logic is unchanged.
+
+Use **Scan and generate XML** to repair saved results without another API
+request. Date evidence is retained in Batch_Report.json and narration. A date
+not present in any verified source remains unresolved, rather than invented.
+Import Units.xml → Masters.xml, then retry only rejected vouchers.
+
+
 ## Reader 7.5: correct inventory buyer/tax ledger structure
 
 Inventory vouchers now use LEDGERENTRIES.LIST for the buyer and taxes, matching

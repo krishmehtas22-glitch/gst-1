@@ -59,6 +59,7 @@ def test_10_primary_4_secondary_and_6_python_all_become_xml(tmp_path,monkeypatch
 
 def test_missing_seller_gstin_dates_and_unbalanced_amounts_still_output(tmp_path):
     rows=sources(tmp_path)[:3]
+    source_dates={r['digest']:r['invoice']['date'].replace('-','') for r in rows}
     rows[0]['invoice'].update(seller_name='',seller_gstin='INVALID',buyer_gstin='INVALID',total='100.00',taxable='60.00',cgst='5',sgst='5',igst='0')
     rows[1]['invoice']={'number':'MISSING','total':'99.00','cgst':'0','sgst':'0','igst':'0'}
     rows[2]['invoice']={};rows[2]['errors']=['Seller missing','Check GSTIN','Client locked by prior marker']
@@ -71,7 +72,10 @@ def test_missing_seller_gstin_dates_and_unbalanced_amounts_still_output(tmp_path
         ledger=sum(Decimal(i.findtext('AMOUNT')) for i in v.findall('ALLLEDGERENTRIES.LIST'))
         assert inventory+ledger==0
     report=json.loads((output/'Batch_Report.json').read_text())
-    assert any('Date missing/invalid' in ' '.join(r['warnings']) for r in report['invoices'])
+    # Dates erased from the extraction are now recovered from these real PDFs.
+    xml_dates={v.findtext('GUID'):v.findtext('DATE') for v in vouchers}
+    assert all(xml_dates[r['voucher_guid']]==source_dates[r['digest']] for r in report['invoices'])
+    assert any('date recovered' in ' '.join(r['warnings']) for r in report['invoices'])
     assert any('Unreconciled difference' in ' '.join(r['warnings']) for r in report['invoices'])
 
 

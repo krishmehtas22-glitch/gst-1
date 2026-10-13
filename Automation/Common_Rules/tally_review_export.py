@@ -78,7 +78,10 @@ def export_all(root,records,demo):
                 ledger('Sales','Sales Accounts',AFFECTSSTOCK='Yes')
                 ledger('Invoice differences - review','Indirect Expenses')
                 for record in rows:
+                    from .invoice_dates import recover_date
+                    normalized_date=recover_date(root,record)
                     inv=record.get('invoice') or {};notes=list(record.get('errors',[]))+list(inv.get('extraction_warnings',[]))
+                    if inv.get('date_evidence'):notes.append(inv['date_evidence'])
                     for i,item in enumerate(inv.get('items',[]),1):
                         if item.get('unit_auto'):notes.append('Item '+str(i)+' unit '+str(item.get('unit','Units'))+' assumed: '+str(item.get('unit_evidence','Product-context reasoning')))
                     source=record.get('source_path',record['path']);identity=record.get('digest') or hashlib.sha256(str(source).encode()).hexdigest()
@@ -121,8 +124,8 @@ def export_all(root,records,demo):
                         except (ValueError,OSError,KeyError,TypeError):notes.append('Prior voucher identity could not be recovered; source-based stable GUID used')
                     view='Invoice Voucher View' if inventory else 'Accounting Voucher View'
                     voucher=ET.SubElement(message(vd),'VOUCHER',{'REMOTEID':remote,'VCHTYPE':'Sales','ACTION':'Create','OBJVIEW':view})
-                    date=clean(inv.get('date')).replace('-','')
-                    if not re.fullmatch(r'\d{8}',date):date='';notes.append('Date missing/invalid; Tally may reject this voucher')
+                    date=normalized_date.replace('-','') if normalized_date else ''
+                    if not date:notes.append('Date missing/invalid; no verified source date could be recovered; Tally may reject this voucher')
                     for tag,value in {'DATE':date,'EFFECTIVEDATE':date,'GUID':remote,'VOUCHERTYPENAME':'Sales','VOUCHERNUMBER':no,'REFERENCE':no,'PARTYLEDGERNAME':party,'PARTYNAME':buyer,'BASICBUYERNAME':buyer,'PERSISTEDVIEW':view,'ISINVOICE':'Yes' if inventory else 'No','ISOPTIONAL':'No','ISCANCELLED':'No'}.items():text(voucher,tag,value)
                     if inv.get('buyer_address'):
                         address=ET.SubElement(voucher,'BASICBUYERADDRESS.LIST',{'TYPE':'String'})

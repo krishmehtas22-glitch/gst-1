@@ -172,6 +172,8 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                     record['invoice']={**record['invoice'],'dummy_document':True,'test_data_confirmed':True}
                 normalize_basic_fields(record['invoice'],record['invoice'].setdefault('extraction_warnings',[]))
                 resolver.apply(record)
+                from .invoice_dates import recover_date
+                recover_date(root,record)
                 record['errors'].extend(record['invoice'].get('extraction_warnings',[]))
             except (ValueError,OSError,KeyError,TypeError) as exc:
                 record['errors'].append(str(exc))
