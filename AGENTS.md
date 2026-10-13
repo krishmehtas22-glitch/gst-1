@@ -5,9 +5,13 @@ The user explicitly requires complete XML batches for review in Tally.
 - All future Cerebras, Gemini, Groq, or other AI batch integrations must use the complete
   batch workflow (`read_with_fallback`, then `process_sources` with the saved
   client batch policy). Never let API quota expiry discard successful reads.
-- Switch to other configured providers (Cerebras, Groq, Gemini) for remaining sources; use local
+- Switch to other configured active providers (GitHub Models, Groq, Gemini) for remaining sources; use local
   Python/OCR when configured APIs cannot finish. Do not enable billing, add
   paid providers, or request secrets in chat.
+- Cerebras has been replaced in the active user workflow. Retain old cache
+  support, but do not use it in automatic fallback or expose new Cerebras actions.
+  GitHub Models uses the explicitly configured GITHUB_MODELS_TOKEN only; never
+  reuse Git/GitHub repository authentication or another provider's credential.
 - Produce one XML voucher element per scanned invoice, including incomplete
   ones. Keep uncertainties in narration and Batch_Report.json rather than
   blocking XML for GSTIN, seller, unit/master, or reconciliation issues.

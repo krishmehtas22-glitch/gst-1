@@ -1,5 +1,20 @@
 # Sales invoice automation
 
+## Reader 7.3: GitHub Models replaces Cerebras
+
+Use **Read client batch with GitHub Models → XML** after privately setting
+`GITHUB_MODELS_TOKEN` (a token with Models read permission). The app does not
+reuse repository/Git credentials. Run **Check_GitHub_Models_API.bat** to check
+your model access; initial model `openai/gpt-4o`, optional override
+`GITHUB_INVOICE_MODEL`. See [setup](docs/GITHUB_MODELS_SETUP.md).
+
+The chosen provider runs first, then other configured providers among GitHub
+Models, Groq and Gemini, then Python. Cerebras is no longer an active fallback
+or desktop action; its old source caches are retained. Shared unit reasoning,
+buyer-master verification, complete XML output and history preservation apply
+to GitHub Models too. The quoted 15 RPM/150 RPD is not verified for your account.
+
+
 ## Reader 7.2: Cerebras and shared buyer-master rules
 
 Use **Read client batch with Cerebras → XML** after privately setting

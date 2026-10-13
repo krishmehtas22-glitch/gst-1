@@ -44,7 +44,7 @@ def read_batch(root, records, progress=lambda message: None, extract=None,
         results.append(result)
         if any(provider+' HTTP '+str(code) in result.get('error','') for code in (401,403,404,429)):
             stopped=True  # Keep applying cached successes without more API calls.
-    write_json(Path(root)/'.invoice_app'/(provider.lower()+'_batch_results.json'),{'provider':provider,'results':results})
+    write_json(Path(root)/'.invoice_app'/(provider.lower().replace(' ','_')+'_batch_results.json'),{'provider':provider,'results':results})
     return results
 
 
@@ -53,13 +53,13 @@ def read_with_fallback(root,records,primary='Gemini',progress=lambda message:Non
     """Retain each success, then try the other configured API and finally Python."""
     from .tally_review_export import enable
     for client in {r['client'] for r in records}:enable(root,client)
-    from .ai_providers import PROVIDERS,reader as get_reader
+    from .ai_providers import PROVIDERS,ACTIVE_PROVIDERS,KEY_VARIABLES,reader as get_reader
     if primary not in PROVIDERS:raise ValueError('Unknown invoice API provider')
-    providers=[primary]+[p for p in PROVIDERS if p!=primary];remaining=list(records);results={}
+    providers=[primary]+[p for p in ACTIVE_PROVIDERS if p!=primary];remaining=list(records);results={}
     for provider in providers:
         if not remaining:break
         reader=get_reader(provider)
-        if provider!=primary and not os.environ.get(provider.upper()+'_API_KEY','').strip() and not any(reader.cache_path(root,r).exists() for r in remaining):continue
+        if provider!=primary and not os.environ.get(KEY_VARIABLES[provider],'').strip() and not any(reader.cache_path(root,r).exists() for r in remaining):continue
         progress('Reading remaining invoices with '+provider+'; successful prior reads are retained')
         try:attempts=batch_reader(root,remaining,provider=provider,progress=progress,confirm_test=confirm_test)
         except (ValueError,OSError,KeyError,TypeError) as exc:

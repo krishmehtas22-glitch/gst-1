@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.2'
+APP_VERSION='Reader 7.3'
 
 
 def quantity_unit_summary(invoice):
@@ -89,9 +89,9 @@ class InvoiceApp:
         ttk.Button(api_buttons,text='Read client batch with Gemini → XML',command=self.read_gemini_batch).pack(side='left')
         ttk.Button(api_buttons,text='Read selected with Groq',command=lambda:self.read_gemini('Groq')).pack(side='left',padx=8)
         ttk.Button(api_buttons,text='Read client batch with Groq → XML',command=lambda:self.read_gemini_batch('Groq')).pack(side='left')
-        cerebras_buttons=ttk.Frame(window,padding=(10,3));cerebras_buttons.pack(fill='x')
-        ttk.Button(cerebras_buttons,text='Read selected with Cerebras',command=lambda:self.read_gemini('Cerebras')).pack(side='left')
-        ttk.Button(cerebras_buttons,text='Read client batch with Cerebras → XML',command=lambda:self.read_gemini_batch('Cerebras')).pack(side='left',padx=8)
+        github_buttons=ttk.Frame(window,padding=(10,3));github_buttons.pack(fill='x')
+        ttk.Button(github_buttons,text='Read selected with GitHub Models',command=lambda:self.read_gemini('GitHub Models')).pack(side='left')
+        ttk.Button(github_buttons,text='Read client batch with GitHub Models → XML',command=lambda:self.read_gemini_batch('GitHub Models')).pack(side='left',padx=8)
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
         self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10,wraplength=1250)
         self.status.pack(fill='x')
@@ -238,7 +238,7 @@ class InvoiceApp:
         upload='PDFs to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to '+provider
         demo=self.demo.get()
         test_note=' Test invoices is enabled: continuing confirms these batch PDFs are fictional test data.' if demo else ''
-        if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? If this API stops, use other configured providers among Cerebras, Groq and Gemini, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
+        if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? If this API stops, use other configured providers among GitHub Models, Groq and Gemini, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
             return
         self.auto.set(False);self.busy=True
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
