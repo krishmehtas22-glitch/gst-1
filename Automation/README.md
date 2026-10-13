@@ -1,5 +1,21 @@
 # Sales invoice automation
 
+## Reader 6.8: Groq alongside Gemini
+
+Set `GROQ_API_KEY` privately in Windows User environment variables and reopen
+the app. Use **Read client batch with Groq → XML** for one client folder, or
+**Read selected with Groq** for an invoice requiring desktop review. Groq reads
+local PDF text/OCR, not raw PDFs. Both providers retain separate caches and
+the most recently successful provider supplies extraction for that source.
+Existing manual corrections, history and fiscal validation remain active.
+
+The initial Groq model is `llama-3.3-70b-versatile`; run **Check_Groq_API.bat**
+to check your own model access, and set `GROQ_INVOICE_MODEL` if needed. Free
+request/token limits vary by model/account. No billing change, automatic paid
+fallback, retries or guaranteed extraction accuracy is implied. See
+[Groq setup](docs/GROQ_SETUP.md).
+
+
 ## Reader 6.7: client batch with Gemini → XML
 
 Choose one client folder, scan it, then click **Read client batch with Gemini → XML**.

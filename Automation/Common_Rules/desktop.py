@@ -144,7 +144,7 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                                          'source_sha256':digest,'text':text,'invoice':record['invoice']})
                 except Exception as exc:
                     record['errors'].append(f'PDF extraction failed: {exc}')
-                from .gemini_reader import candidate
+                from .api_selection import candidate
                 api_candidate=candidate(root,record)
                 if api_candidate is not None:record['invoice']=api_candidate
                 restore_known_supplier(root,record,demo)

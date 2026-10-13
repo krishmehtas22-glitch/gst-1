@@ -1,0 +1,43 @@
+# Groq invoice extraction (Reader 6.8)
+
+Groq is separate from xAI's Grok. Create an account at https://console.groq.com
+and create an API key under API Keys. Free access has model-specific request
+and token limits; availability and limits must be checked in your own console.
+No paid plan, billing change, or automatic fallback is enabled by this reader.
+
+Press the Windows key and search **Edit environment variables for your account**.
+Under **User variables**, click **New**. Set the name to `GROQ_API_KEY` and paste
+your key in the value. Save and close all invoice app/CMD windows, then reopen
+**Open_Invoice_App.bat**. Never paste a key into chat or save it in source code.
+
+The initial text model is `llama-3.3-70b-versatile`. Its availability for your
+account is not assumed: run **Check_Groq_API.bat** to list/check access and test
+one small JSON response. If unavailable, set the optional User variable
+`GROQ_INVOICE_MODEL` to an available text/chat model supporting JSON responses,
+then reopen the app. The diagnostic does not change your model or billing.
+
+Choose one client folder and scan. Click **Read client batch with Groq → XML**
+to queue its invoices, apply successful extraction, and attempt XML generation.
+Review the prepared vouchers in Tally. The single-invoice **Read selected with
+Groq** option requires desktop Review, like Gemini. Existing manual corrections
+and saved financial/import history are retained. GST, reconciliation,
+missing-field, source-change and duplicate checks remain active.
+
+Groq receives locally extracted PDF text, not a raw PDF. Scans first use local
+OCR. It can interpret the resulting text but cannot recover details OCR has
+lost or see logos/colour/visual geometry. Text over 24,000 characters is rejected
+explicitly rather than truncated. Missing information stays missing; the normal
+quantity/unit defaults still apply. Explicit zero tax and LUT are preserved.
+
+Successful results are cached separately from Gemini. The most recently
+successful provider is used for each PDF, without erasing prior provider caches.
+Calls start at least 13 seconds apart; request/token quotas can still cause
+HTTP 429, which stops the batch. Authentication/access/model errors (401, 403,
+404) also stop the queue instead of spending requests on the same failure.
+No automatic retries or fallback calls spend
+additional quota. `.invoice_app/groq_batch_results.json` records every queued
+source, including failed/not-attempted ones. Batch acceptance defers comparison
+to Tally and does not falsely record individual human approval.
+
+Tests use simulated responses. Live Groq invoice accuracy and your account's
+remaining free quota have not been verified from the development environment.

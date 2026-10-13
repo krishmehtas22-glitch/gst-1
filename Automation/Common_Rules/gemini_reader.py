@@ -113,7 +113,10 @@ def extract_selected(root,record,transport=None):
     if old.exists():
         saved=read_json(old)
         if saved.get('model')==model and saved.get('revision')==REVISION:
-            return candidate(root,record)  # No second API call or charge.
+            result=candidate(root,record)
+            from .api_selection import activate
+            activate(root,record,'Gemini')
+            return result  # No second API call or charge.
     key=os.environ.get('GEMINI_API_KEY','').strip()
     if not key:raise ValueError('Set GEMINI_API_KEY in Windows user environment variables, then reopen the BAT. Do not paste the key into chat.')
     data=Path(record['path']).read_bytes()
@@ -133,13 +136,23 @@ def extract_selected(root,record,transport=None):
     if model==DEFAULT_MODEL:
         payload['generationConfig']['thinkingConfig']={'thinkingBudget':0}
     inv=(transport or request_invoice)(payload,key,model)
+    inv=normalize_invoice_result(inv,record)
+    verify_source(root,record)
+    if hashlib.sha256(data).hexdigest()!=record['digest']:raise ValueError('Source changed during Gemini extraction')
+    write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],'invoice':inv})
+    from .api_selection import activate
+    activate(root,record,'Gemini')
+    return candidate(root,record)
+
+
+def normalize_invoice_result(inv,record,provider='Gemini'):
     if not isinstance(inv,dict) or set(inv)-set(FIELDS)-{'items'}:
-        raise ValueError('Gemini returned unexpected invoice fields')
+        raise ValueError(provider+' returned unexpected invoice fields')
     if any(inv.get(field) is not None and not isinstance(inv.get(field),str) for field in FIELDS):
-        raise ValueError('Gemini returned invalid field types')
+        raise ValueError(provider+' returned invalid field types')
     items=inv.get('items')
     if not isinstance(items,list) or len(items)>1000 or any(not isinstance(item,dict) or set(item)-set(ITEM_FIELDS) or any(value is not None and not isinstance(value,str) for value in item.values()) for item in items):
-        raise ValueError('Gemini returned invalid item rows')
+        raise ValueError(provider+' returned invalid item rows')
     inv={field:value for field,value in inv.items() if value is not None}
     inv['items']=[{k:v for k,v in item.items() if v is not None} for item in items]
     # Test eligibility comes from local source evidence/confirmation, never AI.
@@ -158,7 +171,4 @@ def extract_selected(root,record,transport=None):
                     rates=(rate/2,rate/2,0) if intra else (0,0,rate)
                 for tax,value in zip(('cgst','sgst','igst'),rates):item.setdefault(tax+'_rate',str(value))
             except (KeyError,ValueError,TypeError,ArithmeticError):pass  # Review handles uncertainty.
-    verify_source(root,record)
-    if hashlib.sha256(data).hexdigest()!=record['digest']:raise ValueError('Source changed during Gemini extraction')
-    write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],'invoice':inv})
-    return candidate(root,record)
+    return inv
