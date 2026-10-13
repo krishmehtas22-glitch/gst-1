@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.8'
+APP_VERSION='Reader 7.9'
 
 
 def quantity_unit_summary(invoice):
@@ -79,6 +79,7 @@ class InvoiceApp:
         ttk.Button(actions,text='Scan and generate XML',command=self.start).pack(side='left')
         ttk.Button(actions,text='Review selected invoice',command=self.review).pack(side='left',padx=8)
         ttk.Button(actions,text='Open client XML folder',command=self.open_output).pack(side='left')
+        ttk.Button(actions,text='Import to Tally',command=self.import_tally).pack(side='left',padx=8)
         ttk.Button(actions,text='Open source PDF',command=self.open_source).pack(side='left',padx=8)
         self.auto_units=tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Auto-fill units',variable=self.auto_units,command=self.reset).pack(side='left',padx=8)
@@ -370,6 +371,107 @@ class InvoiceApp:
             os.startfile(path)
         else:
             subprocess.Popen(['xdg-open',path])
+
+    def import_tally(self):
+        if self.busy:return
+        record=self.selected()
+        if not record or not record.get('output_path'):
+            messagebox.showinfo('Import to Tally','Select an invoice with prepared XML first.');return
+        from Common_Rules.tally_import import import_plan,loaded_companies,post_xml,send_plan,tally_executable,launch_tally
+        from Common_Rules.engine import write_json
+        folder=Path(record.get('group_output_path') or record['output_path'])
+        try:plan=import_plan(folder)
+        except (OSError,ValueError) as exc:
+            messagebox.showerror('Import to Tally',str(exc));return
+        self.auto.set(False);self.busy=True
+        dialog=tk.Toplevel(self.window);dialog.title('Import existing XML to Tally')
+        dialog.geometry('720x360');dialog.transient(self.window);dialog.grab_set()
+        ttk.Label(dialog,text='Current XML: '+str(folder),wraplength=680).pack(anchor='w',padx=12,pady=10)
+        ttk.Label(dialog,text='Open the destination company in Tally, then choose it below.\nOrder: '+ ' → '.join(name for name,_ in plan)).pack(anchor='w',padx=12)
+        company=tk.StringVar(value='')
+        choices=ttk.Combobox(dialog,textvariable=company,state='readonly',width=70)
+        choices.pack(anchor='w',padx=12,pady=8)
+        state=ttk.Label(dialog,text='Connecting to local Tally…',wraplength=680)
+        state.pack(anchor='w',padx=12,pady=10)
+        messages=queue.Queue();running=[False];launch_attempted=[False]
+        def close():
+            if running[0]:return
+            self.busy=False;dialog.destroy()
+        dialog.protocol('WM_DELETE_WINDOW',close)
+        def refresh():
+            if running[0]:return
+            running[0]=True;state.config(text='Reading company list from local Tally…')
+            def worker():
+                try:messages.put(('companies',loaded_companies(lambda data:post_xml(data,timeout=3))))
+                except Exception as exc:messages.put(('connection',str(exc)))
+            threading.Thread(target=worker,daemon=True).start()
+        def import_now():
+            if running[0]:return
+            target=company.get()
+            if not target:
+                state.config(text='Choose the destination company first.');return
+            running[0]=True
+            def worker():
+                try:
+                    results=send_plan(plan,target,progress=lambda text:messages.put(('progress',text)))
+                    # Save actual server counters separately; no generated XML or financial history changes.
+                    try:write_json(folder/'Last_Tally_Import.json',{'company':target,'results':results})
+                    except OSError:pass
+                    messages.put(('imported',results))
+                except Exception as exc:messages.put(('import_error',str(exc)))
+            threading.Thread(target=worker,daemon=True).start()
+        buttons=ttk.Frame(dialog);buttons.pack(anchor='w',padx=12,pady=8)
+        ttk.Button(buttons,text='Refresh companies',command=refresh).pack(side='left')
+        import_button=ttk.Button(buttons,text='Import into selected company',command=import_now,state='disabled')
+        import_button.pack(side='left',padx=8)
+        ttk.Button(buttons,text='Close',command=close).pack(side='left')
+        def poll():
+            if not dialog.winfo_exists():return
+            try:
+                while True:
+                    kind,value=messages.get_nowait()
+                    if kind=='progress':state.config(text=value);continue
+                    running[0]=False
+                    if kind=='companies':
+                        choices.config(values=value)
+                        if company.get() not in value:company.set('')
+                        import_button.config(state='normal' if value else 'disabled')
+                        state.config(text='Choose a company and import.' if value else 'No company is available. Open your company in Tally and click Refresh companies.')
+                    elif kind=='connection':
+                        import_button.config(state='disabled');state.config(text=value)
+                        if not launch_attempted[0] and os.name=='nt':
+                            launch_attempted[0]=True
+                            # Do not launch a second instance when Tally is already open.
+                            try:
+                                output=subprocess.run(['tasklist','/FI','IMAGENAME eq tally.exe','/FO','CSV','/NH'],capture_output=True,text=True,timeout=5).stdout.lower()
+                                already_open='tally.exe' in output
+                            except (OSError,subprocess.TimeoutExpired):already_open=False
+                            if not already_open:
+                                executable=tally_executable(self.root)
+                                if executable is None:
+                                    selected=filedialog.askopenfilename(parent=dialog,title='Choose installed Tally executable (one-time setup)',filetypes=[('Tally executable','*.exe')])
+                                    executable=Path(selected) if selected else None
+                                if executable:
+                                    try:
+                                        launch_tally(executable)
+                                        write_json(self.root/'.invoice_app'/'tally_connection.json',{'executable':str(executable)})
+                                        state.config(text='Tally opened. Select/open your company in Tally, then click Refresh companies. Enable its HTTP/XML server on port 9000 once if needed.')
+                                    except (ValueError,OSError) as exc:state.config(text=str(exc))
+                    elif kind=='imported':
+                        lines=[];failed=False
+                        for result in value:
+                            counts=result.get('counts',{})
+                            lines.append(result['file']+': '+', '.join(f'{key.lower()} {number}' for key,number in counts.items()))
+                            if result.get('errors') or counts.get('ERRORS',0) or counts.get('CANCELLED',0):
+                                failed=True;lines.extend(result.get('errors',[]))
+                        title='Tally import needs attention' if failed else 'Tally import result'
+                        state.config(text=title+'. Review the server counters below and check the vouchers in Tally.')
+                        import_button.config(state='disabled')  # deliberate refresh before another import
+                        messagebox.showinfo(title,'\n'.join(lines)+'\n\nCheck Tally before retrying. No automatic retries were sent.',parent=dialog)
+                    else:state.config(text=value)
+            except queue.Empty:pass
+            dialog.after(100,poll)
+        refresh();poll()
 
     def open_source(self):
         record = self.selected()

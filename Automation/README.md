@@ -1,5 +1,30 @@
 # Sales invoice automation
 
+## Reader 7.9: Import to Tally without copying XML paths
+
+Select an invoice with current XML, then click **Import to Tally**. The import
+window reads companies from Tally on this computer. If Tally is closed, it opens
+the installed executable; choose `tally.exe` once if installation detection
+cannot find it. Open your destination company in Tally, refresh the company list,
+choose it in the import window, and click **Import into selected company**.
+
+One-time Tally setup: enable its local HTTP/XML server on port **9000** (Tally
+acting as Server or Both in connectivity/advanced settings; restart if requested).
+The integration only contacts `127.0.0.1`; it does not use your AI keys or an HTTP
+proxy. It sends **Units.xml → Masters.xml → Sales_Vouchers.xml** from the selected
+invoice's current output, separately for each seller. Legacy XML with units inside
+masters is also supported. Existing XML files, financial data, GUIDs and invoice
+extraction logic are unchanged. Only the company destination in the transmitted
+request is set to your explicit selection.
+
+Tally's actual created/altered/ignored/error counters appear after import and are
+saved separately as `Last_Tally_Import.json` in that XML folder. Errors stop the
+remaining steps. A lost response has unknown import status; check Tally before
+retrying. The app never automatically retries an import or treats file generation
+as import confirmation. Live Windows/Tally behavior must be checked on your PC;
+cloud tests simulate Tally's local XML server responses.
+
+
 ## Reader 7.7: use Groq's reading recipe for Gemini and GitHub Models
 
 All three active APIs now use the exact same Groq PDF text/local OCR recipe

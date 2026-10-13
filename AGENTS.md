@@ -59,3 +59,11 @@ The user explicitly requires complete XML batches for review in Tally.
   errors. Stop AI processing cancels pending/paced requests and fallback, retains
   completed reads and generates XML using Python for remaining invoices. An
   in-flight request may finish; never discard it or change the Tally writer.
+
+- Direct Tally import must send existing current XML in dependency order through
+  localhost only, after explicit destination-company selection. Do not regenerate
+  output, change financial fields/GUIDs, or infer import success from file creation.
+  Preserve generated files; only set SVCURRENTCOMPANY in the transport copy. Report
+  actual server counters, stop dependent imports after errors, and never retry an
+  ambiguous timed-out import automatically. Keep import receipts separate from
+  financial/import history; do not mark all invoices imported from aggregate counts.
