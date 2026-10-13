@@ -1,5 +1,21 @@
 # Sales invoice automation
 
+## Reader 7.10: include every current client XML folder
+
+**Import to Tally** includes every XML folder listed in the current client run's
+`Batch_Report.json`, for outputs from GitHub Models, Groq, Gemini or Python.
+The import window shows the total invoice count. Letter case and extra spaces
+in seller names do not split import scope when GSTINs match: their existing XML
+sets are combined in memory, preserving all voucher fields/GUIDs/amounts and
+sending identical prerequisite masters once. Different sellers/GSTINs retain
+separate destination-company selections; all folders remain included.
+
+Existing XML files and extraction/output generation are unchanged. For a batch
+where eight invoices were already imported, select an invoice from the remaining
+four-invoice set, then untick **Include ALL current client XML folders** and import
+only that selected set. Do not resend the completed set. This selected-set option
+is explicit; complete-run scope is the default for all new imports.
+
 ## Reader 7.9: Import to Tally without copying XML paths
 
 Select an invoice with current XML, then click **Import to Tally**. The import

@@ -56,6 +56,81 @@ def import_plan(folder):
     return plan
 
 
+def seller_identity(row):
+    """Letter case/extra spaces do not identify a different seller; GSTIN does."""
+    invoice=row.get('extracted_invoice') or {}
+    name=row.get('seller') or invoice.get('seller_name') or ''
+    gstin=invoice.get('seller_gstin') or row.get('seller_gstin') or ''
+    return (' '.join(str(name).split()).casefold(),str(gstin).strip().upper())
+
+
+def seller_import_plan(run_folder,selected_folder):
+    """Combine matching seller sets in memory, leaving all generated files intact."""
+    run=Path(run_folder).resolve();selected=Path(selected_folder).resolve()
+    original=import_plan(selected)
+    report=run/'Batch_Report.json'
+    if not report.exists():return original,[selected]
+    rows=json.loads(report.read_text(encoding='utf-8')).get('invoices',[])
+    by_folder={}
+    for row in rows:
+        folder=Path(row.get('xml_folder','')).resolve()
+        if not folder.is_relative_to(run):raise ValueError('Batch report references XML outside the current run')
+        by_folder.setdefault(folder,set()).add(seller_identity(row))
+    identity=by_folder.get(selected)
+    if not identity or len(identity)!=1:return original,[selected]
+    folders=[folder for folder,keys in by_folder.items() if keys==identity]
+    if len(folders)<2:return original,[selected]
+    plans=[import_plan(folder) for folder in folders]
+    combined=[]
+    for name in ('Units.xml','Masters.xml','Sales_Vouchers.xml'):
+        sources=[data for plan in plans for filename,data in plan if filename==name]
+        if not sources:continue
+        document=response_xml(sources[0]);destination=document.find('.//REQUESTDATA')
+        if destination is None:raise ValueError('XML request data is missing')
+        destination[:]=[];seen=set()
+        for data in sources:
+            source=response_xml(data).find('.//REQUESTDATA')
+            if source is None:raise ValueError('XML request data is missing')
+            for message in source:
+                # Only deduplicate identical prerequisite definitions. Never drop
+                # vouchers or resolve differing master definitions by guessing.
+                signature=ET.canonicalize(ET.tostring(message,encoding='unicode'),strip_text=True)
+                if name!='Sales_Vouchers.xml' and signature in seen:continue
+                seen.add(signature);destination.append(message)
+        combined.append((name,ET.tostring(document,encoding='utf-8',xml_declaration=True)))
+    return combined,folders
+
+
+def client_import_groups(run_folder,selected_folder):
+    """Every manifest XML folder is included, with distinct seller destinations."""
+    run=Path(run_folder).resolve();selected=Path(selected_folder).resolve()
+    path=run/'Batch_Report.json'
+    if not path.exists():
+        return [{'label':'Selected XML set','plan':import_plan(selected),'folders':[selected]}]
+    rows=json.loads(path.read_text(encoding='utf-8')).get('invoices',[])
+    identities={};folders=set()
+    for row in rows:
+        folder=Path(row.get('xml_folder','')).resolve()
+        if not folder.is_relative_to(run):raise ValueError('Batch report references XML outside the current run')
+        folders.add(folder)
+        identity=seller_identity(row)
+        identities.setdefault(identity,{'folder':folder,'label':row.get('seller') or 'Seller unresolved'})
+    if selected not in folders:raise ValueError('Selected XML folder is not part of the current run')
+    groups=[];covered=set()
+    for (name,gstin),info in identities.items():
+        plan,group_folders=seller_import_plan(run,info['folder'])
+        if covered.intersection(group_folders):raise ValueError('Ambiguous seller identity in current XML folders')
+        covered.update(group_folders)
+        groups.append({'label':info['label']+(' — '+gstin if gstin else ' — GSTIN not supplied'),
+                       'plan':plan,'folders':group_folders})
+    if covered!=folders:raise ValueError('Not all current XML folders are covered by the import plan')
+    return groups
+
+
+def voucher_count(plan):
+    return sum(len(response_xml(data).findall('.//VOUCHER')) for name,data in plan if name=='Sales_Vouchers.xml')
+
+
 def company_payload(data,company):
     """Only set the transport destination; retain every exported business element."""
     if not company or not company.strip():raise ValueError('Select the destination Tally company.')

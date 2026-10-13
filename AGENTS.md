@@ -63,7 +63,23 @@ The user explicitly requires complete XML batches for review in Tally.
 - Direct Tally import must send existing current XML in dependency order through
   localhost only, after explicit destination-company selection. Do not regenerate
   output, change financial fields/GUIDs, or infer import success from file creation.
-  Preserve generated files; only set SVCURRENTCOMPANY in the transport copy. Report
+  Preserve generated files and all voucher fields; set SVCURRENTCOMPANY only in
+  the transport copy. Combine existing sets only for case/space-equivalent seller
+  names with matching GSTINs, deduplicating identical prerequisite masters. Report
   actual server counters, stop dependent imports after errors, and never retry an
   ambiguous timed-out import automatically. Keep import receipts separate from
   financial/import history; do not mark all invoices imported from aggregate counts.
+
+- Letter case alone must not exclude part of a seller batch from direct import.
+  Discover matching sets only from the selected current run manifest, display
+  their total invoice count, and retain a selected-set-only option for importing
+  the remaining set after a partial earlier import. Never combine different
+  GSTINs/clients, alter existing vouchers, or silently resend already imported data.
+
+- The direct-import default must cover EVERY XML folder listed in the current
+  selected client run report, not just the selected invoice's group folder.
+  Show the total invoice count. Case/space-equivalent names with matching GSTINs
+  share one destination; distinct sellers have explicit destination selections.
+  Validate that all manifest folders are covered and inside the current run.
+  Preserve selected-set-only import as an explicit option for completing earlier
+  partial imports. This rule applies to all current and future AI/Python output.

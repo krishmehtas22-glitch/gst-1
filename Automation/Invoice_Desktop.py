@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.9'
+APP_VERSION='Reader 7.10'
 
 
 def quantity_unit_summary(invoice):
@@ -377,20 +377,36 @@ class InvoiceApp:
         record=self.selected()
         if not record or not record.get('output_path'):
             messagebox.showinfo('Import to Tally','Select an invoice with prepared XML first.');return
-        from Common_Rules.tally_import import import_plan,loaded_companies,post_xml,send_plan,tally_executable,launch_tally
+        from Common_Rules.tally_import import import_plan,client_import_groups,voucher_count,loaded_companies,post_xml,send_plan,tally_executable,launch_tally
         from Common_Rules.engine import write_json
         folder=Path(record.get('group_output_path') or record['output_path'])
-        try:plan=import_plan(folder)
+        try:
+            selected_plan=import_plan(folder)
+            groups=client_import_groups(record['output_path'],folder)
+            selected_group=next(i for i,g in enumerate(groups) if folder.resolve() in g['folders'])
+            plan=groups[selected_group]['plan']
+            all_folder_count=sum(len(g['folders']) for g in groups)
+            all_voucher_count=sum(voucher_count(g['plan']) for g in groups)
         except (OSError,ValueError) as exc:
             messagebox.showerror('Import to Tally',str(exc));return
         self.auto.set(False);self.busy=True
         dialog=tk.Toplevel(self.window);dialog.title('Import existing XML to Tally')
-        dialog.geometry('720x360');dialog.transient(self.window);dialog.grab_set()
+        dialog.geometry(f'820x{min(740,440+55*len(groups))}');dialog.transient(self.window);dialog.grab_set()
         ttk.Label(dialog,text='Current XML: '+str(folder),wraplength=680).pack(anchor='w',padx=12,pady=10)
         ttk.Label(dialog,text='Open the destination company in Tally, then choose it below.\nOrder: '+ ' → '.join(name for name,_ in plan)).pack(anchor='w',padx=12)
-        company=tk.StringVar(value='')
-        choices=ttk.Combobox(dialog,textvariable=company,state='readonly',width=70)
-        choices.pack(anchor='w',padx=12,pady=8)
+        include_all=tk.BooleanVar(value=True)
+        if all_folder_count>1:
+            ttk.Checkbutton(dialog,text=f'Include ALL current client XML folders: {all_voucher_count} invoices ({all_folder_count} folders)',variable=include_all).pack(anchor='w',padx=12,pady=6)
+            ttk.Label(dialog,text=f'Untick to import only this selected set ({voucher_count(selected_plan)} invoices), when completing an earlier partial import.',wraplength=760).pack(anchor='w',padx=12)
+        else:
+            ttk.Label(dialog,text=f'This import contains {all_voucher_count} invoices.',wraplength=720).pack(anchor='w',padx=12)
+        company_variables=[];company_choices=[]
+        for group in groups:
+            ttk.Label(dialog,text=group['label']+f" ({voucher_count(group['plan'])} invoices)",wraplength=760).pack(anchor='w',padx=12)
+            variable=tk.StringVar(value='')
+            choice=ttk.Combobox(dialog,textvariable=variable,state='readonly',width=80)
+            choice.pack(anchor='w',padx=12,pady=5)
+            company_variables.append(variable);company_choices.append(choice)
         state=ttk.Label(dialog,text='Connecting to local Tally…',wraplength=680)
         state.pack(anchor='w',padx=12,pady=10)
         messages=queue.Queue();running=[False];launch_attempted=[False]
@@ -407,15 +423,24 @@ class InvoiceApp:
             threading.Thread(target=worker,daemon=True).start()
         def import_now():
             if running[0]:return
-            target=company.get()
-            if not target:
-                state.config(text='Choose the destination company first.');return
+            chosen_groups=groups if include_all.get() else [{**groups[selected_group],'plan':selected_plan}]
+            indices=list(range(len(groups))) if include_all.get() else [selected_group]
+            targets=[company_variables[i].get() for i in indices]
+            if not all(targets):
+                state.config(text='Choose the destination company for each included seller first.');return
             running[0]=True
+            receipt_folder=Path(record['output_path']) if include_all.get() else folder
             def worker():
                 try:
-                    results=send_plan(plan,target,progress=lambda text:messages.put(('progress',text)))
-                    # Save actual server counters separately; no generated XML or financial history changes.
-                    try:write_json(folder/'Last_Tally_Import.json',{'company':target,'results':results})
+                    results=[]
+                    for group,target in zip(chosen_groups,targets):
+                        try:received=send_plan(group['plan'],target,progress=lambda text:messages.put(('progress',text)))
+                        except (ValueError,OSError) as exc:
+                            received=[{'file':'Company/connection check','company':target,'errors':[str(exc)]}]
+                        for result in received:result['xml_folders']=[str(p) for p in group['folders']]
+                        results.extend(received)
+                        if any(r.get('errors') or any(r.get('counts',{}).get(t,0) for t in ('ERRORS','CANCELLED')) for r in received):break
+                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results})
                     except OSError:pass
                     messages.put(('imported',results))
                 except Exception as exc:messages.put(('import_error',str(exc)))
@@ -433,8 +458,9 @@ class InvoiceApp:
                     if kind=='progress':state.config(text=value);continue
                     running[0]=False
                     if kind=='companies':
-                        choices.config(values=value)
-                        if company.get() not in value:company.set('')
+                        for choice,variable in zip(company_choices,company_variables):
+                            choice.config(values=value)
+                            if variable.get() not in value:variable.set('')
                         import_button.config(state='normal' if value else 'disabled')
                         state.config(text='Choose a company and import.' if value else 'No company is available. Open your company in Tally and click Refresh companies.')
                     elif kind=='connection':
@@ -461,7 +487,7 @@ class InvoiceApp:
                         lines=[];failed=False
                         for result in value:
                             counts=result.get('counts',{})
-                            lines.append(result['file']+': '+', '.join(f'{key.lower()} {number}' for key,number in counts.items()))
+                            lines.append(result['company']+' / '+result['file']+': '+', '.join(f'{key.lower()} {number}' for key,number in counts.items()))
                             if result.get('errors') or counts.get('ERRORS',0) or counts.get('CANCELLED',0):
                                 failed=True;lines.extend(result.get('errors',[]))
                         title='Tally import needs attention' if failed else 'Tally import result'
