@@ -32,7 +32,8 @@ def candidate(root,record):
     if not isinstance(inv,dict) or not isinstance(inv.get('items'),list):
         raise ValueError('Invalid Gemini extraction cache')
     return {**inv,'source_api':True,'api_provider':'Gemini','api_model':data['model'],
-            'extraction_warnings':[WARNING]}
+            'api_review_mode':data.get('review_mode','desktop'),
+            'extraction_warnings':[] if data.get('review_mode')=='tally' else [WARNING]}
 
 
 def schema():
@@ -93,7 +94,7 @@ def api_json(path,key,payload=None,timeout=35):
 
 
 def request_invoice(payload,key,model):
-    try:response=api_json('models/'+model+':generateContent',key,payload)
+    try:response=api_json('models/'+model+':generateContent',key,payload,timeout=120)
     except ValueError as exc:raise ValueError('Model '+model+' — '+str(exc)) from None
     try:
         choices=response.get('candidates',[])

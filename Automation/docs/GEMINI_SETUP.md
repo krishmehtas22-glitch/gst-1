@@ -69,3 +69,12 @@ request or accuracy benchmark has been performed in this cloud environment:**
 it has no API key. Passing those tests is not evidence that Gemini correctly
 reads the 166–185 batch or every future layout. Those 20 invoices now pass the
 local Python reader independently of this optional API.
+
+## Client batch (Reader 6.7)
+
+Select one client folder and scan before clicking **Read client batch with Gemini → XML**.
+The explicit batch choice applies Gemini fields without per-invoice desktop approval;
+review all generated vouchers in Tally. Fiscal validation and existing manual
+corrections/history still apply. Requests are queued at least 13 seconds apart;
+HTTP 429 stops further requests. Results for every source are saved in
+`.invoice_app/gemini_batch_results.json`. Cached successes are reused.

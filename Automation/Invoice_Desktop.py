@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 6.6'
+APP_VERSION='Reader 6.7'
 
 
 def quantity_unit_summary(invoice):
@@ -85,6 +85,7 @@ class InvoiceApp:
         ttk.Checkbutton(actions,text='Summary GST accounting',variable=self.summary_accounting,command=self.reset).pack(side='left',padx=8)
         self.auto = tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Watch for new PDFs',variable=self.auto).pack(side='right')
+        ttk.Button(window,text='Read client batch with Gemini → XML',command=self.read_gemini_batch).pack(anchor='w',padx=10)
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
         self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10,wraplength=1250)
         self.status.pack(fill='x')
@@ -218,9 +219,37 @@ class InvoiceApp:
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
+    def read_gemini_batch(self):
+        if self.busy:return
+        selected=self.client_scope.get()
+        if selected=='All clients':
+            messagebox.showinfo('Gemini batch','Choose one client folder first, then scan its invoices.');return
+        client=selected.removeprefix('Folder: ')
+        records=[r for r in self.records if r['client']==client]
+        if not records:
+            messagebox.showinfo('Gemini batch','Scan this client folder first.');return
+        if not messagebox.askyesno('Gemini batch → XML',f'Send {len(records)} invoices from {client} to Google Gemini and apply extracted fields for XML? Review the results in Tally. Existing manual corrections are retained. GST, totals, missing fields and duplicate checks still apply. Calls are spaced for the free quota; successful cached results are reused.'):
+            return
+        self.auto.set(False);self.busy=True
+        root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
+        def worker():
+            try:
+                from Common_Rules.gemini_batch import read_batch
+                results=read_batch(root,records,progress=lambda message:self.events.put(('progress',message)))
+                updated=process_sources(root,demo,[client],units,summary)
+                success=sum(r['status']=='extracted' for r in results)
+                self.events.put(('ok',updated))
+                self.events.put(('progress',f'Gemini batch: {success}/{len(results)} extracted; {sum(not r.get("errors") and bool(r.get("output_path")) for r in updated)} invoices ready for XML. Review in Tally. Per-PDF results: .invoice_app/gemini_batch_results.json'))
+            except Exception as exc:self.events.put(('error',str(exc)))
+        threading.Thread(target=worker,daemon=True).start()
+
     def tick(self):
         try:
             kind,value = self.events.get_nowait()
+            if kind=='progress':
+                self.status.config(text=value)
+                self.window.after(100,self.tick)
+                return
             self.busy = False
             if kind == 'error':
                 self.status.config(text='Needs attention: '+value)
@@ -273,6 +302,8 @@ class InvoiceApp:
             price_note=('\nDiscounted items use net unit rates; printed list rates/discounts are retained.' if any(item.get('discount_rate') for item in record['invoice'].get('items',[])) else '')
             price_note+=''.join('\nItem '+str(i+1)+' unit '+str(item.get('unit','?'))+(': estimated — ' if item.get('unit_auto') else ': ')+str(item.get('unit_evidence','printed')) for i,item in enumerate(record['invoice'].get('items',[])))
             price_note+=''.join('\nItem '+str(i+1)+': '+str(item.get('quantity_evidence','Quantity defaulted to 1'))+(' — accepted by you' if item.get('quantity_confirmed') else ' — assumed, check against PDF') for i,item in enumerate(record['invoice'].get('items',[])) if item.get('quantity_assumed'))
+            if record['invoice'].get('api_review_mode')=='tally':
+                price_note+='\nGemini batch fields applied automatically; compare seller, items, units and GST in Tally. No individual human approval recorded.'
             price_note+=('\nINR accounting values converted using the printed '+record['invoice']['foreign_currency']+' exchange rate '+str(record['invoice'].get('exchange_rate','')) if record['invoice'].get('foreign_currency') else '')
             source_note=record.get('source_path',record['path'])
             if record.get('page_number'):source_note+=f" (page {record['page_number']} of {record['page_count']})"

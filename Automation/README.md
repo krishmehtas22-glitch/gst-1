@@ -1,5 +1,22 @@
 # Sales invoice automation
 
+## Reader 6.7: client batch with Gemini → XML
+
+Choose one client folder, scan it, then click **Read client batch with Gemini → XML**.
+One click queues every invoice shown for that client. Successful API fields are
+applied automatically for XML; compare the vouchers in Tally. Manual corrections
+and saved transaction/import history are retained. This explicit batch choice
+removes only the Gemini comparison warning, not GST, reconciliation, missing-field
+or duplicate checks. The single-invoice Gemini button still requires Review.
+
+Calls start at least 13 seconds apart (up to 5 per minute), successful cached
+results need no new request, and HTTP 429 stops the queue. Failed invoices are
+recorded alongside successes in `.invoice_app/gemini_batch_results.json`; they
+are not silently skipped. The account limit shown by the user is 20 requests/day,
+so 20 uncached invoices require that much remaining quota. There is no automatic
+retry or promise of 20 successful responses. PDF response timeout is now 120 seconds.
+
+
 ## Reader 6.6: Gemini connection diagnostics
 
 The title bar shows **Reader 6.6** so a replaced installation can be identified.
