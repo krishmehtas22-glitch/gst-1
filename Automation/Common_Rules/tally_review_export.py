@@ -123,11 +123,15 @@ def export_all(root,records,demo):
                     voucher=ET.SubElement(message(vd),'VOUCHER',{'REMOTEID':remote,'VCHTYPE':'Sales','ACTION':'Create','OBJVIEW':view})
                     date=clean(inv.get('date')).replace('-','')
                     if not re.fullmatch(r'\d{8}',date):date='';notes.append('Date missing/invalid; Tally may reject this voucher')
-                    for tag,value in {'DATE':date,'EFFECTIVEDATE':date,'GUID':remote,'VOUCHERTYPENAME':'Sales','VOUCHERNUMBER':no,'REFERENCE':no,'PARTYLEDGERNAME':party,'PARTYNAME':buyer,'PERSISTEDVIEW':view,'ISINVOICE':'Yes' if inventory else 'No','ISOPTIONAL':'No','ISCANCELLED':'No'}.items():text(voucher,tag,value)
+                    for tag,value in {'DATE':date,'EFFECTIVEDATE':date,'GUID':remote,'VOUCHERTYPENAME':'Sales','VOUCHERNUMBER':no,'REFERENCE':no,'PARTYLEDGERNAME':party,'PARTYNAME':buyer,'BASICBUYERNAME':buyer,'PERSISTEDVIEW':view,'ISINVOICE':'Yes' if inventory else 'No','ISOPTIONAL':'No','ISCANCELLED':'No'}.items():text(voucher,tag,value)
+                    if inv.get('buyer_address'):
+                        address=ET.SubElement(voucher,'BASICBUYERADDRESS.LIST',{'TYPE':'String'})
+                        text(address,'BASICBUYERADDRESS',clean(inv['buyer_address']))
                     if gstin:text(voucher,'PARTYGSTIN',gstin)
                     pos=clean(inv.get('place_of_supply'))
                     if pos:text(voucher,'PLACEOFSUPPLY',STATES.get(pos,pos))
-                    allocation(voucher,{'ledger':party,'debit':amounts['total'],'credit':0},no,True,entries_tag='ALLLEDGERENTRIES.LIST')
+                    entries_tag='LEDGERENTRIES.LIST' if inventory else 'ALLLEDGERENTRIES.LIST'
+                    allocation(voucher,{'ledger':party,'debit':amounts['total'],'credit':0},no,True,entries_tag=entries_tag)
                     if inventory:
                         for item in items:
                             unit=clean(item.get('unit')) or 'Units';quantity=precise(item.get('quantity',1));value=number(item['value'])
@@ -153,18 +157,21 @@ def export_all(root,records,demo):
                                 text(stock,'GSTAPPLICABLE','Applicable');text(stock,'GSTTYPEOFSUPPLY','Goods')
                                 gst_details(stock,{'hsn':clean(item.get('hsn')),'classification':inv['classification'],**{t+'_rate':str(precise(item[t+'_rate'])) for t in ('cgst','sgst','igst')}},date)
                             node=ET.SubElement(voucher,'ALLINVENTORYENTRIES.LIST')
-                            for tag,val in {'STOCKITEMNAME':name,'ISDEEMEDPOSITIVE':'No','ACTUALQTY':str(quantity)+' '+unit,'BILLEDQTY':str(quantity)+' '+unit,'AMOUNT':str(value),'RATE':str(rate)+'/'+unit}.items():text(node,tag,val)
-                            allocation(node,{'ledger':'Sales','debit':0,'credit':value},no,entries_tag='ACCOUNTINGALLOCATIONS.LIST')
-                    else:allocation(voucher,{'ledger':'Sales','debit':0,'credit':amounts['taxable']},no,entries_tag='ALLLEDGERENTRIES.LIST')
+                            for tag,val in {'STOCKITEMNAME':name,'ISDEEMEDPOSITIVE':'No','ISLASTDEEMEDPOSITIVE':'No','ACTUALQTY':str(quantity)+' '+unit,'BILLEDQTY':str(quantity)+' '+unit,'AMOUNT':str(value),'RATE':str(rate)+'/'+unit}.items():text(node,tag,val)
+                            batch=ET.SubElement(node,'BATCHALLOCATIONS.LIST')
+                            for tag,val in {'GODOWNNAME':'Main Location','BATCHNAME':'Primary Batch','DESTINATIONGODOWNNAME':'Main Location','AMOUNT':str(value),'ACTUALQTY':str(quantity)+' '+unit,'BILLEDQTY':str(quantity)+' '+unit}.items():text(batch,tag,val)
+                            account=ET.SubElement(node,'ACCOUNTINGALLOCATIONS.LIST')
+                            for tag,val in {'LEDGERNAME':'Sales','ISDEEMEDPOSITIVE':'No','AMOUNT':str(value)}.items():text(account,tag,val)
+                    else:allocation(voucher,{'ledger':'Sales','debit':0,'credit':amounts['taxable']},no,entries_tag=entries_tag)
                     for kind in ('cgst','sgst','igst','cess','round_off'):
                         if not amounts[kind]:continue
                         name={'cgst':'CGST','sgst':'SGST','igst':'IGST','cess':'Cess','round_off':'Round Off'}[kind]
                         extra={'TAXTYPE':'GST','GSTDUTYHEAD':HEADS.get(kind,'Cess')} if kind!='round_off' else {}
                         ledger(name,'Duties & Taxes' if kind!='round_off' else 'Indirect Expenses',**extra)
-                        allocation(voucher,{'ledger':name,'debit':0,'credit':amounts[kind]},no,entries_tag='ALLLEDGERENTRIES.LIST')
+                        allocation(voucher,{'ledger':name,'debit':0,'credit':amounts[kind]},no,entries_tag=entries_tag)
                     delta=amounts['total']-amounts['taxable']-tax
                     if delta:
-                        allocation(voucher,{'ledger':'Invoice differences - review','debit':0,'credit':delta},no,entries_tag='ALLLEDGERENTRIES.LIST')
+                        allocation(voucher,{'ledger':'Invoice differences - review','debit':0,'credit':delta},no,entries_tag=entries_tag)
                         notes.append('Unreconciled difference '+str(delta)+' posted to Invoice differences - review; printed amounts retained')
                     text(voucher,'NARRATION',clean(('TEST DATA; ' if demo else '')+'Review in Tally; seller '+seller+'; seller GSTIN '+seller_gstin+'; source '+str(source)+'; '+ '; '.join(dict.fromkeys(notes))))
                     record.update(errors=[],output_path=str(run),group_output_path=str(folder),batch_voucher_count=len(group),display_status='XML prepared; review in Tally',tally_review_warnings=list(dict.fromkeys(notes)))
@@ -189,6 +196,7 @@ def export_all(root,records,demo):
                     unit=stock.findtext('BASEUNITS')
                     if any(not item.findtext(tag,'').endswith(' '+unit) for tag in ('ACTUALQTY','BILLEDQTY')):
                         raise ValueError('Internal batch error: quantity unit differs from stock base unit')
+                verify_vouchers(vouchers)
                 # Ledger masters precede stock masters; units are already imported.
                 md[:]=sorted(md,key=lambda msg:0 if msg.find('LEDGER') is not None else 1)
                 save_document(units,folder/'Units.xml')
@@ -198,3 +206,27 @@ def export_all(root,records,demo):
             (run/'Import_Instructions.txt').write_text('Import into the SAME matching selected Tally company in this order:\n1. Units.xml (unit symbols and definitions)\n2. Masters.xml (buyer/sales/tax ledgers and stock items)\n3. Sales_Vouchers.xml (vouchers)\nIgnore duplicate existing masters. Check the unit import result before importing stock masters. Each seller has a separate set if needed. Batch_Report.json retains all warnings and extracted items. To repair missing-unit/stock exceptions: import Units.xml, import Masters.xml again, then retry the rejected vouchers only. Stable voucher GUIDs are retained; check duplicate handling in Tally. XML preparation is not confirmation of import.\n')
             write_json(base/'latest.json',{'output_path':str(run),'count':len(report)})
     return records
+
+
+def verify_vouchers(document):
+    """Validate serialized Tally view, party debit and exactly one sales credit."""
+    for voucher in document.findall('.//VOUCHER'):
+        inventory=voucher.findall('ALLINVENTORYENTRIES.LIST')
+        expected='LEDGERENTRIES.LIST' if inventory else 'ALLLEDGERENTRIES.LIST'
+        wrong='ALLLEDGERENTRIES.LIST' if inventory else 'LEDGERENTRIES.LIST'
+        if voucher.findall(wrong):raise ValueError('Internal XML error: ledger list does not match voucher view')
+        entries=voucher.findall(expected)
+        parties=[entry for entry in entries if entry.findtext('ISPARTYLEDGER')=='Yes']
+        if len(parties)!=1 or parties[0].findtext('LEDGERNAME')!=voucher.findtext('PARTYLEDGERNAME'):
+            raise ValueError('Internal XML error: buyer ledger does not match the party debit')
+        total=sum(money(entry.findtext('AMOUNT')) for entry in entries)
+        for item in inventory:
+            accounts=item.findall('ACCOUNTINGALLOCATIONS.LIST')
+            batches=item.findall('BATCHALLOCATIONS.LIST')
+            value=money(item.findtext('AMOUNT'))
+            if sum(money(account.findtext('AMOUNT')) for account in accounts)!=value:
+                raise ValueError('Internal XML error: item sales allocation does not match value')
+            if not batches or sum(money(batch.findtext('AMOUNT')) for batch in batches)!=value:
+                raise ValueError('Internal XML error: item godown allocation does not match value')
+            total+=sum(money(account.findtext('AMOUNT')) for account in accounts)
+        if total!=0:raise ValueError('Internal XML error: serialized debit/credit entries do not balance')

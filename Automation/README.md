@@ -1,5 +1,21 @@
 # Sales invoice automation
 
+## Reader 7.5: correct inventory buyer/tax ledger structure
+
+Inventory vouchers now use LEDGERENTRIES.LIST for the buyer and taxes, matching
+the native inventory exporter. Sales credit stays inside each inventory item
+(no duplicated standalone Sales posting). Each item includes godown/batch
+allocations. Accounting fallback vouchers retain ALLLEDGERENTRIES.LIST.
+A serialized-output verifier checks voucher view, buyer-ledger identity,
+item/godown allocation amounts and exact total debit/credit balance.
+
+Regenerate from saved reads using Scan and generate XML; no API call is needed.
+Import Units.xml → Masters.xml first, then retry only rejected vouchers in Tally.
+Quantities, unit/master names and stable voucher GUIDs remain retained.
+This fixes a batch-export structure error; it is not a new buyer-extraction
+accuracy claim or a verified live Tally import.
+
+
 ## Reader 7.4: units before stock masters; preserve quantity precision
 
 The complete batch exporter now creates **Units.xml** separately. Import

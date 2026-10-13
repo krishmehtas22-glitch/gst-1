@@ -31,6 +31,11 @@ The user explicitly requires complete XML batches for review in Tally.
   catalog's formal names/UQC labels and sufficient quantity decimal precision.
   Check stock BASEUNITS against Units.xml and inventory names/quantity suffixes
   against their stock masters. Do not round quantities/rates to currency cents.
+- Inventory invoices must use LEDGERENTRIES.LIST for buyer/tax entries, with
+  sales credits inside item ACCOUNTINGALLOCATIONS.LIST and matching godown
+  BATCHALLOCATIONS.LIST. Accounting vouchers use ALLLEDGERENTRIES.LIST.
+  Verify the serialized view, party identity and exact debit/credit balance
+  before publishing XML; arithmetic alone cannot validate the Tally structure.
 - Apply shared `ai_invoice_rules.RULES` to every provider prompt. Resolve Buyer/
   Bill To separately from Supplier/Seller, Ship To, bank and signatory. Preserve
   the buyer name and exact buyer ledger in the report. Every referenced buyer,
