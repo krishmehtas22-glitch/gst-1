@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 6.5'
+APP_VERSION='Reader 6.6'
 
 
 def quantity_unit_summary(invoice):
@@ -86,7 +86,7 @@ class InvoiceApp:
         self.auto = tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Watch for new PDFs',variable=self.auto).pack(side='right')
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
-        self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10)
+        self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10,wraplength=1250)
         self.status.pack(fill='x')
         frame = ttk.Frame(window)
         frame.pack(fill='both',expand=True,padx=10)

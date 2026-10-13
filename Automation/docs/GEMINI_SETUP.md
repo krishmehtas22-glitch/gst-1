@@ -41,6 +41,14 @@ Windows `GEMINI_API_KEY` variable. The application does not embed supplied keys.
 
 ## Cost and failure handling
 
+For a persistent error, close the invoice app and double-click
+**Check_Gemini_API.bat** in the program folder. It prints whether the key is
+present (never its value), the effective model, model-list access and the result
+of one small `Reply only OK` request. It does not upload any invoice. The text
+request uses provider quota/usage if successful. Google error messages are
+shown with credentials redacted. Share the result lines to diagnose the failing
+stage. A model appearing in the list is distinct from successful generation.
+
 Successful extractions are cached against the PDF digest and model. Reusing the
 same cached result does not call the API, even if the key is no longer present.
 A changed PDF or model requires a new request. Failures are not automatically

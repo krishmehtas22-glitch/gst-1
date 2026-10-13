@@ -3,6 +3,7 @@ import base64, hashlib, json, os, re
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+from urllib.parse import quote,quote_plus
 from .source_documents import verify_source
 from .engine import read_json, write_json
 
@@ -43,21 +44,59 @@ def schema():
     return invoice
 
 
-def request_invoice(payload,key,model):
-    request=Request('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',
-                    data=json.dumps(payload).encode(),method='POST',
+def configured_model():
+    model=os.environ.get('GEMINI_INVOICE_MODEL',DEFAULT_MODEL).strip().removeprefix('models/')
+    if not re.fullmatch(r'gemini-[A-Za-z0-9._-]+',model):
+        raise ValueError('GEMINI_INVOICE_MODEL must be a Gemini model ID, for example gemini-2.5-flash')
+    return model
+
+
+def safe_provider_error(error,key):
+    """Keep Google's reason, redact credentials, never print HTML error pages."""
+    message='';status=''
+    try:
+        data=json.loads(error.read(16384))
+        detail=data.get('error',{})
+        if isinstance(detail,dict):
+            message=detail.get('message','');status=detail.get('status','')
+    except (ValueError,TypeError,OSError):pass
+    if not isinstance(message,str):message=''
+    if not isinstance(status,str) or not re.fullmatch(r'[A-Z_]+',status):status=''
+    if key:
+        for token in (key,quote(key,safe=''),quote_plus(key)):
+            message=message.replace(token,'[REDACTED]')
+    message=re.sub(r'(?i)([?&](?:key|api_key)=)[^\s&"\']+',r'\1[REDACTED]',message)
+    message=re.sub(r'AIza[A-Za-z0-9_-]+','[REDACTED]',message)
+    message=re.sub(r'\bAQ\.[A-Za-z0-9_-]{12,}','[REDACTED]',message)
+    return status,' '.join(message.split())[:900]
+
+
+def api_json(path,key,payload=None,timeout=35):
+    if not re.fullmatch(r'[A-Za-z0-9._-]{10,512}',key):
+        raise ValueError('GEMINI_API_KEY must contain only the key copied from AI Studio, without quotes, a URL or line breaks')
+    request=Request('https://generativelanguage.googleapis.com/v1beta/'+path,
+                    data=None if payload is None else json.dumps(payload).encode(),
+                    method='GET' if payload is None else 'POST',
                     headers={'Content-Type':'application/json','x-goog-api-key':key})
     try:
-        with urlopen(request,timeout=35) as response:
+        with urlopen(request,timeout=timeout) as response:
             raw=response.read(2*1024*1024+1)
     except HTTPError as exc:
-        reasons={400:'Check the model and PDF request',401:'API key was rejected',403:'API key/project cannot access this model',404:'Model is unavailable; set GEMINI_INVOICE_MODEL to an available model',429:'Free-tier quota or rate limit reached; no automatic retry'}
-        raise ValueError('Gemini HTTP '+str(exc.code)+': '+reasons.get(exc.code,'Provider request failed')) from None
+        status,message=safe_provider_error(exc,key)
+        reasons={400:'Request rejected',401:'Authentication rejected',403:'Access denied',404:'Requested API resource was not found',429:'Quota or rate limit reached; no automatic retry'}
+        raise ValueError('Gemini HTTP '+str(exc.code)+(f' [{status}]' if status else '')+': '+(message or reasons.get(exc.code,'Provider request failed'))) from None
     except (URLError,TimeoutError,OSError):
         raise ValueError('Gemini connection failed or timed out; local extraction is unchanged') from None
     if len(raw)>2*1024*1024:raise ValueError('Gemini response exceeded the supported size')
+    try:return json.loads(raw)
+    except (json.JSONDecodeError,TypeError):raise ValueError('Gemini returned an unreadable API response') from None
+
+
+def request_invoice(payload,key,model):
+    try:response=api_json('models/'+model+':generateContent',key,payload)
+    except ValueError as exc:raise ValueError('Model '+model+' — '+str(exc)) from None
     try:
-        response=json.loads(raw);choices=response.get('candidates',[])
+        choices=response.get('candidates',[])
         if len(choices)!=1 or choices[0].get('finishReason')!='STOP':
             raise ValueError('Gemini did not return a complete extraction')
         text=''.join(part.get('text','') for part in choices[0]['content']['parts'])
@@ -68,8 +107,7 @@ def request_invoice(payload,key,model):
 
 def extract_selected(root,record,transport=None):
     verify_source(root,record)
-    model=os.environ.get('GEMINI_INVOICE_MODEL',DEFAULT_MODEL).strip().removeprefix('models/')
-    if not re.fullmatch(r'[A-Za-z0-9._-]+',model):raise ValueError('Invalid GEMINI_INVOICE_MODEL')
+    model=configured_model()
     old=cache_path(root,record)
     if old.exists():
         saved=read_json(old)

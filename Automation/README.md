@@ -1,8 +1,14 @@
 # Sales invoice automation
 
-## Reader 6.5: Gemini Flash model connection
+## Reader 6.6: Gemini connection diagnostics
 
-The title bar shows **Reader 6.5** so a replaced installation can be identified.
+The title bar shows **Reader 6.6** so a replaced installation can be identified.
+Google errors now show the actual provider reason and model used, with the key
+redacted, instead of labelling every 404 as an unavailable model. If connection
+still fails, double-click **Check_Gemini_API.bat**. It checks the model list using
+the privately saved key, then makes one small text request only if that model
+is listed. It uploads no invoice and does not change billing/model settings.
+The pause keeps the result visible so it can be shared for diagnosis.
 The Gemini PDF reader now defaults to **gemini-2.5-flash**, which appears in the
 account model list supplied by the user. Set `GEMINI_INVOICE_MODEL` to that value
 if an older override still exists. Keys remain private Windows environment
