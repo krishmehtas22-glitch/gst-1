@@ -375,6 +375,7 @@ def _process_client(root, client, export_scopes=None):
     history = History(client / '.automation' / 'history.sqlite3')
     issues = []
     counts = {'new':0,'duplicate':0,'review':0,'already_in_tally':0}
+    metadata_compatibility=[]
     try:
         history.bind_company(config['company_id'], config['seller_gstin'])
         # Also reconcile pending/generated records after a Tally snapshot refresh.
@@ -421,12 +422,19 @@ def _process_client(root, client, export_scopes=None):
                 fp = fingerprint(inv)
                 previous = history.lookup(key)
                 if previous:
+                    inv,recovered_addresses=history.retain_saved_addresses(previous,inv)
+                    fp=fingerprint(inv)
                     if previous['fingerprint'] != fp:
                         if key in tally or not history.correct_units(key,inv):
                             raise ValueError('Invoice identity matches history but transaction details differ')
                         for manifest_path in (client/'imports'/'by_client').glob('*/manifest.json'):
                             manifest=read_json(manifest_path)
                             if key in manifest.get('invoice_keys',[]):invalidate_outputs(client,manifest_path.parent)
+                    if recovered_addresses:
+                        note={'source':inv['source'],'invoice_key':key,'recovered_addresses':recovered_addresses,
+                              'message':'Reader recovered previously blank address metadata; saved transaction and import status preserved'}
+                        metadata_compatibility.append(note)
+                        history.event(path.name,key,'metadata_compatible',json.dumps(note,ensure_ascii=False))
                     counts['duplicate'] += 1
                     history.event(path.name,key,'duplicate','No second voucher created')
                     continue
@@ -510,7 +518,8 @@ def _process_client(root, client, export_scopes=None):
                     write_json(mirror/'manifest.json',{**manifest,'export_scope':None})
         report = {'scopes':scope_reports,'client':client.name,'company_id':config['company_id'],'output_format':config.get('output_format','xml'),'counts':counts,
                   'demo_only':bool(config.get('demo_only')),
-                  'pending_validated':len(eligible),'export':export_status,'issues':issues,'history':history.statuses()}
+                  'pending_validated':len(eligible),'export':export_status,'issues':issues,'history':history.statuses(),
+                  'metadata_compatibility':metadata_compatibility}
         write_json(client / 'reports' / 'validation.json', report)
         write_json(client / 'reports' / 'master_plan.json', masters)
         write_json(client / 'reports' / 'validated_invoices.json', [

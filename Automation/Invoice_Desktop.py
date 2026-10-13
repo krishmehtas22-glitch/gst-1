@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 6.2'
+APP_VERSION='Reader 6.3'
 
 
 def quantity_unit_summary(invoice):
@@ -69,7 +69,7 @@ class InvoiceApp:
         ttk.Button(scope,text='Re-read selected PDFs',command=self.reread).pack(side='left')
         ttk.Button(scope,text='Save supplier layout',command=self.supplier_layout).pack(side='left',padx=8)
         ttk.Button(scope,text='Confirm test PDF',command=self.confirm_test).pack(side='left')
-        ttk.Button(scope,text='Check / change units',command=self.units).pack(side='left',padx=8)
+        ttk.Button(scope,text='Accept / change units',command=self.units).pack(side='left',padx=8)
         ttk.Button(scope,text='Recover processing lock',command=self.recover_lock).pack(side='left')
         ttk.Button(scope,text='Read selected with Gemini',command=self.read_gemini).pack(side='left',padx=8)
         self.refresh_clients()
@@ -139,7 +139,7 @@ class InvoiceApp:
         def done(changed):
             self.auto.set(watching)
             if changed:self.reset();self.start()
-        open_unit_choices(self.window,self.root,self.records,done)
+        open_unit_choices(self.window,self.root,self.records,done,self.selected())
 
     def close(self):
         self.closing = True

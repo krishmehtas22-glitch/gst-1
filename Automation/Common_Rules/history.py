@@ -56,6 +56,22 @@ class History:
         self.db.execute('INSERT INTO invoices VALUES(?,?,?,?,?)', (key, fp, json.dumps(data, ensure_ascii=False), status, data['sha256']))
         self.db.commit()
 
+    def retain_saved_addresses(self, previous, invoice):
+        """Keep saved metadata when an upgrade recovers a blank address.
+
+        Only the exact same source PDF qualifies. The caller still compares
+        quantities, units, amounts, GST, identities and all other saved facts.
+        """
+        if not previous or not invoice.get('sha256') or previous['sha256']!=invoice['sha256']:
+            return invoice,{}
+        saved=previous['data'];current=dict(invoice);recovered={}
+        for field in ('seller_address','buyer_address'):
+            if saved.get(field) in (None,'') and current.get(field) not in (None,''):
+                recovered[field]=current[field]
+                if field in saved:current[field]=saved[field]
+                else:current.pop(field,None)
+        return current,recovered
+
     def correct_units(self,key,invoice):
         """Explicit unit-only edits to the same unimported PDF, with an audit."""
         previous=self.lookup(key)

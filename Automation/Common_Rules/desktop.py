@@ -345,6 +345,9 @@ def process_sources(root, demo=True, client_names=None, auto_units=True, summary
                     key=invoice_key({**record['invoice'],'seller_gstin':config['seller_gstin']})
                 except (ValueError,KeyError,TypeError):
                     key=None
+                for note in report.get('metadata_compatibility',[]):
+                    if note['invoice_key']==key:
+                        record.setdefault('notices',[]).append(note['message'])
                 ledger=validated.get(key,{}).get('buyer_ledger_name')
                 if ledger and ledger!=record['invoice'].get('buyer_name'):
                     record['buyer_ledger_name']=ledger

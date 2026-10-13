@@ -1,8 +1,23 @@
 # Sales invoice automation
 
-## Reader 6.2: broader form labels and optional Gemini extraction
+## Reader 6.3: accept quantities/units and preserve saved history
 
-The title bar shows **Reader 6.2** so a replaced installation can be identified.
+The title bar shows **Reader 6.3** so a replaced installation can be identified.
+Click **Accept / change units** to inspect printed quantities and units. Tick
+individual item rows and use **Accept checked items**, choose an invoice and use
+**Accept this invoice**, or use **Accept all shown invoices** for the current
+client filter. You can change the unit before accepting it. Acceptance removes
+the estimated marker for those items and remembers their units; it does not
+change numeric quantities, prices, GST, seller details or financial history.
+Use Review to correct a numeric quantity. Missing/unmapped units remain unresolved.
+
+The reader now tolerates newly recovered addresses that older versions left
+blank, only when the source PDF bytes match and all transaction facts still
+match. Saved transaction data, voucher IDs and confirmed import status remain
+unchanged. Recovery is logged and shown in the details pane. Actual changes to
+quantities, units, rates, GST, identities or existing addresses still require
+review. The supplied eight CLIENT 17 PDFs reproduce and verify this upgrade case.
+
 Shared labels cover supplier GSTIN, document IDs, references, transaction
 categories and alternate GST total names. Paired form cells are processed as
 label/value pairs while full item tables retain their column positions. Numeric
