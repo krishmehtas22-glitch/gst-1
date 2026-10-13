@@ -1,0 +1,25 @@
+# Invoice batch contract
+
+The user explicitly requires complete XML batches for review in Tally.
+
+- All future Gemini, Groq, or other AI batch integrations must use the complete
+  batch workflow (`read_with_fallback`, then `process_sources` with the saved
+  client batch policy). Never let API quota expiry discard successful reads.
+- Switch to the other configured provider for remaining sources; use local
+  Python/OCR when configured APIs cannot finish. Do not enable billing, add
+  paid providers, or request secrets in chat.
+- Produce one XML voucher element per scanned invoice, including incomplete
+  ones. Keep uncertainties in narration and Batch_Report.json rather than
+  blocking XML for GSTIN, seller, unit/master, or reconciliation issues.
+- Use accounting vouchers when inventory cannot be reconstructed. Preserve
+  printed GST components and amounts; record any explicit unresolved values,
+  placeholders or difference ledger postings. Do not claim fabricated fields
+  are extracted facts or AI batch acceptance is individual human approval.
+- Keep separate clients and sellers isolated. Fresh output paths must contain
+  one consolidated Masters.xml and Sales_Vouchers.xml per seller, with an exact
+  input/output count. Open client XML folder must show this latest run.
+- Preserve prior financial/import history and manual corrections. Keep stable
+  voucher GUIDs and do not force-release another live process's OS lock.
+- XML generation is not proof of successful Tally import or correct GSTR-1.
+  Test partial-provider exhaustion, all-local fallback, master-unit variants,
+  missing fields, zero GST, updated output paths, and unchanged retained history.

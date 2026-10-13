@@ -55,3 +55,15 @@ Cloudflare blocks are distinguished from JSON API reasons. Run
 **Check_Groq_API.bat** and share its result lines: the diagnostic identifies
 model-list versus small-generation failure without uploading an invoice or
 printing your key. No client change can guarantee account or gateway access.
+
+## Complete output and fallback (Reader 7.0)
+
+The client batch option now retains successful reads, tries the other configured
+AI for remaining sources, then uses Python/OCR. The saved client policy produces
+XML for all scanned invoices on subsequent scans. Warnings are retained in
+Batch_Report.json and voucher narration. One Masters.xml and Sales_Vouchers.xml
+pair is produced per seller in a fresh run, and Open client XML folder points
+to that run. Inventory requires usable fields; otherwise an accounting voucher
+retains extracted items in the report. Missing dates or identity can still be
+rejected by Tally. Inspect differences posted to Invoice differences - review.
+This does not enable billing or claim successful import/correct filing.

@@ -1,5 +1,34 @@
 # Sales invoice automation
 
+## Reader 7.0: every batch invoice gets XML for Tally review
+
+**Read client batch with Gemini/Groq → XML** now enables a retained complete-output
+policy for that client. Each scanned invoice gets a voucher element, even when
+seller, GSTIN, unit, item-rate, or reconciliation details are uncertain. These
+are retained in narration and `Batch_Report.json`, rather than blocking XML.
+Successful AI reads survive quota expiry. Remaining invoices switch to the
+other configured provider and then local Python/OCR. No billing is enabled.
+
+Usable inventory entries have stock-master names keyed by unit/HSN/tax treatment,
+avoiding collisions with earlier unit variants. Other invoices use accounting
+vouchers and retain extracted items in the report. Printed invoice GST amounts
+are posted separately, including explicit zero tax. An unreconciled amount is
+posted visibly to **Invoice differences - review**, without replacing printed
+amounts. Missing dates or other essential facts can still cause Tally to reject
+a voucher; XML creation is not proof of import or correct GST reporting.
+
+**Open client XML folder** opens the current complete run, containing exactly
+one `Masters.xml` and `Sales_Vouchers.xml` per seller. Import masters first into
+the matching selected Tally company; ignore duplicate existing masters. Multiple
+sellers use separate subfolders. Older output runs remain retained. Financial
+history/manual corrections are preserved; existing voucher GUIDs are reused
+where recoverable. XML generation does not mark anything imported.
+
+The separate exporter does not use old company processing markers; it retains
+an OS guard against simultaneous writes. Future batch implementations must
+follow the repository `AGENTS.md` contract.
+
+
 ## Reader 6.10: distinguish Groq access and gateway failures
 
 Groq requests identify the client explicitly and accept JSON, rather than

@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 6.10'
+APP_VERSION='Reader 7.0'
 
 
 def quantity_unit_summary(invoice):
@@ -236,19 +236,21 @@ class InvoiceApp:
         upload='PDFs to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to Groq'
         demo=self.demo.get()
         test_note=' Test invoices is enabled: continuing confirms these batch PDFs are fictional test data.' if demo else ''
-        if not messagebox.askyesno(provider+' batch → XML',f'Send {len(records)} invoices from {client} as {upload} and apply extracted fields for XML? Review the results in Tally. Existing manual corrections are retained. GST, totals, missing fields and duplicate checks still apply. Calls are spaced; successful cached results are reused even after a quota stop. Provider quotas may stop new requests.'+test_note):
+        if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? If this API stops, use the other configured AI, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
             return
         self.auto.set(False);self.busy=True
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
         def worker():
             try:
-                from Common_Rules.gemini_batch import read_batch
-                results=read_batch(root,records,progress=lambda message:self.events.put(('progress',message)),provider=provider,confirm_test=demo)
+                from Common_Rules.gemini_batch import read_with_fallback
+                from Common_Rules.tally_review_export import enable
+                enable(root,client)
+                results=read_with_fallback(root,records,progress=lambda message:self.events.put(('progress',message)),primary=provider,confirm_test=demo)
                 self.events.put(('progress','Preparing XML from successful AI results and available local extraction; no further API request is needed…'))
                 updated=process_sources(root,demo,[client],units,summary)
                 success=sum(r['status']=='extracted' for r in results)
                 self.events.put(('ok',updated))
-                self.events.put(('progress',f'{provider} batch: {success}/{len(results)} extracted; {sum(not r.get("errors") and bool(r.get("output_path")) for r in updated)} invoices ready for XML. Review in Tally. Per-PDF results: .invoice_app/{provider.lower()}_batch_results.json'))
+                self.events.put(('progress',f'Batch complete: {success}/{len(results)} AI reads; {len(results)-success} Python fallback; {sum(not r.get("errors") and bool(r.get("output_path")) for r in updated)} XML vouchers prepared. Open client XML folder for the latest files and Batch_Report.json. Review in Tally.'))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
@@ -323,7 +325,7 @@ class InvoiceApp:
                 ('\nPrinted unit: '+record['invoice']['source_unit_note'] if record['invoice'].get('source_unit_note') else '')+
                 '\nClient folder batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
                 '\nOutput: '+record.get('output_path','Not generated')+
-                ('\nTally import: Masters.xml first, then Sales_Vouchers.xml. Missing-master errors: import Required_Masters.xml with duplicate masters ignored, then retry rejected vouchers.' if not record['errors'] and record.get('output_path') else ''))
+                ('\nTally import: Masters.xml first, then Sales_Vouchers.xml. '+('Latest complete batch: see Batch_Report.json; ignore duplicate existing masters. Separate sellers have separate folders.' if record.get('tally_review_warnings') is not None else 'Missing-master errors: import Required_Masters.xml with duplicate masters ignored, then retry rejected vouchers.') if not record['errors'] and record.get('output_path') else ''))
 
     def recover_lock(self):
         if self.busy:return
@@ -340,12 +342,12 @@ class InvoiceApp:
 
     def open_output(self):
         record = self.selected()
-        if not record or not record.get('company_path'):
+        if not record or not (record.get('company_path') or record.get('output_path')):
             messagebox.showinfo('XML','Select an invoice with a prepared company output.')
             return
         if any('locked' in error.casefold() for error in record.get('errors',[])):
             messagebox.showinfo('XML','The current scan is blocked by a processing lock. Recover the lock and scan before importing this batch.');return
-        path = record.get('output_path',str(Path(record['company_path'])/'imports'))
+        path = record.get('output_path') or str(Path(record['company_path'])/'imports')
         if not Path(path).is_dir():
             messagebox.showinfo('XML','No XML folder is available yet. Resolve the invoice errors first.')
             return

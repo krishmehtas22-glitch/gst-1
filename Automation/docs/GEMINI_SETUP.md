@@ -86,3 +86,15 @@ throughout the batch are still applied and XML processing runs. When Test
 invoices is enabled, the batch confirmation explicitly declares the
 successfully read PDFs fictional, avoiding individual Confirm test PDF clicks.
 Untick Test invoices for real documents. Other fiscal/history checks still apply.
+
+## Complete output and fallback (Reader 7.0)
+
+The client batch option now retains successful reads, tries the other configured
+AI for remaining sources, then uses Python/OCR. The saved client policy produces
+XML for all scanned invoices on subsequent scans. Warnings are retained in
+Batch_Report.json and voucher narration. One Masters.xml and Sales_Vouchers.xml
+pair is produced per seller in a fresh run, and Open client XML folder points
+to that run. Inventory requires usable fields; otherwise an accounting voucher
+retains extracted items in the report. Missing dates or identity can still be
+rejected by Tally. Inspect differences posted to Invoice differences - review.
+This does not enable billing or claim successful import/correct filing.

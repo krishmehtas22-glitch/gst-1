@@ -206,10 +206,14 @@ def save_review(root, record, invoice, resolve_warnings=True):
 
 def process_sources(root, demo=True, client_names=None, auto_units=True, summary_accounting=False):
     records = inspect_sources(root,client_names,demo,auto_units)
+    from .tally_review_export import enabled, export_all
+    review_records=[r for r in records if enabled(root,r['client'])]
+    if review_records:export_all(root,review_records,demo)
+    strict_records=[r for r in records if not enabled(root,r['client'])]
     workspace = root/'.invoice_app'/'companies'
     workspace.mkdir(parents=True,exist_ok=True)
     groups = {}
-    for record in records:
+    for record in strict_records:
         raw = record['invoice']
         try:
             source = record.get('source_invoice',{})
