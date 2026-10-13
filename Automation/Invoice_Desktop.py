@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.11'
+APP_VERSION='Reader 7.12'
 
 
 def quantity_unit_summary(invoice):
@@ -249,7 +249,7 @@ class InvoiceApp:
         upload='PDF text (local OCR for scans) to '+provider
         demo=self.demo.get()
         test_note=' Test invoices is enabled: continuing confirms these batch PDFs are fictional test data.' if demo else ''
-        if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? If this API stops, use other configured providers among GitHub Models, Groq and Gemini, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
+        if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? At most {len(records)} new AI extraction attempts across all providers; cached successes are reused. If this API stops, try configured providers only within that shared limit, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
             return
         self.auto.set(False);self.busy=True
         self.ai_stop=threading.Event()
@@ -257,16 +257,17 @@ class InvoiceApp:
         stop_event=self.ai_stop
         def worker():
             try:
-                from Common_Rules.gemini_batch import read_with_fallback
+                from Common_Rules.gemini_batch import run_batch_to_xml
                 from Common_Rules.tally_review_export import enable
                 enable(root,client)
-                results=read_with_fallback(root,records,progress=lambda message:self.events.put(('progress',message)),primary=provider,confirm_test=demo,stop_event=stop_event)
-                self.events.put(('progress','Preparing XML from successful AI results and available local extraction; no further API request is needed…'))
-                updated=process_sources(root,demo,[client],units,summary)
+                results,updated,warnings=run_batch_to_xml(root,records,primary=provider,
+                    exporter=lambda:process_sources(root,demo,[client],units,summary),
+                    progress=lambda message:self.events.put(('progress',message)),
+                    confirm_test=demo,stop_event=stop_event)
                 success=sum(r['status']=='extracted' for r in results)
                 self.events.put(('ok',updated))
-                label='AI stopped; XML prepared' if stop_event.is_set() else 'Batch complete'
-                self.events.put(('progress',f'{label}: {success}/{len(results)} AI reads; {len(results)-success} Python fallback; {sum(not r.get("errors") and bool(r.get("output_path")) for r in updated)} XML vouchers prepared. Open client XML folder for the latest files and Batch_Report.json. Review in Tally.'))
+                label='AI stopped; XML prepared' if stop_event.is_set() or warnings else 'Batch complete'
+                self.events.put(('progress',f'{label}: {success}/{len(records)} confirmed AI reads; remaining sources use saved AI/local extraction; {sum(not r.get("errors") and bool(r.get("output_path")) for r in updated)} XML vouchers prepared. Open client XML folder for the latest files and Batch_Report.json. Review in Tally.'))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 

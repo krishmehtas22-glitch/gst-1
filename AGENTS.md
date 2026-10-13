@@ -90,3 +90,14 @@ The user explicitly requires complete XML batches for review in Tally.
   source data, lazy provider modules, OCR models and native DLLs. Never package
   invoice/client data, caches or API secrets. A Windows EXE requires a Windows
   build and frozen smoke test; do not claim a Linux build is a Windows executable.
+
+- Large AI batches must share one conservative fresh-attempt budget across all
+  providers, defaulting to the number of source invoices. Verified saved successes
+  (including orphaned provider caches) consume no new attempts and are terminal.
+  Do not multiply a 50-source batch into 150 new attempts. Invalid/failed reads
+  count conservatively toward the budget; local Python prepares remaining XML.
+  Use run_batch_to_xml to checkpoint starting output, the first/every tenth saved
+  AI success, and final output even after Stop or worker/report errors. Reporting
+  failures must not block export. Distinguish skipped queue entries from actual
+  new attempts and show success/failure reasons. Preserve all existing invoice,
+  unit, buyer, date, XML and Tally import code. EXEs must be rebuilt for fixes.

@@ -1,5 +1,26 @@
 # Sales invoice automation
 
+## Reader 7.12: bounded AI attempts and XML checkpoints
+
+A batch of 50 invoices now allows at most **50 fresh AI extraction attempts total**
+across Groq, GitHub Models and Gemini, not 50 with each. Failed attempts count
+conservatively toward that shared cap. Saved successful reads are reused without
+new attempts, including verified caches whose selection marker was lost. Once
+stopped or capped, remaining invoices use local extraction for complete XML.
+
+Starting XML is prepared before requests, updated after the first saved AI read
+and every tenth success, and finalized after completion, Stop or an AI worker
+failure. Batch-report save errors do not suppress XML. Progress distinguishes
+cached reads, fresh attempts, failed responses and retained successes. An active
+request may finish after Stop; queued/fallback requests then stop. Reading,
+quantities, buyers, dates, stock masters, financial XML and Tally import logic
+are unchanged. A new API attempt cap does not set an account-level money limit.
+
+If using the EXE, extract this source update, rerun **Build_Windows_EXE.bat**, then
+use the rebuilt `dist\InvoiceReader\InvoiceReader.exe` with its matching `_internal`
+folder. Replacing Python sources alone does not update an already-built EXE.
+Choose the existing invoice parent folder to retain caches and corrections.
+
 ## Reader 7.11: portable Windows executable build
 
 Build the app once on Windows using **Build_Windows_EXE.bat**, or download the
