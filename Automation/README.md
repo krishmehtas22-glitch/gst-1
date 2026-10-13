@@ -1,8 +1,15 @@
 # Sales invoice automation
 
-## Reader 6.4: missing quantity defaults and explicit zero GST
+## Reader 6.5: Gemini Flash model connection
 
-The title bar shows **Reader 6.4** so a replaced installation can be identified.
+The title bar shows **Reader 6.5** so a replaced installation can be identified.
+The Gemini PDF reader now defaults to **gemini-2.5-flash**, which appears in the
+account model list supplied by the user. Set `GEMINI_INVOICE_MODEL` to that value
+if an older override still exists. Keys remain private Windows environment
+variables. Use **Read selected with Gemini**, then verify the result in Review
+before preparing XML. The application still validates GST, quantities and
+totals; this model change is not a live API accuracy benchmark. See
+[Gemini setup](docs/GEMINI_SETUP.md).
 When an item omits quantity, use the requested default **1**. If it also omits
 its unit, use **Units**. These defaults are marked assumed/estimated in the
 table and details and recorded in XML narration. Printed quantities, suffixes

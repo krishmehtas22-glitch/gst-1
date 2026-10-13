@@ -21,11 +21,23 @@ https://ai.google.dev/gemini-api/docs/pricing before sending customer documents.
    XML. Python still checks GST rates, component totals, invoice totals and
    company identity. It does not approve API output automatically.
 
-The default model identifier is `gemini-2.5-flash-lite`. Live availability and
-free-tier eligibility have not been verified here. If your project offers a
+The default model identifier is `gemini-2.5-flash`, which appears in the model
+list supplied from your account and supports generateContent. Successful PDF
+extraction and free-tier eligibility have not been verified live here. Flash
+thinking is disabled for this structured extraction request to limit extra work.
+If your project offers a
 different PDF-capable model, add `GEMINI_INVOICE_MODEL` as another user variable
 using its model ID from AI Studio, then reopen the app. Never use an untrusted
 API proxy or put the key in a URL.
+
+If you previously configured `GEMINI_INVOICE_MODEL`, edit its value to
+`gemini-2.5-flash` or remove that variable to use the new default. Both
+`gemini-2.5-flash` and `models/gemini-2.5-flash` are accepted. Close the app and
+existing CMD windows before reopening the BAT.
+
+If a key was pasted into chat or another public/shared location, revoke that
+key in AI Studio and create a replacement. Save only the replacement in your
+Windows `GEMINI_API_KEY` variable. The application does not embed supplied keys.
 
 ## Cost and failure handling
 

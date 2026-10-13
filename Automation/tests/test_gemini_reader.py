@@ -27,8 +27,11 @@ def test_api_result_is_cached_and_requires_review_before_xml(tmp_path,monkeypatc
     response={key:original.get(key) for key in FIELDS}
     response['items']=[{key:item.get(key) for key in ITEM_FIELDS} for item in original['items']]
     monkeypatch.setenv('GEMINI_API_KEY','private-test-key')
+    monkeypatch.delenv('GEMINI_INVOICE_MODEL',raising=False)
     def transport(payload,key,model):
         calls.append(model);assert key=='private-test-key'
+        assert model=='gemini-2.5-flash'
+        assert payload['generationConfig']['thinkingConfig']=={'thinkingBudget':0}
         assert payload['contents'][0]['parts'][1]['inlineData']['mimeType']=='application/pdf'
         assert payload['generationConfig']['responseMimeType']=='application/json'
         return deepcopy(response)
@@ -43,6 +46,16 @@ def test_api_result_is_cached_and_requires_review_before_xml(tmp_path,monkeypatc
     save_review(tmp_path,blocked,edited)
     approved=process_sources(tmp_path)[0];assert not approved['errors']
     assert approved['invoice']['source_api']
+
+
+def test_model_list_identifier_prefix_is_accepted(tmp_path,monkeypatch):
+    record=setup(tmp_path,generate=False)
+    monkeypatch.setenv('GEMINI_API_KEY','private-test-key')
+    monkeypatch.setenv('GEMINI_INVOICE_MODEL','models/gemini-2.5-flash')
+    def transport(payload,key,model):
+        assert model=='gemini-2.5-flash'
+        return {'items':[]}
+    assert extract_selected(tmp_path,record,transport)['api_model']=='gemini-2.5-flash'
 
 
 def test_invalid_response_and_source_changes_never_get_cached(tmp_path,monkeypatch):

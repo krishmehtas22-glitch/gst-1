@@ -7,6 +7,7 @@ from .source_documents import verify_source
 from .engine import read_json, write_json
 
 REVISION='gemini-pdf-v1'
+DEFAULT_MODEL='gemini-2.5-flash'
 FIELDS=('number','date','seller_name','seller_gstin','seller_state','seller_address',
         'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address',
         'buyer_country','place_of_supply','classification','supply','export_mode',
@@ -67,7 +68,7 @@ def request_invoice(payload,key,model):
 
 def extract_selected(root,record,transport=None):
     verify_source(root,record)
-    model=os.environ.get('GEMINI_INVOICE_MODEL','gemini-2.5-flash-lite').strip()
+    model=os.environ.get('GEMINI_INVOICE_MODEL',DEFAULT_MODEL).strip().removeprefix('models/')
     if not re.fullmatch(r'[A-Za-z0-9._-]+',model):raise ValueError('Invalid GEMINI_INVOICE_MODEL')
     old=cache_path(root,record)
     if old.exists():
@@ -90,6 +91,8 @@ def extract_selected(root,record,transport=None):
             'If the PDF contains multiple invoices, return null fields and an empty items array; do not merge them.')
     payload={'contents':[{'role':'user','parts':[{'text':prompt},{'inlineData':{'mimeType':'application/pdf','data':base64.b64encode(data).decode()}}]}],
              'generationConfig':{'temperature':0,'responseMimeType':'application/json','responseSchema':schema()}}
+    if model==DEFAULT_MODEL:
+        payload['generationConfig']['thinkingConfig']={'thinkingBudget':0}
     inv=(transport or request_invoice)(payload,key,model)
     if not isinstance(inv,dict) or set(inv)-set(FIELDS)-{'items'}:
         raise ValueError('Gemini returned unexpected invoice fields')
