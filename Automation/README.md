@@ -1,5 +1,17 @@
 # Sales invoice automation
 
+## Reader 6.10: distinguish Groq access and gateway failures
+
+Groq requests identify the client explicitly and accept JSON, rather than
+using Python urllib's default user agent. JSON error reasons remain visible
+with keys redacted. HTML/Cloudflare denial pages are classified without
+printing their contents. A 403 alone does not establish quota exhaustion.
+Run **Check_Groq_API.bat**: it now identifies whether the model-list request
+or the small JSON generation request failed. Live account access still
+requires this Windows diagnostic; a gateway/permission failure cannot be
+guaranteed fixed by a client-header change.
+
+
 ## Reader 6.9: partial AI batches still prepare XML
 
 Quota/access/model failures stop new API requests, but the queue continues

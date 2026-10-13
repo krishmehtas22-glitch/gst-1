@@ -46,3 +46,12 @@ to Tally and does not falsely record individual human approval.
 
 Tests use simulated responses. Live Groq invoice accuracy and your account's
 remaining free quota have not been verified from the development environment.
+
+## Access denied (Reader 6.10)
+
+HTTP 403 means access denied, not proof that free quota is exhausted. Requests
+now use an explicit application User-Agent and JSON Accept header. HTML or
+Cloudflare blocks are distinguished from JSON API reasons. Run
+**Check_Groq_API.bat** and share its result lines: the diagnostic identifies
+model-list versus small-generation failure without uploading an invoice or
+printing your key. No client change can guarantee account or gateway access.

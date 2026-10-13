@@ -120,3 +120,32 @@ def test_diagnostic_checks_model_and_json_without_invoice_or_secret(monkeypatch)
 def test_incomplete_response_is_not_accepted(monkeypatch):
     monkeypatch.setattr(groq,'api_json',lambda *a,**kw:{'choices':[{'finish_reason':'length','message':{'content':'{"items":[]}'}}]})
     with pytest.raises(ValueError,match='incomplete'):groq.request_invoice({},'private-test-key',groq.DEFAULT_MODEL)
+
+
+@pytest.mark.parametrize('body,reason',[
+    (b'error code: 1010','Cloudflare gateway'),
+    (b'<html>Cloudflare forbidden gsk_private_test_key</html>','Cloudflare gateway'),
+    (b'<html>Corporate proxy denied gsk_private_test_key</html>','HTML denial'),
+    (b'','Access denied without a usable provider reason'),
+])
+def test_non_json_403_is_classified_without_leaking_body(monkeypatch,body,reason):
+    def blocked(request,timeout):
+        assert request.get_header('User-agent')=='InvoiceReader/6.10 (Groq API client)'
+        assert request.get_header('Accept')=='application/json'
+        raise HTTPError(request.full_url,403,'Forbidden',{},io.BytesIO(body))
+    monkeypatch.setattr(groq,'urlopen',blocked)
+    with pytest.raises(ValueError) as exc:groq.api_json('models','gsk_private_test_key')
+    assert reason in str(exc.value)
+    assert 'gsk_private_test_key' not in str(exc.value) and '<html>' not in str(exc.value)
+
+
+@pytest.mark.parametrize('stage',['models','chat/completions'])
+def test_diagnostic_identifies_where_access_is_denied(monkeypatch,stage):
+    monkeypatch.setenv('GROQ_API_KEY','gsk_private_test_key')
+    monkeypatch.delenv('GROQ_INVOICE_MODEL',raising=False)
+    def transport(path,*args,**kwargs):
+        if path==stage:raise ValueError('Groq HTTP 403: Access denied')
+        return {'data':[{'id':groq.DEFAULT_MODEL}]}
+    result='\n'.join(diagnose(transport))
+    assert ('Failed at model-list request' if stage=='models' else 'Failed at small JSON generation request') in result
+    assert 'gsk_private_test_key' not in result

@@ -1,5 +1,5 @@
 """Groq reads extracted PDF text/OCR, never a raw PDF attachment."""
-import hashlib, json, os, re
+import hashlib, io, json, os, re
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -11,6 +11,26 @@ from .api_selection import activate
 REVISION='groq-text-v1'
 DEFAULT_MODEL='llama-3.3-70b-versatile'
 WARNING='Groq extracted fields: compare with the source PDF and approve in Review'
+
+
+def provider_error(error,key):
+    """Retain JSON reasons; classify HTML gateway blocks without printing HTML."""
+    try:raw=error.read(16384)
+    except OSError:raw=b''
+    wrapped=HTTPError(error.url,error.code,error.reason,error.headers,io.BytesIO(raw))
+    status,message=safe_provider_error(wrapped,key)
+    if message:
+        return re.sub(r'gsk_[A-Za-z0-9_-]+','[REDACTED]',message)
+    body=raw.decode('utf-8',errors='replace').lower()
+    if error.code==403:
+        if 'cloudflare' in body or re.search(r'(?:error\s*(?:code)?\s*[:=]?\s*)1010\b',body):
+            return 'Request blocked by the Cloudflare gateway before a usable API response; run Check_Groq_API.bat. This does not establish quota exhaustion.'
+        if '<html' in body or '<!doctype html' in body:
+            return 'An access gateway returned an HTML denial, not a Groq JSON error; run Check_Groq_API.bat to check model-list access.'
+        return 'Access denied without a usable provider reason; run Check_Groq_API.bat to distinguish model-list access from generation access.'
+    return {401:'API authentication rejected; check GROQ_API_KEY privately',
+            404:'API resource/model not found; run Check_Groq_API.bat',
+            429:'Request/token quota reached; new requests stopped'}.get(error.code,'Provider request failed without a usable reason')
 
 
 def configured_model():
@@ -45,13 +65,13 @@ def api_json(path,key,payload=None,timeout=120):
     request=Request('https://api.groq.com/openai/v1/'+path,
                     data=None if payload is None else json.dumps(payload).encode(),
                     method='GET' if payload is None else 'POST',
-                    headers={'Content-Type':'application/json','Authorization':'Bearer '+key})
+                    headers={'Content-Type':'application/json','Accept':'application/json',
+                             'User-Agent':'InvoiceReader/6.10 (Groq API client)',
+                             'Authorization':'Bearer '+key})
     try:
         with urlopen(request,timeout=timeout) as response:raw=response.read(2*1024*1024+1)
     except HTTPError as exc:
-        status,message=safe_provider_error(exc,key)
-        message=re.sub(r'gsk_[A-Za-z0-9_-]+','[REDACTED]',message)
-        raise ValueError('Groq HTTP '+str(exc.code)+': '+(message or 'Provider request failed; check model access and quota')) from None
+        raise ValueError('Groq HTTP '+str(exc.code)+': '+provider_error(exc,key)) from None
     except (URLError,TimeoutError,OSError):
         raise ValueError('Groq connection failed or timed out; previous extraction is unchanged') from None
     if len(raw)>2*1024*1024:raise ValueError('Groq response exceeded the supported size')
