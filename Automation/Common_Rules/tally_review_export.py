@@ -12,6 +12,7 @@ from .engine import read_json,write_json
 from .accounting import money,cents,STATES,gstin_valid,invoice_key
 from .tally_xml import envelope,message,text,display_name,allocation,save_document,HEADS,UQC,gst_details
 from .processing_lock import guard
+from .unit_catalog import UNITS
 
 
 def policy_path(root,client):
@@ -33,6 +34,12 @@ def clean(value):
 
 def number(value):
     try:return cents(value)
+    except (ValueError,TypeError,ArithmeticError):return None
+
+
+def precise(value):
+    """Quantities/rates are not currency totals and must not round to paise."""
+    try:return money(value)
     except (ValueError,TypeError,ArithmeticError):return None
 
 
@@ -98,9 +105,9 @@ def export_all(root,records,demo):
                     if amounts['total'] is None:
                         amounts['total']=amounts['taxable']+tax;notes.append('Invoice total derived; printed total missing/invalid')
                     items=inv.get('items') or []
-                    inventory=bool(items) and inv.get('supply')!='EXPORT' and all(number(i.get('value')) is not None and number(i.get('quantity',1)) is not None and number(i.get('quantity',1))>0 for i in items)
-                    if inventory and (inv.get('classification') not in ('taxable','exempt','nil_rated','non_gst') or any(number(i.get(t+'_rate')) is None for i in items for t in ('cgst','sgst','igst'))):inventory=False
-                    if inventory and all(amounts[t]==0 for t in ('cgst','sgst','igst')) and any(number(i.get(t+'_rate'))!=0 for i in items for t in ('cgst','sgst','igst')):
+                    inventory=bool(items) and inv.get('supply')!='EXPORT' and all(number(i.get('value')) is not None and precise(i.get('quantity',1)) is not None and precise(i.get('quantity',1))>0 for i in items)
+                    if inventory and (inv.get('classification') not in ('taxable','exempt','nil_rated','non_gst') or any(precise(i.get(t+'_rate')) is None for i in items for t in ('cgst','sgst','igst'))):inventory=False
+                    if inventory and all(amounts[t]==0 for t in ('cgst','sgst','igst')) and any(precise(i.get(t+'_rate'))!=0 for i in items for t in ('cgst','sgst','igst')):
                         inventory=False;notes.append('Zero invoice GST conflicts with item rates; no tax posted, accounting voucher used')
                     if inventory and sum(number(i['value']) for i in items)!=amounts['taxable']:inventory=False
                     if not inventory:notes.append('Accounting voucher: item inventory not posted; all extracted items retained in manifest')
@@ -123,21 +130,28 @@ def export_all(root,records,demo):
                     allocation(voucher,{'ledger':party,'debit':amounts['total'],'credit':0},no,True,entries_tag='ALLLEDGERENTRIES.LIST')
                     if inventory:
                         for item in items:
-                            unit=clean(item.get('unit')) or 'Units';quantity=number(item.get('quantity',1));value=number(item['value'])
-                            rate=number(item.get('rate'))
-                            if rate is None:rate=cents(value/quantity);notes.append('Item rate derived from value/quantity')
+                            unit=clean(item.get('unit')) or 'Units';quantity=precise(item.get('quantity',1));value=number(item['value'])
+                            rate=precise(item.get('rate'))
+                            if rate is None:rate=(value/quantity).quantize(Decimal('.000001'));notes.append('Item rate derived from value/quantity')
                             if cents(rate*quantity)!=value:notes.append('Item quantity/rate/value mismatch retained for Tally review')
                             sig=hashlib.sha256(json.dumps([unit,item.get('hsn'),*[item.get(t+'_rate') for t in ('cgst','sgst','igst')],inv.get('classification')],sort_keys=True).encode()).hexdigest()[:10]
                             name=(clean(item.get('name')) or 'Item unresolved')+' [batch '+sig+']'
                             if ('unit',unit) not in known:
-                                known[('unit',unit)]=True
                                 un=ET.SubElement(message(md),'UNIT',{'NAME':unit,'ACTION':'Create'})
-                                for tag,val in {'NAME':unit,'ISSIMPLEUNIT':'Yes','ORIGINALNAME':unit,'DECIMALPLACES':'3','GSTREPUOM':UQC.get(unit.upper(),'OTH-OTHERS')}.items():text(un,tag,val)
+                                known[('unit',unit)]=un
+                                definition=UNITS.get(unit,{})
+                                uqc=definition.get('tally_uqc') or UQC.get(definition.get('uqc',unit).upper(),'OTH-OTHERS')
+                                decimals=max(int(definition.get('decimal_places',3)),max(0,-quantity.normalize().as_tuple().exponent))
+                                for tag,val in {'NAME':unit,'ISSIMPLEUNIT':'Yes','ORIGINALNAME':definition.get('formal_name',unit),'DECIMALPLACES':str(decimals),'GSTREPUOM':uqc}.items():text(un,tag,val)
+                            else:
+                                un=known[('unit',unit)]
+                                decimals=max(int(un.findtext('DECIMALPLACES')),max(0,-quantity.normalize().as_tuple().exponent))
+                                un.find('DECIMALPLACES').text=str(decimals)
                             if ('stock',name) not in known:
                                 known[('stock',name)]=True
                                 stock=ET.SubElement(message(md),'STOCKITEM',{'NAME':name,'ACTION':'Create'});display_name(stock,name);text(stock,'BASEUNITS',unit)
                                 text(stock,'GSTAPPLICABLE','Applicable');text(stock,'GSTTYPEOFSUPPLY','Goods')
-                                gst_details(stock,{'hsn':clean(item.get('hsn')),'classification':inv['classification'],**{t+'_rate':str(number(item[t+'_rate'])) for t in ('cgst','sgst','igst')}},date)
+                                gst_details(stock,{'hsn':clean(item.get('hsn')),'classification':inv['classification'],**{t+'_rate':str(precise(item[t+'_rate'])) for t in ('cgst','sgst','igst')}},date)
                             node=ET.SubElement(voucher,'ALLINVENTORYENTRIES.LIST')
                             for tag,val in {'STOCKITEMNAME':name,'ISDEEMEDPOSITIVE':'No','ACTUALQTY':str(quantity)+' '+unit,'BILLEDQTY':str(quantity)+' '+unit,'AMOUNT':str(value),'RATE':str(rate)+'/'+unit}.items():text(node,tag,val)
                             allocation(node,{'ledger':'Sales','debit':0,'credit':value},no,entries_tag='ACCOUNTINGALLOCATIONS.LIST')
@@ -159,9 +173,28 @@ def export_all(root,records,demo):
                 referenced={node.text for node in vouchers.findall('.//LEDGERNAME')}
                 declared={node.attrib['NAME'] for node in masters.findall('.//LEDGER')}
                 if not referenced.issubset(declared):raise ValueError('Internal batch error: voucher ledger reference has no exported master')
+                # Units are a separate prerequisite import, never interleaved
+                # with dependent stock items in the All Masters request.
+                units,ud=envelope('', 'All Masters')
+                units.find('./BODY/IMPORTDATA/REQUESTDESC/STATICVARIABLES').remove(units.find('.//SVCURRENTCOMPANY'))
+                for msg in list(md):
+                    if msg.find('UNIT') is not None:md.remove(msg);ud.append(msg)
+                declared_units={node.attrib['NAME'] for node in units.findall('.//UNIT')}
+                stocks={node.attrib['NAME']:node for node in masters.findall('.//STOCKITEM')}
+                if any(stock.findtext('BASEUNITS') not in declared_units for stock in stocks.values()):
+                    raise ValueError('Internal batch error: stock base unit has no exported unit definition')
+                for item in vouchers.findall('.//ALLINVENTORYENTRIES.LIST'):
+                    stock=stocks.get(item.findtext('STOCKITEMNAME'))
+                    if stock is None:raise ValueError('Internal batch error: inventory stock item has no exported master')
+                    unit=stock.findtext('BASEUNITS')
+                    if any(not item.findtext(tag,'').endswith(' '+unit) for tag in ('ACTUALQTY','BILLEDQTY')):
+                        raise ValueError('Internal batch error: quantity unit differs from stock base unit')
+                # Ledger masters precede stock masters; units are already imported.
+                md[:]=sorted(md,key=lambda msg:0 if msg.find('LEDGER') is not None else 1)
+                save_document(units,folder/'Units.xml')
                 save_document(masters,folder/'Masters.xml');save_document(vouchers,folder/'Sales_Vouchers.xml')
                 assert len(vouchers.findall('.//VOUCHER'))==len(rows)
             write_json(run/'Batch_Report.json',{'client':client,'input_count':len(group),'xml_voucher_count':len(report),'invoices':report})
-            (run/'Import_Instructions.txt').write_text('Latest complete batch. Import Masters.xml FIRST, then Sales_Vouchers.xml into the matching selected Tally company. Ignore duplicate existing masters. Each seller has a separate file pair if needed. Batch_Report.json retains all warnings and extracted items. Re-importing the same source uses stable GUIDs; check duplicate handling in Tally. XML preparation is not confirmation of import.\n')
+            (run/'Import_Instructions.txt').write_text('Import into the SAME matching selected Tally company in this order:\n1. Units.xml (unit symbols and definitions)\n2. Masters.xml (buyer/sales/tax ledgers and stock items)\n3. Sales_Vouchers.xml (vouchers)\nIgnore duplicate existing masters. Check the unit import result before importing stock masters. Each seller has a separate set if needed. Batch_Report.json retains all warnings and extracted items. To repair missing-unit/stock exceptions: import Units.xml, import Masters.xml again, then retry the rejected vouchers only. Stable voucher GUIDs are retained; check duplicate handling in Tally. XML preparation is not confirmation of import.\n')
             write_json(base/'latest.json',{'output_path':str(run),'count':len(report)})
     return records

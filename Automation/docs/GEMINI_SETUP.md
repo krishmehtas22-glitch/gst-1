@@ -1,5 +1,7 @@
 # Optional Gemini extraction
 
+Current complete-batch import order (Reader 7.4): **Units.xml → Masters.xml → Sales_Vouchers.xml**, in the same selected Tally company. For missing-unit/stock exceptions, regenerate from cached reads, import units, retry masters, then retry only rejected vouchers.
+
 The local Python reader remains the default. No API request is made by scanning
 or watching folders. **Read selected with Gemini** sends only the selected PDF,
 after its confirmation dialog. This may use free-tier quota or paid usage,

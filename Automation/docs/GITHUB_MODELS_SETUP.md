@@ -1,5 +1,7 @@
 # GitHub Models (Reader 7.3)
 
+Current complete-batch import order (Reader 7.4): **Units.xml → Masters.xml → Sales_Vouchers.xml**, in the same selected Tally company. For missing-unit/stock exceptions, regenerate from cached reads, import units, retry masters, then retry only rejected vouchers.
+
 GitHub Models replaces Cerebras in the active desktop/fallback workflow.
 Cerebras source caches remain readable, but automatic fallback never calls it.
 

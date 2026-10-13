@@ -1,5 +1,7 @@
 # Groq invoice extraction (Reader 6.8)
 
+Current complete-batch import order (Reader 7.4): **Units.xml → Masters.xml → Sales_Vouchers.xml**, in the same selected Tally company. For missing-unit/stock exceptions, regenerate from cached reads, import units, retry masters, then retry only rejected vouchers.
+
 Groq is separate from xAI's Grok. Create an account at https://console.groq.com
 and create an API key under API Keys. Free access has model-specific request
 and token limits; availability and limits must be checked in your own console.

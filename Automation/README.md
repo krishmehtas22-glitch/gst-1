@@ -1,5 +1,23 @@
 # Sales invoice automation
 
+## Reader 7.4: units before stock masters; preserve quantity precision
+
+The complete batch exporter now creates **Units.xml** separately. Import
+**Units.xml → Masters.xml → Sales_Vouchers.xml** in the SAME selected Tally
+company. Units use catalog formal names/UQC labels (KG → KGS-KILOGRAMS,
+ROLL → ROL-ROLLS), and decimal places accommodate source quantities. Stock
+BASEUNITS and inventory references are checked against these definitions.
+Ledgers precede stock masters within Masters.xml.
+
+Quantities, unit rates and GST rates keep their full decimal precision; only
+currency amounts round to paise. Cached AI results are reused: choose your
+client and **Scan and generate XML** to regenerate files without another API
+request. For existing missing-unit/stock exceptions, import the new Units.xml,
+import Masters.xml again ignoring duplicates, then retry only rejected vouchers.
+Existing successful vouchers/history/GUIDs are retained. Verify unit/master
+import results in Tally; live import has not been tested from this environment.
+
+
 ## Reader 7.3: GitHub Models replaces Cerebras
 
 Use **Read client batch with GitHub Models → XML** after privately setting

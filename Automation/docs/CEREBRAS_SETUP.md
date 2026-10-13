@@ -1,5 +1,7 @@
 # Cerebras invoice reader (Reader 7.2)
 
+Current complete-batch import order (Reader 7.4): **Units.xml → Masters.xml → Sales_Vouchers.xml**, in the same selected Tally company. For missing-unit/stock exceptions, regenerate from cached reads, import units, retry masters, then retry only rejected vouchers.
+
 Create an account/key at https://cloud.cerebras.ai. Keep the key private.
 Do not paste it in chat or put it in a Python file.
 

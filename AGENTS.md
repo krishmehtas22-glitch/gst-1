@@ -25,8 +25,12 @@ The user explicitly requires complete XML batches for review in Tally.
   not a selling unit. Never scale quantities/rates or confuse medicine strength
   with sold weight/volume. Retain explicit custom printed units.
 - Keep separate clients and sellers isolated. Fresh output paths must contain
-  one consolidated Masters.xml and Sales_Vouchers.xml per seller, with an exact
+  Units.xml first, then one consolidated Masters.xml and Sales_Vouchers.xml per seller, with an exact
   input/output count. Open client XML folder must show this latest run.
+- Export unit definitions separately before any stock masters. Use the unit
+  catalog's formal names/UQC labels and sufficient quantity decimal precision.
+  Check stock BASEUNITS against Units.xml and inventory names/quantity suffixes
+  against their stock masters. Do not round quantities/rates to currency cents.
 - Apply shared `ai_invoice_rules.RULES` to every provider prompt. Resolve Buyer/
   Bill To separately from Supplier/Seller, Ship To, bank and signatory. Preserve
   the buyer name and exact buyer ledger in the report. Every referenced buyer,

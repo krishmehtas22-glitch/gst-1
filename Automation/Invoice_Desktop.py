@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.3'
+APP_VERSION='Reader 7.4'
 
 
 def quantity_unit_summary(invoice):
@@ -93,6 +93,7 @@ class InvoiceApp:
         ttk.Button(github_buttons,text='Read selected with GitHub Models',command=lambda:self.read_gemini('GitHub Models')).pack(side='left')
         ttk.Button(github_buttons,text='Read client batch with GitHub Models → XML',command=lambda:self.read_gemini_batch('GitHub Models')).pack(side='left',padx=8)
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
+        ttk.Label(window,text='Complete batch import order: 1 Units.xml → 2 Masters.xml → 3 Sales_Vouchers.xml, in the SAME Tally company.').pack(anchor='w',padx=10)
         self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10,wraplength=1250)
         self.status.pack(fill='x')
         frame = ttk.Frame(window)
@@ -327,7 +328,7 @@ class InvoiceApp:
                 ('\nPrinted unit: '+record['invoice']['source_unit_note'] if record['invoice'].get('source_unit_note') else '')+
                 '\nClient folder batch: '+str(record.get('batch_voucher_count',0))+' vouchers'+
                 '\nOutput: '+record.get('output_path','Not generated')+
-                ('\nTally import: Masters.xml first, then Sales_Vouchers.xml. '+('Latest complete batch: see Batch_Report.json; ignore duplicate existing masters. Separate sellers have separate folders.' if record.get('tally_review_warnings') is not None else 'Missing-master errors: import Required_Masters.xml with duplicate masters ignored, then retry rejected vouchers.') if not record['errors'] and record.get('output_path') else ''))
+                ('\nTally import: '+('Units.xml FIRST → Masters.xml → Sales_Vouchers.xml, in the same selected Tally company. See Batch_Report.json; ignore duplicate masters. Retry rejected vouchers after repairing masters.' if record.get('tally_review_warnings') is not None else 'Masters.xml first, then Sales_Vouchers.xml. Missing-master errors: import Required_Masters.xml with duplicate masters ignored, then retry rejected vouchers.') if not record['errors'] and record.get('output_path') else ''))
 
     def recover_lock(self):
         if self.busy:return
