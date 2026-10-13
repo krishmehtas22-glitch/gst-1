@@ -83,3 +83,10 @@ The user explicitly requires complete XML batches for review in Tally.
   Validate that all manifest folders are covered and inside the current run.
   Preserve selected-set-only import as an explicit option for completing earlier
   partial imports. This rule applies to all current and future AI/Python output.
+
+- Windows packaging must preserve working financial/extraction/output behavior.
+  Frozen data roots must use the executable folder or the user's chosen folder,
+  never __file__ inside a bundled/temporary directory. Bundle parser-revision
+  source data, lazy provider modules, OCR models and native DLLs. Never package
+  invoice/client data, caches or API secrets. A Windows EXE requires a Windows
+  build and frozen smoke test; do not claim a Linux build is a Windows executable.

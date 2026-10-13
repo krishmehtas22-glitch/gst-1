@@ -11,3 +11,8 @@ Automation/*/imports/
 Automation/*/client.json
 Automation/*/tally_snapshot.json
 Automation/*/import_results.json
+
+.build-venv/
+Automation/build/
+Automation/dist/
+InvoiceReader_Startup_Error.log

@@ -53,6 +53,8 @@ def test_10_primary_4_secondary_and_6_python_all_become_xml(tmp_path,monkeypatch
     app.selected=lambda:latest[0]
     opened=[]
     monkeypatch.setattr(Invoice_Desktop.subprocess,'Popen',lambda args:opened.append(args))
+    if Invoice_Desktop.os.name=='nt':
+        monkeypatch.setattr(Invoice_Desktop.os,'startfile',lambda path:opened.append(['startfile',path]))
     app.open_output()
     assert opened[0][-1]==latest[0]['output_path']
 

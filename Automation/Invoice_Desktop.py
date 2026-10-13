@@ -13,6 +13,7 @@ from Common_Rules.workflow_status import invoice_status, scan_summary
 from Common_Rules.unit_choices import open_unit_choices
 from Common_Rules.engine import discover
 from Common_Rules.watcher import source_signature
+from Common_Rules.runtime_paths import default_data_root
 from Common_Rules.supplier_editor import open_layout_editor
 
 FIELDS = ['number','date','seller_name','seller_gstin','seller_state','seller_address',
@@ -30,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.10'
+APP_VERSION='Reader 7.11'
 
 
 def quantity_unit_summary(invoice):
@@ -42,7 +43,7 @@ def quantity_unit_summary(invoice):
 class InvoiceApp:
     def __init__(self, window):
         self.window = window
-        self.root = Path(__file__).resolve().parent
+        self.root = default_data_root(__file__)
         self.records = []
         self.busy = False
         self.ai_stop = None

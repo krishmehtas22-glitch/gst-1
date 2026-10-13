@@ -1,5 +1,15 @@
 # Sales invoice automation
 
+## Reader 7.11: portable Windows executable build
+
+Build the app once on Windows using **Build_Windows_EXE.bat**, or download the
+**InvoiceReader-Windows** artifact from a successful **Build Windows Invoice Reader**
+GitHub Actions run. Double-click **InvoiceReader.exe** to run it without Python.
+Keep its `_internal` folder, and choose your existing invoice parent folder in the
+app. Reading, amounts, XML, AI caches and Tally import behavior are unchanged.
+Only frozen-app data-root handling is added; no private files or keys are embedded.
+See [Windows executable instructions](docs/WINDOWS_EXE.md).
+
 ## Reader 7.10: include every current client XML folder
 
 **Import to Tally** includes every XML folder listed in the current client run's
