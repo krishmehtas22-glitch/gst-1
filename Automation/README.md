@@ -1,5 +1,16 @@
 # Sales invoice automation
 
+## Reader 6.9: partial AI batches still prepare XML
+
+Quota/access/model failures stop new API requests, but the queue continues
+applying successful cached results and then prepares XML. Successfully read
+PDFs are retained across runs; no fresh request or key is needed to reuse them.
+When **Test invoices** is enabled, the batch confirmation explicitly confirms
+the successfully read PDFs as fictional test data, avoiding an extra per-PDF
+confirmation. Real mode saves no such confirmation. Both Gemini and Groq use
+this workflow. Fiscal, missing-field and history checks remain active.
+
+
 ## Reader 6.8: Groq alongside Gemini
 
 Set `GROQ_API_KEY` privately in Windows User environment variables and reopen

@@ -78,3 +78,11 @@ review all generated vouchers in Tally. Fiscal validation and existing manual
 corrections/history still apply. Requests are queued at least 13 seconds apart;
 HTTP 429 stops further requests. Results for every source are saved in
 `.invoice_app/gemini_batch_results.json`. Cached successes are reused.
+
+## Partial batches (Reader 6.9)
+
+If quota is exhausted, new requests stop but successful cached extractions
+throughout the batch are still applied and XML processing runs. When Test
+invoices is enabled, the batch confirmation explicitly declares the
+successfully read PDFs fictional, avoiding individual Confirm test PDF clicks.
+Untick Test invoices for real documents. Other fiscal/history checks still apply.

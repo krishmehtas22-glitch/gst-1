@@ -36,7 +36,12 @@ HTTP 429, which stops the batch. Authentication/access/model errors (401, 403,
 404) also stop the queue instead of spending requests on the same failure.
 No automatic retries or fallback calls spend
 additional quota. `.invoice_app/groq_batch_results.json` records every queued
-source, including failed/not-attempted ones. Batch acceptance defers comparison
+source, including failed/not-attempted ones. A quota/access/model stop prevents
+new requests but still applies successful cached extractions elsewhere in the
+batch and proceeds to XML processing. When Test invoices is enabled, the batch
+confirmation explicitly confirms the successfully read PDFs as fictional, so
+they do not need an additional Confirm test PDF click. With Test invoices off,
+no fictional confirmation is saved. Batch acceptance defers comparison
 to Tally and does not falsely record individual human approval.
 
 Tests use simulated responses. Live Groq invoice accuracy and your account's

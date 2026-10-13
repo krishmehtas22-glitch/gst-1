@@ -30,7 +30,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 6.8'
+APP_VERSION='Reader 6.9'
 
 
 def quantity_unit_summary(invoice):
@@ -234,14 +234,17 @@ class InvoiceApp:
         if not records:
             messagebox.showinfo(provider+' batch','Scan this client folder first.');return
         upload='PDFs to Google Gemini' if provider=='Gemini' else 'PDF text (local OCR for scans) to Groq'
-        if not messagebox.askyesno(provider+' batch → XML',f'Send {len(records)} invoices from {client} as {upload} and apply extracted fields for XML? Review the results in Tally. Existing manual corrections are retained. GST, totals, missing fields and duplicate checks still apply. Calls are spaced; successful cached results are reused. Provider quotas may stop the batch.'):
+        demo=self.demo.get()
+        test_note=' Test invoices is enabled: continuing confirms these batch PDFs are fictional test data.' if demo else ''
+        if not messagebox.askyesno(provider+' batch → XML',f'Send {len(records)} invoices from {client} as {upload} and apply extracted fields for XML? Review the results in Tally. Existing manual corrections are retained. GST, totals, missing fields and duplicate checks still apply. Calls are spaced; successful cached results are reused even after a quota stop. Provider quotas may stop new requests.'+test_note):
             return
         self.auto.set(False);self.busy=True
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
         def worker():
             try:
                 from Common_Rules.gemini_batch import read_batch
-                results=read_batch(root,records,progress=lambda message:self.events.put(('progress',message)),provider=provider)
+                results=read_batch(root,records,progress=lambda message:self.events.put(('progress',message)),provider=provider,confirm_test=demo)
+                self.events.put(('progress','Preparing XML from successful AI results and available local extraction; no further API request is needed…'))
                 updated=process_sources(root,demo,[client],units,summary)
                 success=sum(r['status']=='extracted' for r in results)
                 self.events.put(('ok',updated))
