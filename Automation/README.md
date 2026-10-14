@@ -1,5 +1,26 @@
 # Sales invoice automation
 
+## Reader 7.15: reuse Tally units and resolve duplicate original names
+
+The direct-import unit stage now reads existing units from your explicitly chosen
+Tally company. Compatible existing symbols are reused without being recreated or
+altered. Repeated symbols across XML folders are sent once with sufficient maximum
+precision. If different new symbols share a formal/original name, only that
+transport descriptor is disambiguated; selling symbols, stock references,
+quantities, rates and amounts are unchanged. Saved XML files are not rewritten.
+
+An empty unit stage after reuse sends no unit-import POST; the result clearly
+reports reused units separately from actual server counters. Masters and vouchers
+then follow normally. Genuine conflicts, insufficient existing precision or an
+unresolved duplicate-name error still stop dependent steps rather than pretending
+success. Increase unit decimal precision in Tally if explicitly required; the app
+never rounds source quantities or overwrites existing company unit masters.
+
+Rebuild the EXE after extracting the update. Use **Import to Tally** on the current
+prepared run; no AI reread is needed for this fix. Check the destination company
+and actual import results before repeating already accepted vouchers. Cloud tests
+simulate Tally XML responses; live unit-query compatibility is checked on your PC.
+
 ## Reader 7.14: preserve locally read identity when AI omits it
 
 A saved AI response that omits the invoice number or buyer no longer erases those

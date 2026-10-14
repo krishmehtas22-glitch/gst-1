@@ -145,6 +145,67 @@ def company_payload(data,company):
     return ET.tostring(document,encoding='utf-8',xml_declaration=True)
 
 
+def loaded_units(company,transport=post_xml):
+    document=ET.fromstring('''<ENVELOPE><HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>InvoiceReaderUnits</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES><TDL><TDLMESSAGE><COLLECTION NAME="InvoiceReaderUnits" ISMODIFY="No"><TYPE>Unit</TYPE><FETCH>Name,OriginalName,DecimalPlaces,IsSimpleUnit,GSTRepUOM</FETCH></COLLECTION></TDLMESSAGE></TDL></DESC></BODY></ENVELOPE>''')
+    ET.SubElement(document.find('.//STATICVARIABLES'),'SVCURRENTCOMPANY').text=company
+    response=response_xml(transport(ET.tostring(document,encoding='utf-8')))
+    errors=[n.text for n in response.iter('LINEERROR') if n.text]
+    if errors or response.findtext('.//STATUS')=='0':raise ValueError('Cannot verify existing Tally units: '+ '; '.join(errors))
+    if response.find('.//COLLECTION') is None and response.find('.//UNIT') is None:
+        raise ValueError('Tally returned no unit collection; import stopped before changing masters')
+    return [n for n in response.iter('UNIT')]
+
+
+def prepare_units(data,existing):
+    """Merge symbol duplicates, reuse existing units, disambiguate formal names."""
+    from copy import deepcopy
+    document=response_xml(data);destination=document.find('.//REQUESTDATA')
+    if destination is None:raise ValueError('Unit request data is missing')
+    by_name={};messages={}
+    def key(name):return ' '.join(str(name or '').split()).casefold()
+    def decimals(node):
+        value=int(node.findtext('DECIMALPLACES','0'))
+        if not 0<=value<=6:raise ValueError('Unit decimal precision is invalid')
+        return value
+    for message in list(destination):
+        unit=message.find('UNIT')
+        if unit is None:raise ValueError('Unexpected master in Units.xml')
+        name=unit.get('NAME') or unit.findtext('NAME');identity=key(name)
+        if not identity:raise ValueError('Unit symbol is missing')
+        if identity in by_name:
+            prior=by_name[identity]
+            if any(key(prior.findtext(tag))!=key(unit.findtext(tag)) for tag in ('ISSIMPLEUNIT','GSTREPUOM')):
+                raise ValueError('Conflicting unit definitions for '+name)
+            precision=max(decimals(prior),decimals(unit))
+            node=prior.find('DECIMALPLACES')
+            if node is None:node=ET.SubElement(prior,'DECIMALPLACES')
+            node.text=str(precision)
+        else:by_name[identity]=deepcopy(unit);messages[identity]=deepcopy(message)
+    existing_by_name={key(n.get('NAME') or n.findtext('NAME')):n for n in existing}
+    original_names={key(n.findtext('ORIGINALNAME')):identity for identity,n in existing_by_name.items() if n.findtext('ORIGINALNAME')}
+    destination[:]=[];reused=[];renamed=[]
+    for identity,unit in by_name.items():
+        name=unit.get('NAME') or unit.findtext('NAME');present=existing_by_name.get(identity)
+        if present is not None:
+            if key(present.findtext('ISSIMPLEUNIT','Yes'))!=key(unit.findtext('ISSIMPLEUNIT','Yes')):
+                raise ValueError('Existing unit '+name+' has a different simple/compound type')
+            if decimals(present)<decimals(unit):
+                raise ValueError('Existing unit '+name+' needs decimal precision '+str(decimals(unit))+'; increase it in Tally before importing. Quantities were not rounded.')
+            reused.append(name);continue
+        original=unit.findtext('ORIGINALNAME') or name
+        if key(original) in original_names and original_names[key(original)]!=identity:
+            original=original+' ('+name+')'
+            suffix=2
+            while key(original) in original_names:
+                original=(unit.findtext('ORIGINALNAME') or name)+' ('+name+' '+str(suffix)+')';suffix+=1
+            node=unit.find('ORIGINALNAME')
+            if node is None:node=ET.SubElement(unit,'ORIGINALNAME')
+            node.text=original;renamed.append({'unit':name,'original_name':original})
+        original_names[key(original)]=identity
+        message=messages[identity];message[:]=[unit];destination.append(message)
+    return ET.tostring(document,encoding='utf-8',xml_declaration=True),reused,renamed
+
+
 def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
     """No automatic retry: a lost response may follow a committed Tally import."""
     if company not in loaded_companies(transport):raise ValueError('The selected company is no longer available in Tally. Open it in Tally and refresh the company list.')
@@ -152,6 +213,12 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
     for name,data in plan:
         progress('Importing '+name+' into '+company+'…')
         try:
+            reused=[];renamed=[]
+            if name=='Units.xml':
+                data,reused,renamed=prepare_units(data,loaded_units(company,transport))
+                if not response_xml(data).findall('.//UNIT'):
+                    results.append({'file':name,'company':company,'errors':[],'counts':{},'existing_units_reused':reused,'skipped':True})
+                    continue
             response=response_xml(transport(company_payload(data,company)))
             counts={tag:int(response.findtext('.//'+tag,'0')) for tag in ('CREATED','ALTERED','IGNORED','ERRORS','CANCELLED','DELETED')}
             errors=[n.text for n in response.iter('LINEERROR') if n.text]
@@ -159,6 +226,8 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
             if not any(response.find('.//'+tag) is not None for tag in counts):
                 errors.append('No import counters returned; status unknown. Check Tally before retrying.')
             entry={'file':name,'company':company,'counts':counts,'errors':errors}
+            if reused:entry['existing_units_reused']=reused
+            if renamed:entry['unit_original_names_adjusted']=renamed
         except (ValueError,OSError) as exc:
             entry={'file':name,'company':company,'errors':[str(exc)],'status':'unknown'}
         results.append(entry)

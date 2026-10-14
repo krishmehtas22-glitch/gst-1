@@ -115,3 +115,11 @@ The user explicitly requires complete XML batches for review in Tally.
   Retain identity-recovery evidence. Never invent a missing date/buyer from a file
   name, today's date, seller identity or another invoice. Diagnose Tally missing
   units using the actual current XML and import receipts, not screenshot guesses.
+
+- Direct unit import must query units in the explicitly selected Tally company,
+  coalesce repeated definitions by symbol using sufficient maximum precision,
+  and reuse compatible existing units without overwriting them. Preserve selling
+  symbols, stock BASEUNITS, quantity/rate values and saved XML. Disambiguate only
+  colliding formal/original names in the transport copy for new symbols. Never
+  ignore a DUPLICATE ORIGINAL NAME error and blindly send dependent vouchers;
+  report unit conflicts/insufficient precision and preserve real server counters.
