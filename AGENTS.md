@@ -2,6 +2,15 @@
 
 ## Locked working Import ALL baseline — user instruction, 14 October 2026
 
+Later explicit authorization: the user supplied the Tally UQC dropdown and
+requested expansion of unit mappings/aliases only, while preserving the button.
+`unit_catalog.py` may receive this expansion and UQC classification aliases.
+Preserve custom printed symbols while assigning their UQC. Keep existing unit
+normalization in `unit_inference.py` unchanged. The desktop import method,
+`tally_import.py`, `tally_units.py`,
+company routing, HTTP/XML creation protocol and dispatch order remain locked.
+Keep the original fingerprints and record this authorization separately.
+
 The user confirmed that the current Import ALL button is error-free and explicitly
 requested that this part be locked. Baseline commit:
 `f7fae39b29e0f992ef471a9adca44904a8acadc4`.

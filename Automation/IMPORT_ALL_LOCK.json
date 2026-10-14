@@ -12,5 +12,15 @@
     "Automation/Invoice_Desktop.py:import_tally": {
       "sha256": "fac0183455ef501e6ecbacaa3baaa4f93cad1537ad1e5e3bebb618be5fbb807f"
     }
-  }
+  },
+  "authorized_unit_data_updates": [
+    {
+      "authorized_on": "2026-10-14",
+      "reason": "User supplied Tally UQC screenshots and explicitly requested unit mapping/alias expansion without changing the button",
+      "files": {
+        "Automation/Common_Rules/unit_catalog.py": "35256f883b53a168acc8a557a81e92c0ba765883b218ff6d7baff0631f24112c"
+      },
+      "button_and_transport_unchanged": true
+    }
+  ]
 }
