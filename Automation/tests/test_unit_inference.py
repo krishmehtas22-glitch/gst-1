@@ -20,7 +20,7 @@ FIXTURES=Path(__file__).parent/'fixtures/client15'
  ('Paracetamol 500 mg','3004','20','Nos'),('Paracetamol tablets 500 mg','3004','20','TBS'),
  ('Cough syrup 100 ml','3004','5','BTL'),('Hand tool assortment','8206','2','SET'),
  ('Oil per litre','1515','10','LTR'),('USB mouse','8471','2','Nos'),
- ('Unspecified service','9983','0.5','Qty'),('Rice 1kg','1006','5','Packs')])
+ ('Unspecified service','9983','0.5','Units'),('Rice 1kg','1006','5','Packs')])
 def test_product_rules_do_not_read_strength_as_quantity(name,hsn,qty,unit):
  item={'name':name,'hsn':hsn,'quantity':qty};original=deepcopy(item)
  assert suggest_unit(item,{})[0]==unit
@@ -32,7 +32,7 @@ def test_printed_aliases(printed,unit):assert canonical_unit(printed)==unit
 def test_quantity_suffix_and_nonstandard_mass_uqc():
  assert quantity_parts('150 mg')==('150','mg')
  assert quantity_parts('12pieces')==('12','pieces')
- assert quantity_parts('12 KVA') is None
+ assert quantity_parts('12 KVA')==('12','KVA')
  assert UNITS['MG']['uqc'].startswith('OTH')
 
 

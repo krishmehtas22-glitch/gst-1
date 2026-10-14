@@ -173,15 +173,17 @@ def normalize_invoice_result(inv,record,provider='Gemini'):
 
 def infer_api_units(inv,record,provider):
     """Use printed local evidence first; retain explicit AI/knowledge assumptions."""
-    from .unit_inference import canonical_unit,suggest_unit,default_missing_quantity,quantity_parts,STRENGTH
+    from .unit_inference import canonical_unit,suggest_unit,default_missing_quantity,quantity_parts,STRENGTH,uncertain_unit,item_signature
     local=record.get('invoice',{})
     originals=local.get('items',[]) if not local.get('source_api') else []
     for item in inv.get('items',[]):
         suffix=quantity_parts(item.get('quantity',''))
         if suffix and suffix[1] and canonical_unit(suffix[1])!='Qty':
-            item.update(quantity=suffix[0],unit=canonical_unit(suffix[1]),unit_basis='printed',unit_reason='Unit printed beside quantity')
+            item.update(quantity=suffix[0],unit=canonical_unit(suffix[1]) or suffix[1],unit_basis='printed',unit_reason='Unit printed beside quantity')
         default_missing_quantity(item)
         matching=[old for old in originals if str(old.get('name','')).strip().casefold()==str(item.get('name','')).strip().casefold()]
+        exact=[old for old in matching if item_signature(old)==item_signature(item)]
+        if exact:matching=exact
         printed_rows=[old for old in matching if old.get('unit_origin')=='printed' and str(old.get('unit','')).strip() and canonical_unit(old.get('unit'))!='Qty']
         printed=printed_rows[0] if printed_rows and len({canonical_unit(old['unit']) or old['unit'] for old in printed_rows})==1 else None
         if printed:
@@ -189,7 +191,12 @@ def infer_api_units(inv,record,provider):
                         unit_evidence='Printed source unit takes priority over AI inference',unit_basis='printed')
             continue
         unit=canonical_unit(item.get('unit'))
-        if unit is None and item.get('unit_basis')=='printed' and str(item.get('unit','')).strip():
+        custom=str(item.get('unit') or '').strip()
+        if unit is None and custom and not uncertain_unit(custom) and item.get('unit_basis')!='printed':
+            item.update(unit=custom,unit_basis='inferred',unit_origin='ai_assumed',unit_auto=True,unit_confidence=.6,
+                        unit_evidence=provider+' custom-unit assumption: '+str(item.get('unit_reason') or 'AI inferred this selling unit'))
+            continue
+        if unit is None and item.get('unit_basis')=='printed' and custom and not uncertain_unit(custom):
             item.update(unit_origin='ai_printed',unit_auto=False,unit_evidence=provider+' reported printed custom unit: '+str(item.get('unit_reason') or item['unit']))
             continue
         strength_unit=(unit in ('MG','MCG','GMS','ML') and item.get('unit_basis')=='inferred' and re.search(STRENGTH,str(item.get('name','')),re.I))

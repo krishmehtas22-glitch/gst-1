@@ -12,6 +12,7 @@ from .accounting import money,cents,STATES,gstin_valid,invoice_key
 from .tally_xml import envelope,message,text,display_name,allocation,save_document,HEADS,UQC,gst_details
 from .processing_lock import guard
 from .unit_catalog import UNITS,unit_formal_name
+from .tally_units import simple_unit,unit_symbol
 
 
 def policy_path(root,client):
@@ -144,14 +145,13 @@ def export_all(root,records,demo):
                                 sig=hashlib.sha256(json.dumps([unit,item.get('hsn'),*[item.get(t+'_rate') for t in ('cgst','sgst','igst')],inv.get('classification')],sort_keys=True).encode()).hexdigest()[:10]
                                 name=(clean(item.get('name')) or 'Item unresolved')+' [batch '+sig+']'
                                 if ('unit',unit) not in known:
-                                    un=ET.SubElement(message(md),'UNIT',{'NAME':unit,'ACTION':'Create'})
-                                    known[('unit',unit)]=un
                                     definition=UNITS.get(unit,{})
                                     uqc=definition.get('tally_uqc') or UQC.get(definition.get('uqc',unit).upper(),'OTH-OTHERS')
                                     decimals=max(int(definition.get('decimal_places',3)),max(0,-quantity.normalize().as_tuple().exponent))
                                     formal=unit_formal_name(unit,definition.get('formal_name'))
-                                    fields={'NAME':unit,'ISSIMPLEUNIT':'Yes','ORIGINALNAME':formal,'MAILINGNAME':formal,'DECIMALPLACES':str(decimals),'GSTREPUOM':uqc}
-                                    for tag,val in fields.items():text(un,tag,val)
+                                    un=simple_unit(unit,formal,decimals,uqc)
+                                    message(md).append(un)
+                                    known[('unit',unit)]=un
                                 else:
                                     un=known[('unit',unit)]
                                     decimals=max(int(un.findtext('DECIMALPLACES')),max(0,-quantity.normalize().as_tuple().exponent))
@@ -191,7 +191,7 @@ def export_all(root,records,demo):
                     units.find('./BODY/IMPORTDATA/REQUESTDESC/STATICVARIABLES').remove(units.find('.//SVCURRENTCOMPANY'))
                     for msg in list(md):
                         if msg.find('UNIT') is not None:md.remove(msg);ud.append(msg)
-                    declared_units={node.attrib['NAME'] for node in units.findall('.//UNIT')}
+                    declared_units={unit_symbol(node) for node in units.findall('.//UNIT')}
                     stocks={node.attrib['NAME']:node for node in masters.findall('.//STOCKITEM')}
                     if any(stock.findtext('BASEUNITS') not in declared_units for stock in stocks.values()):
                         raise ValueError('Internal batch error: stock base unit has no exported unit definition')

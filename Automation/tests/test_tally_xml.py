@@ -57,7 +57,7 @@ def test_xml_dependency_order_gstin_hsn_and_rates(tmp_path):
     tags = [m.tag for m in objects]
     assert tags[0] == 'UNIT'
     assert tags[-1] == 'STOCKITEM'
-    assert all(m.get('ACTION') == 'Create' for m in objects)
+    assert all((m.get('Action') if m.tag=='UNIT' else m.get('ACTION')) == 'Create' for m in objects)
     assert len({(m.tag,m.get('NAME')) for m in objects}) == len(objects)
     unit = root.find('.//UNIT')
     assert unit.findtext('GSTREPUOM') == 'NOS-NUMBERS'

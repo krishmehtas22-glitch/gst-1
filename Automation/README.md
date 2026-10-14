@@ -1,6 +1,38 @@
 # Sales invoice automation
 
 
+## Reader 7.25: unit creation follows Tally's official example
+
+Verified against [Tally's official Sample XML / Units of Measure](https://help.tallysolutions.com/sample-xml/).
+Its creation packet uses `<UNIT Action="Create">`, with the selling symbol in
+child NAME, the optional formal description in ORIGINALNAME, and precision in
+DECIMALPLACES. It does not reuse the exported UNIT NAME attribute. The previous
+request still carried that export-style identity attribute and the user reported
+BAD ORIGINAL NAME. Unit creation now matches the official form, with no UNIT
+NAME/RESERVEDNAME attributes or MAILINGNAME/ADDITIONALNAME fields. GSTREPUOM and
+quantity precision are preserved. Compatible existing units are reused.
+
+A shared unit helper is used for generation and saved-XML transport. Unit lookup
+and consolidation read the NAME field and remain compatible with old attributes;
+all units in a multi-unit TALLYMESSAGE are retained. Masters.xml and
+Sales_Vouchers.xml are preserved during the button import, including every stock
+reference, party, quantity, rate, amount and GUID. Import ALL still submits the
+three stages and records Tally's real exceptions/counters without retries.
+
+Python extraction precedes AI. Explicit printed units, including custom symbols
+and numeric quantity suffixes, take priority. When absent, AI-inferred standard
+or custom selling units are retained with their reasoning; local Python supplies
+remaining assumptions when APIs are unavailable. Qty is treated as a heading and
+unknown fractional quantities use generic Units without changing the numbers.
+These unit rules apply to Groq, Gemini, GitHub Models and OpenRouter.
+
+Close the reader, extract the update and rebuild the EXE if used. Verify Reader
+7.25. Saved XML can use the transport correction without an AI reread or scan.
+Tests match the official unit-creation fixture and verify unchanged master/sales
+payloads; live Tally acceptance still requires checking the server result. The
+uploaded voucher set contains two missing dates, which this unit-only fix does
+not alter. No universal zero-exception guarantee is possible from cloud tests.
+
 ## Reader 7.24: correct unit fields from the actual Tally export
 
 The new receipt provides Tally's accepted unit definitions: NAME is the symbol

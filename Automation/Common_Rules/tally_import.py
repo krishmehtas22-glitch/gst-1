@@ -5,6 +5,7 @@ import os
 import subprocess
 import xml.etree.ElementTree as ET
 from .unit_catalog import unit_formal_name
+from .tally_units import unit_symbol,prepare_unit_create
 from urllib.request import Request,build_opener,ProxyHandler
 from urllib.error import URLError
 
@@ -164,8 +165,8 @@ def consolidated_import_groups(run,selected,manifest):
         if not ledgers<=declared_ledgers or not stocks<=declared_stocks:
             raise ValueError('Client vouchers reference missing prerequisite masters')
         units={n.findtext('BASEUNITS') for msg in chosen for n in msg if n.tag=='STOCKITEM'}
-        chosen_units=[msg for msg in documents['Units.xml'].find('.//REQUESTDATA') if msg.find('UNIT').get('NAME') in units]
-        if units!={msg.find('UNIT').get('NAME') for msg in chosen_units}:
+        chosen_units=[msg for msg in documents['Units.xml'].find('.//REQUESTDATA') if unit_symbol(msg.find('UNIT')) in units]
+        if units!={unit_symbol(msg.find('UNIT')) for msg in chosen_units}:
             raise ValueError('Client stock masters reference missing units')
         filtered=[]
         for filename in ('Units.xml','Masters.xml','Sales_Vouchers.xml'):
@@ -223,27 +224,29 @@ def prepare_units(data,existing):
         if not 0<=value<=6:raise ValueError('Unit decimal precision is invalid')
         return value
     for message in list(destination):
-        unit=message.find('UNIT')
-        if unit is None:raise ValueError('Unexpected master in Units.xml')
-        name=unit.get('NAME') or unit.findtext('NAME');identity=key(name)
-        if not identity:raise ValueError('Unit symbol is missing')
-        if identity in by_name:
-            prior=by_name[identity]
-            if any(key(prior.findtext(tag))!=key(unit.findtext(tag)) for tag in ('ISSIMPLEUNIT','GSTREPUOM')):
-                raise ValueError('Conflicting unit definitions for '+name)
-            precision=max(decimals(prior),decimals(unit))
-            node=prior.find('DECIMALPLACES')
-            if node is None:node=ET.SubElement(prior,'DECIMALPLACES')
-            node.text=str(precision)
-        else:by_name[identity]=deepcopy(unit);messages[identity]=deepcopy(message)
-    existing_by_name={key(n.get('NAME') or n.findtext('NAME')):n for n in existing}
+        for unit in message:
+            if unit.tag!='UNIT':raise ValueError('Unexpected master in Units.xml')
+            name=unit_symbol(unit);identity=key(name)
+            if not identity:raise ValueError('Unit symbol is missing')
+            if identity in by_name:
+                prior=by_name[identity]
+                if any(key(prior.findtext(tag))!=key(unit.findtext(tag)) for tag in ('ISSIMPLEUNIT','GSTREPUOM')):
+                    raise ValueError('Conflicting unit definitions for '+name)
+                precision=max(decimals(prior),decimals(unit))
+                node=prior.find('DECIMALPLACES')
+                if node is None:node=ET.SubElement(prior,'DECIMALPLACES')
+                node.text=str(precision)
+            else:
+                by_name[identity]=deepcopy(unit)
+                single=deepcopy(message);single[:]=[deepcopy(unit)];messages[identity]=single
+    existing_by_name={key(unit_symbol(n)):n for n in existing}
     reserved=set(by_name)
     for present in existing:
         reserved.update(key(value) for value in (present.get('NAME'),present.findtext('NAME'),
                         present.findtext('ORIGINALNAME'),present.findtext('MAILINGNAME')) if value)
     destination[:]=[];reused=[];renamed=[]
     for identity,unit in by_name.items():
-        name=unit.get('NAME') or unit.findtext('NAME');present=existing_by_name.get(identity)
+        name=unit_symbol(unit);present=existing_by_name.get(identity)
         if present is not None:
             if key(present.findtext('ISSIMPLEUNIT','Yes'))!=key(unit.findtext('ISSIMPLEUNIT','Yes')):
                 raise ValueError('Existing unit '+name+' has a different simple/compound type')
@@ -264,13 +267,7 @@ def prepare_units(data,existing):
             while key(formal) in reserved:
                 formal=base+' '+str(index);index+=1
         if formal:reserved.add(key(formal))
-        node=unit.find('ORIGINALNAME')
-        if node is None:node=ET.SubElement(unit,'ORIGINALNAME')
-        node.text=formal
-        description=unit.find('MAILINGNAME')
-        if description is None:description=ET.SubElement(unit,'MAILINGNAME')
-        description.text=formal
-        for description in list(unit.findall('ADDITIONALNAME')):unit.remove(description)
+        prepare_unit_create(unit,name,formal)
         if original!=formal or old_mailing!=formal or legacy_additional:
             renamed.append({'unit':name,'original_name':formal,'formal_name':formal})
         message=messages[identity];message[:]=[unit];destination.append(message)
@@ -313,7 +310,7 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
                 existing=loaded_units(company,transport)
                 existing_definitions=[ET.tostring(node,encoding='unicode') for node in existing]
                 data,reused,renamed=prepare_units(data,existing)
-                pending_units=[n.get('NAME') or n.findtext('NAME') for n in response_xml(data).findall('.//UNIT')]
+                pending_units=[unit_symbol(n) for n in response_xml(data).findall('.//UNIT')]
                 unit_definitions=data.decode('utf-8')
                 if not pending_units:
                     results.append({'file':name,'company':company,'errors':[],'counts':{},'existing_units_reused':reused,'existing_unit_definitions':existing_definitions,'skipped':True})
@@ -324,7 +321,7 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
                 for message in template.find('.//REQUESTDATA'):
                     single=deepcopy(template);destination=single.find('.//REQUESTDATA')
                     destination[:]=[deepcopy(message)]
-                    symbol=message.find('UNIT').get('NAME') or message.findtext('UNIT/NAME')
+                    symbol=unit_symbol(message.find('UNIT'))
                     progress('Creating unit '+symbol+' in '+company+'…')
                     request=company_payload(ET.tostring(single,encoding='utf-8'),company);attempted=True
                     attempted_units.append(symbol)

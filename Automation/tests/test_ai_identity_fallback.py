@@ -57,7 +57,7 @@ def test_generic_units_master_explicitly_exported(tmp_path):
     export_all(tmp_path,[record],True)
     folder=Path(record['output_path'])
     units=ET.parse(folder/'Units.xml');masters=ET.parse(folder/'Masters.xml')
-    unit=units.find(".//UNIT[@NAME='Units']")
+    unit=units.find(".//UNIT[NAME='Units']")
     assert unit is not None and unit.findtext('ISSIMPLEUNIT')=='Yes'
     assert unit.findtext('GSTREPUOM')=='UNT-UNITS'
     assert all(stock.findtext('BASEUNITS')=='Units' for stock in masters.findall('.//STOCKITEM'))

@@ -56,3 +56,47 @@ def test_quantity_suffix_outranks_inferred_unit_without_scaling():
     assert inv['items'][0]['quantity']=='9' and inv['items'][0]['unit']=='BOX'
     assert inv['items'][0]['unit_basis']=='printed'
     assert inv['items'][0]['rate']=='10' and inv['items'][0]['value']=='90'
+
+
+@pytest.mark.parametrize('provider',['Groq','Gemini','GitHub Models','OpenRouter'])
+def test_python_printed_custom_unit_wins_over_ai_inference(tmp_path,provider):
+    from Common_Rules.unit_inference import UnitResolver
+    record={'client':'Client','path':str(tmp_path/'invoice.pdf'),'digest':'a'*64,
+            'invoice':{'items':[{'name':'Printed fabric','quantity':'12 BALE','rate':'5','value':'60'}]}}
+    UnitResolver(tmp_path).apply(record)
+    old=record['invoice']['items'][0]
+    assert old['unit']=='BALE' and old['unit_origin']=='printed' and old['quantity']=='12'
+    inv={'items':[{'name':'Printed fabric','quantity':'12','unit':'KG','unit_basis':'inferred','rate':'5','value':'60'}]}
+    infer_api_units(inv,record,provider)
+    item=inv['items'][0]
+    assert item['unit']=='BALE' and item['unit_basis']=='printed' and not item['unit_auto']
+    assert (item['quantity'],item['rate'],item['value'])==('12','5','60')
+
+
+@pytest.mark.parametrize('provider',['Groq','Gemini','GitHub Models','OpenRouter'])
+def test_ai_inferred_custom_unit_retains_reason_and_numbers(provider):
+    inv={'items':[{'name':'Cable clips assortment','quantity':'3','rate':'50','value':'150','unit':'BUNDLE','unit_basis':'inferred','unit_reason':'Sold as bundles'}]}
+    infer_api_units(inv,{'invoice':{}},provider)
+    item=inv['items'][0]
+    assert item['unit']=='BUNDLE' and item['unit_auto'] and 'Sold as bundles' in item['unit_evidence']
+    assert (item['quantity'],item['rate'],item['value'])==('3','50','150')
+
+
+@pytest.mark.parametrize('placeholder',['unknown','not stated','none','null'])
+def test_missing_unit_placeholder_triggers_reasoning_not_custom_unit(placeholder):
+    inv={'items':[{'name':'Milk','quantity':'2.5','unit':placeholder,'unit_basis':'inferred','rate':'50','value':'125'}]}
+    infer_api_units(inv,{'invoice':{}},'Groq')
+    item=inv['items'][0]
+    assert item['unit']=='LTR' and item['unit_auto']
+    assert (item['quantity'],item['rate'],item['value'])==('2.5','50','125')
+
+
+def test_repeated_product_rows_match_printed_unit_by_unchanged_numeric_evidence():
+    local={'invoice':{'items':[
+        {'name':'Cable clips','hsn':'1234','quantity':'10','rate':'5','value':'50','unit':'PCS','unit_origin':'printed'},
+        {'name':'Cable clips','hsn':'1234','quantity':'2','rate':'25','value':'50','unit':'BOX','unit_origin':'printed'}]}}
+    inv={'items':[{'name':'Cable clips','hsn':'1234','quantity':'2','rate':'25','value':'50','unit':'KG','unit_basis':'inferred'}]}
+    infer_api_units(inv,local,'Groq')
+    item=inv['items'][0]
+    assert item['unit']=='BOX' and not item['unit_auto']
+    assert (item['quantity'],item['rate'],item['value'])==('2','25','50')

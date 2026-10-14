@@ -134,9 +134,9 @@ The user explicitly requires complete XML batches for review in Tally.
   review; do not claim acceptance. Preserve real server counters and stop on
   ambiguous connection/response failures or unsafe local precision conflicts.
 
-- Native unit XML must use NAME (attribute and field) as the exact selling
-  symbol. The user's actual Tally export confirms ORIGINALNAME and MAILINGNAME
-  carry the formal description (e.g. NAME=KG, ORIGINALNAME=Kilograms). Do not
+- Unit creation must follow the official Simple Unit creation sample at
+  https://help.tallysolutions.com/sample-xml/: UNIT Action="Create" without
+  NAME/RESERVEDNAME attributes; NAME is the child selling-symbol field. The official documentation confirms ORIGINALNAME carries the formal description (e.g. NAME=KG, ORIGINALNAME=Kilograms). Do not
   put the symbol into ORIGINALNAME or emit the unsupported ADDITIONALNAME. Correct legacy unit envelopes
   in a transport copy; do not guess physical measures or alter voucher values.
   Send each new unit once and retain per-unit request/response diagnostics and
@@ -145,7 +145,7 @@ The user explicitly requires complete XML batches for review in Tally.
   attempts later stages once, and never retry ambiguous requests. Mock tests do not certify live Tally acceptance.
 
 - Unit formal names must not repeat their own symbol. Always write an explicit,
-  distinct ORIGINALNAME and MAILINGNAME using unit_formal_name; omission
+  distinct ORIGINALNAME using unit_formal_name; omission
   can allow Tally to default the description back to the symbol. Apply this to
   generated XML and legacy transport copies for every AI/Python integration.
   Disambiguate descriptive formal-name collisions against other current symbols
@@ -170,3 +170,12 @@ The user explicitly requires complete XML batches for review in Tally.
   response summaries. Use the real native export schema in regression checks,
   rather than mocks asserting ORIGINALNAME equals the selling symbol. Preserve
   the EXCEPTIONS counter even when ERRORS is zero and retain all server replies.
+
+- Use shared tally_units helpers for unit creation and symbol lookup. Exported
+  unit NAME attributes are read-compatible, but must not be reused as creation
+  identity attributes. Do not include MAILINGNAME/ADDITIONALNAME in the documented
+  simple-unit creation packet. Support all UNIT children in a TALLYMESSAGE.
+  Preserve stock masters and sales vouchers exactly while correcting only Units
+  XML/transport. Python reads first; printed custom symbols and quantity suffixes
+  outrank AI inference. Retain inferred custom selling units with their reasoning
+  and numeric values unchanged; Qty is a heading, not an inferred selling unit.

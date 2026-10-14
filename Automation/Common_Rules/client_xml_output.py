@@ -6,6 +6,7 @@ import shutil
 import xml.etree.ElementTree as ET
 from .engine import read_json
 from .tally_xml import envelope
+from .tally_units import unit_symbol
 
 LAYOUT='client-current-v1'
 
@@ -49,7 +50,7 @@ def consolidate(documents):
         known={}
         for group in documents:
             for msg in group[index].find('.//REQUESTDATA'):
-                node=next(iter(msg));identity=(node.tag,node.get('NAME'))
+                node=next(iter(msg));identity=(node.tag,unit_symbol(node) if node.tag=='UNIT' else node.get('NAME'))
                 if index==2:
                     data.append(deepcopy(msg));continue
                 if identity not in known:

@@ -59,7 +59,7 @@ def test_different_sellers_route_separately_from_same_folder(tmp_path):
         masters=response_xml(plan['Masters.xml']);units=response_xml(plan['Units.xml'])
         assert {n.text for n in vouchers.findall('.//LEDGERNAME')}<={n.get('NAME') for n in masters.findall('.//LEDGER')}
         assert {n.text for n in vouchers.findall('.//STOCKITEMNAME')}=={n.get('NAME') for n in masters.findall('.//STOCKITEM')}
-        assert {n.findtext('BASEUNITS') for n in masters.findall('.//STOCKITEM')}=={n.get('NAME') for n in units.findall('.//UNIT')}
+        assert {n.findtext('BASEUNITS') for n in masters.findall('.//STOCKITEM')}=={n.findtext('NAME') for n in units.findall('.//UNIT')}
         subset=voucher_map(vouchers);assert not set(subset)&set(combined);combined.update(subset)
     assert combined==voucher_map(ET.parse(folder/'Sales_Vouchers.xml'))
     assert saved=={p.name:p.read_bytes() for p in folder.iterdir() if p.is_file()}
@@ -118,10 +118,10 @@ def test_packs_export_has_distinct_explicit_formal_name_and_preserves_stock_unit
     for item in records[0]['invoice']['items']:item['unit']='Packs'
     export_all(tmp_path,records,True);folder=Path(records[0]['output_path'])
     unit=ET.parse(folder/'Units.xml').find('.//UNIT')
-    assert unit.get('NAME')==unit.findtext('NAME')=='Packs'
+    assert unit.findtext('NAME')=='Packs'
     assert unit.findtext('ORIGINALNAME')=='Packs (selling unit)'
+    assert unit.attrib=={'Action':'Create'}
     assert unit.find('ADDITIONALNAME') is None
-    assert unit.findtext('MAILINGNAME')=='Packs (selling unit)'
     assert {n.text for n in ET.parse(folder/'Masters.xml').findall('.//BASEUNITS')}=={'Packs'}
     assert all(n.text.endswith(' Packs') for n in ET.parse(folder/'Sales_Vouchers.xml').findall('.//ACTUALQTY'))
 

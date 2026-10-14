@@ -18,13 +18,13 @@ def test_units_are_imported_separately_before_stock_and_vouchers(tmp_path):
     rows=records(tmp_path);export_all(tmp_path,rows,True)
     folder=Path(rows[0]['output_path'])
     units=ET.parse(folder/'Units.xml');masters=ET.parse(folder/'Masters.xml');sales=ET.parse(folder/'Sales_Vouchers.xml')
-    defined={u.attrib['NAME']:u for u in units.findall('.//UNIT')}
+    defined={u.findtext('NAME'):u for u in units.findall('.//UNIT')}
     assert set(defined)=={'Nos','KG','SET','ROLL'}
     assert not units.findall('.//STOCKITEM') and not units.findall('.//LEDGER')
     assert not masters.findall('.//UNIT')
     assert defined['Nos'].findtext('NAME')=='Nos'
     assert defined['Nos'].findtext('ORIGINALNAME')=='Numbers'
-    assert defined['Nos'].findtext('MAILINGNAME')=='Numbers'
+    assert defined['Nos'].attrib=={'Action':'Create'}
     assert defined['KG'].findtext('GSTREPUOM')=='KGS-KILOGRAMS'
     assert defined['ROLL'].findtext('GSTREPUOM')=='ROL-ROLLS'
     assert int(defined['Nos'].findtext('DECIMALPLACES'))>=3
@@ -32,7 +32,7 @@ def test_units_are_imported_separately_before_stock_and_vouchers(tmp_path):
     assert len(stocks)==5
     seen=set()
     for message in units.findall('.//TALLYMESSAGE'):
-        seen.add(message.find('UNIT').attrib['NAME'])
+        seen.add(message.findtext('UNIT/NAME'))
     for message in masters.findall('.//TALLYMESSAGE'):
         stock=message.find('STOCKITEM')
         if stock is not None:assert stock.findtext('BASEUNITS') in seen

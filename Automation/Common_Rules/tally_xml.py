@@ -9,6 +9,7 @@ from decimal import Decimal
 import uuid
 import xml.etree.ElementTree as ET
 from .unit_catalog import unit_formal_name
+from .tally_units import prepare_unit_create
 
 from .accounting import STATES, TAXES, EXPORT_MODES, export_notice, accounting_entries, cents, money, sales_ledger
 from .masters import identity, required_masters
@@ -91,8 +92,7 @@ def masters_document(config, masters, invoices):
             text(node,'NAME',master['name'])
             text(node,'ISSIMPLEUNIT','Yes')
             formal=unit_formal_name(master['name'],master['formal_name'])
-            text(node,'ORIGINALNAME',formal)
-            text(node,'MAILINGNAME',formal)
+            prepare_unit_create(node,master['name'],formal)
             text(node,'DECIMALPLACES',master['decimal_places'])
             uqc = master.get('tally_uqc') or UQC.get(master['uqc'].upper())
             if not uqc:

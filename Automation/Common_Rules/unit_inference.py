@@ -37,7 +37,8 @@ ALIASES={
     'Qty':('qty','quantity'),
 }
 ALIAS_INDEX={alias.casefold():key for key,aliases in ALIASES.items() for alias in aliases}
-PLACEHOLDERS={'','-','--','n/a','na','not applicable','not specified','not mentioned','as applicable'}
+PLACEHOLDERS={'','-','--','n/a','na','not applicable','not specified','not mentioned','as applicable',
+              'unknown','none','null','not stated','unspecified','not available','tbd'}
 PACK_WORDS={'box':'BOX','boxes':'BOX','carton':'CTN','cartons':'CTN','packet':'PKT','packets':'PKT',
  'pack':'Packs','packs':'Packs','bag':'BAG','bags':'BAG','roll':'ROLL','rolls':'ROLL',
  'strip':'STRIP','strips':'STRIP','blister':'BLISTER','blisters':'BLISTER','bottle':'BTL','bottles':'BTL',
@@ -59,7 +60,7 @@ def quantity_parts(value):
     match=re.fullmatch(r'([+-]?[\d,]+(?:\.\d+)?)\s*([^\d]+)?',text)
     if not match:return None
     suffix=(match[2] or '').strip()
-    if suffix and not canonical_unit(suffix):return None
+    if suffix and not canonical_unit(suffix) and uncertain_unit(suffix):return None
     return match[1],suffix
 
 
@@ -103,7 +104,7 @@ def suggest_unit(item,invoice):
         if re.search(r'\b(?:tablet|tablets|tabs)\b',name):return 'TBS','Medicine form: tablets; strength is not quantity',.88
         if re.search(r'\b(?:ointment|cream)\b',name):return 'Tubes','Medicinal ointment/cream estimated as a tube',.75
         if re.search(r'\b(?:syrup|oral suspension)\b',name) and re.search(STRENGTH,name):return 'BTL','Liquid medicine with a stated bottle-size/strength estimated as bottles',.78
-        return ('Nos' if whole else 'Qty'),'Medicine strength ignored; counted items/unspecified dosage packaging estimated',.65
+        return ('Nos' if whole else 'Units'),'Medicine strength ignored; counted items/unspecified dosage packaging estimated',.65
     mass_food=bool(re.search(MASS_FOOD,name))
     liquid=bool(re.search(r'\b(?:milk|oil|diesel|petrol|fuel|juice|alcohol|solvent|water)\b',name))
     pack_size=bool(re.search(r'\b\d+(?:\.\d+)?\s*(?:kg|g|gm|grams?|ml|litres?|liters?|l)\b',name))
@@ -113,9 +114,9 @@ def suggest_unit(item,invoice):
     if re.search(r'\b(?:cable|wire|fabric|cloth|rope)\b',name):
         if whole and re.search(r'\b\d+(?:\.\d+)?\s*(?:m|metres?|meters?)\b',name):return 'ROLL','Stated length in description estimated as a roll; no content conversion',.58
         return 'MTR','Continuous cable/wire/fabric normally billed by length',.70
-    if re.search(COUNT_GOODS,name):return ('Nos' if whole else 'Qty'),'Countable product keyword; packaging not explicitly stated',.75 if whole else .35
+    if re.search(COUNT_GOODS,name):return ('Nos' if whole else 'Units'),'Countable product keyword; packaging not explicitly stated',.75 if whole else .35
     if re.search(r'\b(?:scrap|metal powder|steel ingots?|aluminium ingots?|aluminum ingots?|granules?|resin)\b',name):return 'KG','Bulk material normally billed by weight',.72
-    return ('Nos' if whole else 'Qty'),'No reliable unit clue; visible generic count/quantity estimate — check before import',.35
+    return ('Nos' if whole else 'Units'),'No reliable unit clue; visible generic count/quantity estimate — check before import',.35
 
 
 def product_key(invoice,item,demo):
@@ -168,6 +169,8 @@ class UnitResolver:
                 item.setdefault('printed_quantity',item['quantity']);item['quantity']=parts[0]
                 if not item.get('unit'):item['unit']=parts[1]
             raw=item.get('unit','');known=canonical_unit(raw,units)
+            if known=='Qty' and not item.get('unit_correction_reviewed') and item.get('unit_origin')!='manual':
+                known=None;raw='' # Qty labels a quantity column, not a selling unit.
             if known:
                 if str(raw)!=known:item.setdefault('printed_unit',raw)
                 item['unit']=known
@@ -176,7 +179,11 @@ class UnitResolver:
                                 unit_evidence='Confirmed invoice unit' if record.get('reviewed') else 'Printed unit: '+str(raw))
                 updates[str(index)]={'signature':item_signature(item),'unit_data':{key:item[key] for key in item if key.startswith('unit_') or key=='unit'}}
                 continue
-            if not uncertain_unit(raw):continue # An unknown printed unit needs a real mapping, not a guess.
+            if not uncertain_unit(raw):
+                if not item.get('unit_origin'):
+                    item.update(unit_origin='manual' if record.get('reviewed') else 'printed',
+                                unit_auto=False,unit_confidence=1.0,unit_evidence='Printed custom unit: '+str(raw))
+                continue # Preserve custom printed symbols without inventing conversions.
             if not self.enabled:continue
             signature=item_signature(item)
             retained=previous.get(str(index),{})

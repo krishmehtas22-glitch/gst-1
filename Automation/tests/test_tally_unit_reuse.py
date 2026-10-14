@@ -22,11 +22,11 @@ def test_duplicate_symbol_across_folders_uses_max_precision_once():
     original=xml(unit('PCS','Pieces',0),unit('PCS','Pieces',3))
     combined,reused,renamed=prepare_units(original,[])
     nodes=ET.fromstring(combined).findall('.//UNIT')
-    assert len(nodes)==1 and nodes[0].get('NAME')=='PCS'
+    assert len(nodes)==1 and nodes[0].findtext('NAME')=='PCS'
     assert nodes[0].findtext('DECIMALPLACES')=='3'
     assert nodes[0].findtext('ORIGINALNAME')=='Pieces'
     assert nodes[0].find('ADDITIONALNAME') is None
-    assert nodes[0].findtext('MAILINGNAME')=='Pieces'
+    assert nodes[0].findtext('ORIGINALNAME')=='Pieces'
     assert not reused and renamed==[{'unit':'PCS','original_name':'Pieces','formal_name':'Pieces'}]
     assert len(ET.fromstring(original).findall('.//UNIT'))==2
 
@@ -43,9 +43,9 @@ def test_existing_symbols_reused_without_rewriting_tally_units():
 def test_duplicate_original_name_new_alias_retains_symbol_and_uqc():
     prepared,reused,renamed=prepare_units(xml(unit('KG','Kilograms',3),unit('KGS','Kilograms',3)),[])
     nodes=ET.fromstring(prepared).findall('.//UNIT')
-    assert [n.get('NAME') for n in nodes]==['KG','KGS']
+    assert [n.findtext('NAME') for n in nodes]==['KG','KGS']
     assert [n.findtext('ORIGINALNAME') for n in nodes]==['Kilograms','Kilograms [unit KGS]']
-    assert [n.findtext('MAILINGNAME') for n in nodes]==['Kilograms','Kilograms [unit KGS]']
+    assert all(n.attrib=={'Action':'Create'} for n in nodes)
     assert [n.findtext('GSTREPUOM') for n in nodes]==['UNT-UNITS','UNT-UNITS']
     assert len(renamed)==2
 
@@ -53,8 +53,8 @@ def test_duplicate_original_name_new_alias_retains_symbol_and_uqc():
 def test_existing_formal_name_collision_new_symbol_disambiguated():
     prepared,_,renamed=prepare_units(xml(unit('PCS','Pieces')),[unit('Pieces','Pieces')])
     assert ET.fromstring(prepared).findtext('.//ORIGINALNAME')=='Pieces [unit PCS]'
-    assert ET.fromstring(prepared).findtext('.//MAILINGNAME')=='Pieces [unit PCS]'
-    assert ET.fromstring(prepared).find('.//UNIT').get('NAME')=='PCS'
+    assert ET.fromstring(prepared).find('.//UNIT').get('NAME') is None
+    assert ET.fromstring(prepared).find('.//UNIT').findtext('NAME')=='PCS'
 
 
 def test_insufficient_existing_precision_never_rounds_quantities():
@@ -115,9 +115,10 @@ def test_native_descriptive_original_names_preserved_before_tally_post():
         posted.append(root)
         node=root.find('.//UNIT')
         if node is not None:
-            assert node.get('NAME')==node.findtext('NAME')=='Nos'
+            assert node.findtext('NAME')=='Nos'
+            assert node.attrib=={'Action':'Create'}
             assert node.findtext('ORIGINALNAME')=='Numbers'
-            assert node.findtext('MAILINGNAME')=='Numbers'
+            assert node.find('MAILINGNAME') is None
             assert node.find('ADDITIONALNAME') is None
         return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
     result=send_plan([('Units.xml',source),('Masters.xml',xml())],'Chosen',transport)
@@ -133,7 +134,7 @@ def test_failure_diagnostic_names_exact_unit_and_preserves_earlier_counters():
     def transport(payload):
         root=ET.fromstring(payload)
         if root.findtext('./HEADER/TALLYREQUEST')=='Export':return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
-        posted.append(root.find('.//UNIT').get('NAME'))
+        posted.append(root.find('.//UNIT').findtext('NAME'))
         if len(posted)==1:return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
         return b'<RESPONSE><CREATED>0</CREATED><ERRORS>0</ERRORS><LINEERROR>DUPLICATE ORIGINAL NAME</LINEERROR></RESPONSE>'
     result=send_plan([('Units.xml',xml(unit('PCS','Pieces'),unit('Units','Units'))),('Masters.xml',xml())],'Chosen',transport)
@@ -149,7 +150,7 @@ def test_many_folder_definitions_create_each_symbol_once():
     units=ET.fromstring(merged).findall('.//UNIT')
     assert len(units)==1 and units[0].findtext('DECIMALPLACES')=='3'
     assert units[0].findtext('ORIGINALNAME')=='Pieces'
-    assert units[0].get('NAME')=='PCS'
+    assert units[0].findtext('NAME')=='PCS'
 
 
 @pytest.mark.parametrize('symbol',['Packs','Units','Vials','Tubes','Liters'])
@@ -157,10 +158,10 @@ def test_formal_name_equal_to_symbol_is_replaced_without_changing_symbol(symbol)
     node=unit(symbol,symbol,3);text(node,'ADDITIONALNAME',symbol)
     source=xml(node);prepared,_,adjusted=prepare_units(source,[])
     result=ET.fromstring(prepared).find('.//UNIT')
-    assert result.get('NAME')==result.findtext('NAME')==symbol
+    assert result.findtext('NAME')==symbol
     assert result.findtext('ORIGINALNAME')==symbol+' (selling unit)'
     assert result.find('ADDITIONALNAME') is None
-    assert result.findtext('MAILINGNAME')==symbol+' (selling unit)'
+    assert result.findtext('ORIGINALNAME')==symbol+' (selling unit)'
     assert result.findtext('DECIMALPLACES')=='3'
     assert ET.fromstring(source).findtext('.//ADDITIONALNAME')==symbol
     assert adjusted==[{'unit':symbol,'original_name':symbol+' (selling unit)','formal_name':symbol+' (selling unit)'}]
@@ -251,7 +252,7 @@ def test_import_all_continues_after_reported_unit_and_master_errors_and_sends_al
             return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
         posts.append(payload);node=doc.find('.//UNIT')
         if node is not None:
-            if node.get('NAME')=='Packs':return b'<RESPONSE><CREATED>0</CREATED><ERRORS>0</ERRORS><LINEERROR>DUPLICATE ORIGINAL NAME</LINEERROR></RESPONSE>'
+            if node.findtext('NAME')=='Packs':return b'<RESPONSE><CREATED>0</CREATED><ERRORS>0</ERRORS><LINEERROR>DUPLICATE ORIGINAL NAME</LINEERROR></RESPONSE>'
             return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
         if doc.find('.//STOCKITEM') is not None:return b"<RESPONSE><CREATED>1</CREATED><ALTERED>78</ALTERED><ERRORS>0</ERRORS><LINEERROR>Unit 'Packs' does not exist!</LINEERROR></RESPONSE>"
         assert len(doc.findall('.//VOUCHER'))==50
@@ -320,8 +321,10 @@ def test_real_native_export_schema_repairs_legacy_packs_request_and_imports_all_
         posts.append(payload);node=doc.find('.//UNIT')
         if node is not None:
             # Enforce the actual server-exported schema, not the previous guess.
-            assert node.get('NAME')==node.findtext('NAME')=='Packs'
-            assert node.findtext('ORIGINALNAME')==node.findtext('MAILINGNAME')=='Packs (selling unit)'
+            assert node.findtext('NAME')==node.findtext('NAME')=='Packs'
+            assert node.findtext('ORIGINALNAME')=='Packs (selling unit)'
+            assert node.attrib=={'Action':'Create'}
+            assert node.find('MAILINGNAME') is None
             assert node.find('ADDITIONALNAME') is None
             assert node.findtext('GSTREPUOM')=='UNT-UNITS' and node.findtext('DECIMALPLACES')=='0'
             accepted=True
@@ -344,3 +347,19 @@ def test_exception_counter_is_reported_even_without_lineerror_or_error_count():
     from Common_Rules.tally_import import import_reply
     counts,errors=import_reply(b'<RESPONSE><CREATED>0</CREATED><ERRORS>0</ERRORS><EXCEPTIONS>1</EXCEPTIONS></RESPONSE>')
     assert counts['EXCEPTIONS']==1 and counts['ERRORS']==0 and errors==[]
+
+
+def test_official_creation_sample_has_no_name_attribute_and_preserves_both_units():
+    from Common_Rules.tally_units import simple_unit
+    official=ET.parse(Path(__file__).parent/'fixtures/tally_official_simple_units.xml')
+    examples=official.findall('.//UNIT')
+    for sample in examples:
+        node=simple_unit(sample.findtext('NAME'),sample.findtext('ORIGINALNAME'),sample.findtext('DECIMALPLACES'),'OTH-OTHERS')
+        assert node.attrib==sample.attrib=={'Action':'Create'}
+        for field in ('NAME','ISSIMPLEUNIT','ORIGINALNAME','DECIMALPLACES'):
+            assert node.findtext(field)==sample.findtext(field)
+        assert node.get('NAME') is None and node.find('MAILINGNAME') is None
+    raw=ET.tostring(official.getroot());fixed,_,_=prepare_units(raw,[])
+    nodes=ET.fromstring(fixed).findall('.//UNIT')
+    assert [n.findtext('NAME') for n in nodes]==['Pcs','Doz']
+    assert all(n.attrib=={'Action':'Create'} for n in nodes)
