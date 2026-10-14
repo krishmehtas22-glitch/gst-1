@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.18'
+APP_VERSION='Reader 7.19'
 
 
 def quantity_unit_summary(invoice):
@@ -494,7 +494,7 @@ class InvoiceApp:
                         for result in value:
                             counts=result.get('counts',{})
                             if result.get('existing_units_reused'):lines.append('Existing units reused: '+', '.join(result['existing_units_reused']))
-                            if result.get('unit_original_names_adjusted'):lines.append('Unit identity corrected; descriptions retained separately. Selling symbols unchanged.')
+                            if result.get('unit_original_names_adjusted'):lines.append('Unit names corrected; duplicate formal names removed or disambiguated. Selling symbols unchanged.')
                             lines.append(result['company']+' / '+result['file']+': '+', '.join(f'{key.lower()} {number}' for key,number in counts.items()))
                             if result.get('errors') or counts.get('ERRORS',0) or counts.get('CANCELLED',0):
                                 failed=True;lines.extend(result.get('errors',[]))

@@ -234,6 +234,10 @@ def prepare_units(data,existing):
             node.text=str(precision)
         else:by_name[identity]=deepcopy(unit);messages[identity]=deepcopy(message)
     existing_by_name={key(n.get('NAME') or n.findtext('NAME')):n for n in existing}
+    reserved=set(by_name)
+    for present in existing:
+        reserved.update(key(value) for value in (present.get('NAME'),present.findtext('NAME'),
+                        present.findtext('ORIGINALNAME'),present.findtext('ADDITIONALNAME')) if value)
     destination[:]=[];reused=[];renamed=[]
     for identity,unit in by_name.items():
         name=unit.get('NAME') or unit.findtext('NAME');present=existing_by_name.get(identity)
@@ -247,6 +251,15 @@ def prepare_units(data,existing):
         # Keep the legacy descriptive text in ADDITIONALNAME on transport only.
         original=unit.findtext('ORIGINALNAME') or name
         formal=unit.findtext('ADDITIONALNAME') or (original if key(original)!=identity else '')
+        old_formal=formal
+        # Tally names must not repeat the symbol, another unit's symbol or
+        # formal name. Change only the descriptive field on the transport copy.
+        if key(formal)==identity:formal=''
+        elif formal and key(formal) in reserved:
+            base=formal+' [unit '+name+']';formal=base;index=2
+            while key(formal) in reserved:
+                formal=base+' '+str(index);index+=1
+        if formal:reserved.add(key(formal))
         node=unit.find('ORIGINALNAME')
         if node is None:node=ET.SubElement(unit,'ORIGINALNAME')
         node.text=name
@@ -254,7 +267,9 @@ def prepare_units(data,existing):
             description=unit.find('ADDITIONALNAME')
             if description is None:description=ET.SubElement(unit,'ADDITIONALNAME')
             description.text=formal
-        if original!=name:renamed.append({'unit':name,'original_name':name,'formal_name':formal})
+        else:
+            for description in list(unit.findall('ADDITIONALNAME')):unit.remove(description)
+        if original!=name or formal!=old_formal:renamed.append({'unit':name,'original_name':name,'formal_name':formal})
         message=messages[identity];message[:]=[unit];destination.append(message)
     return ET.tostring(document,encoding='utf-8',xml_declaration=True),reused,renamed
 
@@ -276,13 +291,15 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
     for name,data in plan:
         progress('Importing '+name+' into '+company+'…')
         try:
-            reused=[];renamed=[];attempted_units=[];unit_definitions=None;counts={};unit_results=[]
+            reused=[];renamed=[];attempted_units=[];unit_definitions=None;counts={};unit_results=[];existing_definitions=[]
             if name=='Units.xml':
-                data,reused,renamed=prepare_units(data,loaded_units(company,transport))
+                existing=loaded_units(company,transport)
+                existing_definitions=[ET.tostring(node,encoding='unicode') for node in existing]
+                data,reused,renamed=prepare_units(data,existing)
                 attempted_units=[n.get('NAME') or n.findtext('NAME') for n in response_xml(data).findall('.//UNIT')]
                 unit_definitions=data.decode('utf-8')
                 if not attempted_units:
-                    results.append({'file':name,'company':company,'errors':[],'counts':{},'existing_units_reused':reused,'skipped':True})
+                    results.append({'file':name,'company':company,'errors':[],'counts':{},'existing_units_reused':reused,'existing_unit_definitions':existing_definitions,'skipped':True})
                     continue
             if name=='Units.xml':
                 from copy import deepcopy
@@ -301,7 +318,7 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
                     if issues or any(reported.get(tag,0) for tag in ('ERRORS','CANCELLED')):break
                 entry={'file':name,'company':company,'counts':counts,'errors':errors,
                        'attempted_units':[item['unit'] for item in unit_results],
-                       'unit_request_xml':unit_definitions,'unit_results':unit_results}
+                       'unit_request_xml':unit_definitions,'unit_results':unit_results,'existing_unit_definitions':existing_definitions}
             else:
                 raw_response=transport(company_payload(data,company))
                 counts,errors=import_reply(raw_response)
@@ -311,7 +328,7 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
         except (ValueError,OSError) as exc:
             entry={'file':name,'company':company,'errors':[str(exc)],'status':'unknown'}
             if name=='Units.xml':
-                entry.update(counts=counts,unit_results=unit_results,attempted_units=attempted_units,unit_request_xml=unit_definitions)
+                entry.update(counts=counts,unit_results=unit_results,attempted_units=attempted_units,unit_request_xml=unit_definitions,existing_unit_definitions=existing_definitions)
                 if reused:entry['existing_units_reused']=reused
         results.append(entry)
         if entry.get('errors') or any(entry.get('counts',{}).get(tag,0) for tag in ('ERRORS','CANCELLED')):break

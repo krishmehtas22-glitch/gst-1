@@ -137,3 +137,11 @@ The user explicitly requires complete XML batches for review in Tally.
   real counters, identifying the exact failing symbol. Existing unit reuse and
   multi-folder coalescing remain mandatory; never blindly suppress line errors
   or retry ambiguous requests. Mock tests do not certify live Tally acceptance.
+
+- Unit formal names must not repeat their own symbol. Omit redundant
+  ADDITIONALNAME in generated XML and repair legacy copies at transport time.
+  Disambiguate descriptive formal-name collisions against other current symbols
+  and existing target names/descriptions without changing NAME, ORIGINALNAME,
+  stock BASEUNITS, quantities, rates or voucher fields. Preserve fetched existing
+  unit definitions in import receipts for diagnosis; do not treat genuine server
+  LINEERRORs as success or send dependent vouchers after a failed prerequisite.

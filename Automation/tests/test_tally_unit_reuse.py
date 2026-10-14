@@ -44,7 +44,7 @@ def test_duplicate_original_name_new_alias_retains_symbol_and_uqc():
     nodes=ET.fromstring(prepared).findall('.//UNIT')
     assert [n.get('NAME') for n in nodes]==['KG','KGS']
     assert [n.findtext('ORIGINALNAME') for n in nodes]==['KG','KGS']
-    assert [n.findtext('ADDITIONALNAME') for n in nodes]==['Kilograms','Kilograms']
+    assert [n.findtext('ADDITIONALNAME') for n in nodes]==['Kilograms','Kilograms [unit KGS]']
     assert [n.findtext('GSTREPUOM') for n in nodes]==['UNT-UNITS','UNT-UNITS']
     assert len(renamed)==2
 
@@ -52,7 +52,7 @@ def test_duplicate_original_name_new_alias_retains_symbol_and_uqc():
 def test_existing_formal_name_collision_new_symbol_disambiguated():
     prepared,_,renamed=prepare_units(xml(unit('PCS','Pieces')),[unit('Pieces','Pieces')])
     assert ET.fromstring(prepared).findtext('.//ORIGINALNAME')=='PCS'
-    assert ET.fromstring(prepared).findtext('.//ADDITIONALNAME')=='Pieces'
+    assert ET.fromstring(prepared).findtext('.//ADDITIONALNAME')=='Pieces [unit PCS]'
     assert ET.fromstring(prepared).find('.//UNIT').get('NAME')=='PCS'
 
 
@@ -146,3 +146,42 @@ def test_many_folder_definitions_create_each_symbol_once():
     units=ET.fromstring(merged).findall('.//UNIT')
     assert len(units)==1 and units[0].findtext('DECIMALPLACES')=='3'
     assert units[0].findtext('ORIGINALNAME')=='PCS'
+
+
+@pytest.mark.parametrize('symbol',['Packs','Units','Vials','Tubes','Liters'])
+def test_formal_name_equal_to_symbol_is_removed_without_changing_symbol(symbol):
+    node=unit(symbol,symbol,3);text(node,'ADDITIONALNAME',symbol)
+    source=xml(node);prepared,_,adjusted=prepare_units(source,[])
+    result=ET.fromstring(prepared).find('.//UNIT')
+    assert result.get('NAME')==result.findtext('NAME')==result.findtext('ORIGINALNAME')==symbol
+    assert result.find('ADDITIONALNAME') is None
+    assert result.findtext('DECIMALPLACES')=='3'
+    assert ET.fromstring(source).findtext('.//ADDITIONALNAME')==symbol
+    assert adjusted==[{'unit':symbol,'original_name':symbol,'formal_name':''}]
+
+
+def test_packs_conflict_repair_reaches_masters_and_vouchers_with_same_values():
+    packs=unit('Packs','Packs');text(packs,'ADDITIONALNAME','Packs')
+    source=xml(unit('PCS','PCS'),unit('REAM','REAM'),unit('ROLL','ROLL'),packs)
+    sales,data=envelope('','Vouchers');v=ET.SubElement(message(data),'VOUCHER')
+    for tag,value in {'GUID':'keep-guid','DATE':'20261014','PARTYLEDGERNAME':'Keep buyer',
+                      'ACTUALQTY':'17 Packs','BILLEDQTY':'17 Packs','RATE':'12.345/Packs','AMOUNT':'209.87'}.items():text(v,tag,value)
+    saved=ET.tostring(sales);posts=[]
+    def transport(payload):
+        doc=ET.fromstring(payload)
+        if doc.findtext('./HEADER/TALLYREQUEST')=='Export':
+            if doc.findtext('./HEADER/ID')=='InvoiceReaderUnits':
+                return b'<ENVELOPE><COLLECTION>'+b''.join(ET.tostring(unit(n,n)) for n in ('PCS','REAM','ROLL'))+b'</COLLECTION></ENVELOPE>'
+            return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
+        posts.append(doc);node=doc.find('.//UNIT')
+        if node is not None and node.findtext('ADDITIONALNAME')==node.findtext('ORIGINALNAME'):
+            return b'<RESPONSE><CREATED>0</CREATED><ERRORS>0</ERRORS><LINEERROR>DUPLICATE ORIGINAL NAME</LINEERROR></RESPONSE>'
+        return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
+    results=send_plan([('Units.xml',source),('Masters.xml',xml()),('Sales_Vouchers.xml',saved)],'Chosen',transport)
+    assert len(results)==3 and not any(r['errors'] for r in results)
+    assert results[0]['existing_units_reused']==['PCS','REAM','ROLL']
+    assert results[0]['attempted_units']==['Packs']
+    assert len(results[0]['existing_unit_definitions'])==3
+    assert [doc.findtext('.//REPORTNAME') for doc in posts]==['All Masters','All Masters','Vouchers']
+    assert ET.tostring(posts[-1].find('.//VOUCHER'))==ET.tostring(ET.fromstring(saved).find('.//VOUCHER'))
+    assert ET.fromstring(source).find(".//UNIT[@NAME='Packs']/ADDITIONALNAME").text=='Packs'

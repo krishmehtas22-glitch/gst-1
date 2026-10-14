@@ -90,7 +90,8 @@ def masters_document(config, masters, invoices):
             text(node,'NAME',master['name'])
             text(node,'ISSIMPLEUNIT','Yes')
             text(node,'ORIGINALNAME',master['name'])
-            text(node,'ADDITIONALNAME',master['formal_name'])
+            if master['formal_name'].strip().casefold()!=master['name'].strip().casefold():
+                text(node,'ADDITIONALNAME',master['formal_name'])
             text(node,'DECIMALPLACES',master['decimal_places'])
             uqc = master.get('tally_uqc') or UQC.get(master['uqc'].upper())
             if not uqc:

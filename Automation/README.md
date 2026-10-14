@@ -1,6 +1,27 @@
 # Sales invoice automation
 
 
+## Reader 7.19: prevent redundant and colliding unit formal names
+
+Client 31's import receipt identifies `Unit Packs: DUPLICATE ORIGINAL NAME`.
+The unit catalog produced Packs as both its symbol and formal name. New XML
+omits a formal name that repeats its own symbol. Direct import also repairs
+existing XML in memory, and disambiguates descriptive formal names that collide
+with other current symbols or existing unit names/descriptions. Unit symbols,
+stock references, quantities, rates and all voucher contents remain unchanged.
+
+The import receipt now retains fetched existing unit definitions alongside the
+per-unit requests/responses. Genuine Tally errors still stop dependent masters
+and vouchers. No automatic retries are sent. Regression tests simulate the
+redundant-name rejection and verify Units → Masters → Vouchers with unchanged
+voucher contents; live Tally acceptance must still be checked locally.
+
+Close the reader, extract the update and rebuild the EXE if used. Existing
+current XML can be imported without another AI read or regeneration because
+the transport correction applies to saved units too. If Packs still fails,
+share `Last_Tally_Import.json` from the current client XML folder and `Units.xml`;
+the receipt includes the target company's actual unit definitions.
+
 ## Reader 7.18: fix Windows text encoding during export
 
 The Reader 7.17 instructions-file write could fail on Windows with
