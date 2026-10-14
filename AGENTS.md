@@ -134,8 +134,10 @@ The user explicitly requires complete XML batches for review in Tally.
   review; do not claim acceptance. Preserve real server counters and stop on
   ambiguous connection/response failures or unsafe local precision conflicts.
 
-- Native unit XML must use ORIGINALNAME as the exact selling symbol/identity,
-  with the formal description in ADDITIONALNAME. Correct legacy unit envelopes
+- Native unit XML must use NAME (attribute and field) as the exact selling
+  symbol. The user's actual Tally export confirms ORIGINALNAME and MAILINGNAME
+  carry the formal description (e.g. NAME=KG, ORIGINALNAME=Kilograms). Do not
+  put the symbol into ORIGINALNAME or emit the unsupported ADDITIONALNAME. Correct legacy unit envelopes
   in a transport copy; do not guess physical measures or alter voucher values.
   Send each new unit once and retain per-unit request/response diagnostics and
   real counters, identifying the exact failing symbol. Existing unit reuse and
@@ -143,11 +145,11 @@ The user explicitly requires complete XML batches for review in Tally.
   attempts later stages once, and never retry ambiguous requests. Mock tests do not certify live Tally acceptance.
 
 - Unit formal names must not repeat their own symbol. Always write an explicit,
-  distinct ADDITIONALNAME using the shared unit_formal_name helper; omission
+  distinct ORIGINALNAME and MAILINGNAME using unit_formal_name; omission
   can allow Tally to default the description back to the symbol. Apply this to
   generated XML and legacy transport copies for every AI/Python integration.
   Disambiguate descriptive formal-name collisions against other current symbols
-  and existing target names/descriptions without changing NAME, ORIGINALNAME,
+  and existing target names/descriptions without changing NAME,
   stock BASEUNITS, quantities, rates or voucher fields. Preserve fetched existing
   unit definitions in import receipts for diagnosis; do not treat server
   LINEERRORs as success. Import ALL must submit remaining XML stages after
@@ -163,3 +165,8 @@ The user explicitly requires complete XML batches for review in Tally.
   full master/voucher request and response, and requested voucher count. Never
   claim all requested vouchers were accepted from submission alone.
   Preserve exact current XML snapshots, financial fields and seller routing.
+
+- Native unit lookup must fetch MailingName and ignore scalar <UNIT>count</UNIT>
+  response summaries. Use the real native export schema in regression checks,
+  rather than mocks asserting ORIGINALNAME equals the selling symbol. Preserve
+  the EXCEPTIONS counter even when ERRORS is zero and retain all server replies.

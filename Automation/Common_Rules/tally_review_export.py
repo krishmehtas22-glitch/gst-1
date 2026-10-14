@@ -150,8 +150,7 @@ def export_all(root,records,demo):
                                     uqc=definition.get('tally_uqc') or UQC.get(definition.get('uqc',unit).upper(),'OTH-OTHERS')
                                     decimals=max(int(definition.get('decimal_places',3)),max(0,-quantity.normalize().as_tuple().exponent))
                                     formal=unit_formal_name(unit,definition.get('formal_name'))
-                                    fields={'NAME':unit,'ISSIMPLEUNIT':'Yes','ORIGINALNAME':unit,'DECIMALPLACES':str(decimals),'GSTREPUOM':uqc}
-                                    fields['ADDITIONALNAME']=formal
+                                    fields={'NAME':unit,'ISSIMPLEUNIT':'Yes','ORIGINALNAME':formal,'MAILINGNAME':formal,'DECIMALPLACES':str(decimals),'GSTREPUOM':uqc}
                                     for tag,val in fields.items():text(un,tag,val)
                                 else:
                                     un=known[('unit',unit)]

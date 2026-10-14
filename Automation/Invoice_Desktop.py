@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.23'
+APP_VERSION='Reader 7.24'
 
 
 def quantity_unit_summary(invoice):
@@ -499,7 +499,7 @@ class InvoiceApp:
                             if result.get('unit_original_names_adjusted'):lines.append('Unit formal names made distinct. Selling symbols unchanged.')
                             detail=result.get('reason','Already available; no import sent') if result.get('skipped') else ', '.join(f'{key.lower()} {number}' for key,number in counts.items())
                             lines.append(result['company']+' / '+result['file']+': '+detail)
-                            if result.get('errors') or counts.get('ERRORS',0) or counts.get('CANCELLED',0):
+                            if result.get('errors') or counts.get('ERRORS',0) or counts.get('CANCELLED',0) or counts.get('EXCEPTIONS',0):
                                 failed=True;lines.extend(result.get('errors',[]))
                         title='Tally import needs attention' if failed else 'Tally import result'
                         state.config(text=title+'. Review the server counters below and check the vouchers in Tally.')

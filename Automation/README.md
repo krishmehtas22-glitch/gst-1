@@ -1,6 +1,31 @@
 # Sales invoice automation
 
 
+## Reader 7.24: correct unit fields from the actual Tally export
+
+The new receipt provides Tally's accepted unit definitions: NAME is the symbol
+(KG), while ORIGINALNAME and MAILINGNAME are the formal description (Kilograms).
+Previous versions incorrectly wrote the symbol into ORIGINALNAME and used
+ADDITIONALNAME for the description. That incorrect mapping caused Packs to
+remain rejected despite the earlier descriptive-name changes.
+
+Both XML exporters and the saved-XML transport now write the verified native
+fields: NAME=Packs, ORIGINALNAME=Packs (selling unit), MAILINGNAME=Packs (selling
+unit), with no ADDITIONALNAME. Legacy additional descriptions are migrated on
+transport only. Existing compatible units are reused; native scalar unit-count
+summaries are excluded from the master list. Requested unit symbols, stock
+BASEUNITS, quantities, rates, buyer/seller fields, dates, amounts and GUIDs stay
+unchanged. Import ALL still attempts Units → Masters → Sales once and retains
+reported exceptions. EXCEPTIONS is now displayed alongside ERRORS, which can be
+zero even when Tally rejected an entry.
+
+Close the reader, extract the update and rebuild the EXE if used. Verify Reader
+7.24 and use Import ALL. The transport correction applies to saved XML, so no
+AI reread or scan is required. Regression tests use the native field layout from
+the actual receipt and preserve the exact master/voucher payloads. Live Tally
+acceptance must still be checked locally; two uploaded vouchers also lack dates.
+The older unit-field descriptions below are historical and superseded here.
+
 ## Reader 7.23: Import ALL submits every XML stage after reported rejections
 
 The previous Import ALL label still used stop-on-error dispatch. A reported

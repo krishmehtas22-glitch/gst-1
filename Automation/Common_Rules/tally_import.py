@@ -199,14 +199,16 @@ def company_payload(data,company):
 
 
 def loaded_units(company,transport=post_xml):
-    document=ET.fromstring('''<ENVELOPE><HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>InvoiceReaderUnits</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES><TDL><TDLMESSAGE><COLLECTION NAME="InvoiceReaderUnits" ISMODIFY="No"><TYPE>Unit</TYPE><FETCH>Name,OriginalName,AdditionalName,DecimalPlaces,IsSimpleUnit,GSTRepUOM</FETCH></COLLECTION></TDLMESSAGE></TDL></DESC></BODY></ENVELOPE>''')
+    document=ET.fromstring('''<ENVELOPE><HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>InvoiceReaderUnits</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES><TDL><TDLMESSAGE><COLLECTION NAME="InvoiceReaderUnits" ISMODIFY="No"><TYPE>Unit</TYPE><FETCH>Name,OriginalName,MailingName,DecimalPlaces,IsSimpleUnit,GSTRepUOM</FETCH></COLLECTION></TDLMESSAGE></TDL></DESC></BODY></ENVELOPE>''')
     ET.SubElement(document.find('.//STATICVARIABLES'),'SVCURRENTCOMPANY').text=company
     response=response_xml(transport(ET.tostring(document,encoding='utf-8')))
     errors=[n.text for n in response.iter('LINEERROR') if n.text]
     if errors or response.findtext('.//STATUS')=='0':raise ValueError('Cannot verify existing Tally units: '+ '; '.join(errors))
-    if response.find('.//COLLECTION') is None and response.find('.//UNIT') is None:
+    # Tally also emits a scalar <UNIT>count</UNIT>; it is not a unit master.
+    masters=[n for n in response.iter('UNIT') if n.get('NAME') or n.findtext('NAME')]
+    if response.find('.//COLLECTION') is None and not masters:
         raise ValueError('Tally returned no unit collection; import stopped before changing masters')
-    return [n for n in response.iter('UNIT')]
+    return masters
 
 
 def prepare_units(data,existing):
@@ -238,7 +240,7 @@ def prepare_units(data,existing):
     reserved=set(by_name)
     for present in existing:
         reserved.update(key(value) for value in (present.get('NAME'),present.findtext('NAME'),
-                        present.findtext('ORIGINALNAME'),present.findtext('ADDITIONALNAME')) if value)
+                        present.findtext('ORIGINALNAME'),present.findtext('MAILINGNAME')) if value)
     destination[:]=[];reused=[];renamed=[]
     for identity,unit in by_name.items():
         name=unit.get('NAME') or unit.findtext('NAME');present=existing_by_name.get(identity)
@@ -248,11 +250,12 @@ def prepare_units(data,existing):
             if decimals(present)<decimals(unit):
                 raise ValueError('Existing unit '+name+' needs decimal precision '+str(decimals(unit))+'; increase it in Tally before importing. Quantities were not rounded.')
             reused.append(name);continue
-        # ORIGINALNAME is the unit's identity, not its formal description.
-        # Keep the legacy descriptive text in ADDITIONALNAME on transport only.
+        # Verified against the user's native Tally unit export: NAME is the
+        # symbol, ORIGINALNAME/MAILINGNAME carry the formal description.
         original=unit.findtext('ORIGINALNAME') or name
-        formal=unit.findtext('ADDITIONALNAME') or (original if key(original)!=identity else '')
-        old_formal=formal
+        formal=unit.findtext('ADDITIONALNAME') or unit.findtext('MAILINGNAME') or (original if key(original)!=identity else '')
+        old_mailing=unit.findtext('MAILINGNAME')
+        legacy_additional=unit.find('ADDITIONALNAME') is not None
         # Tally names must not repeat the symbol, another unit's symbol or
         # formal name. Change only the descriptive field on the transport copy.
         formal=unit_formal_name(name,formal)
@@ -263,21 +266,20 @@ def prepare_units(data,existing):
         if formal:reserved.add(key(formal))
         node=unit.find('ORIGINALNAME')
         if node is None:node=ET.SubElement(unit,'ORIGINALNAME')
-        node.text=name
-        if formal:
-            description=unit.find('ADDITIONALNAME')
-            if description is None:description=ET.SubElement(unit,'ADDITIONALNAME')
-            description.text=formal
-        else:
-            for description in list(unit.findall('ADDITIONALNAME')):unit.remove(description)
-        if original!=name or formal!=old_formal:renamed.append({'unit':name,'original_name':name,'formal_name':formal})
+        node.text=formal
+        description=unit.find('MAILINGNAME')
+        if description is None:description=ET.SubElement(unit,'MAILINGNAME')
+        description.text=formal
+        for description in list(unit.findall('ADDITIONALNAME')):unit.remove(description)
+        if original!=formal or old_mailing!=formal or legacy_additional:
+            renamed.append({'unit':name,'original_name':formal,'formal_name':formal})
         message=messages[identity];message[:]=[unit];destination.append(message)
     return ET.tostring(document,encoding='utf-8',xml_declaration=True),reused,renamed
 
 
 def import_reply(raw):
     response=response_xml(raw)
-    counts={tag:int(response.findtext('.//'+tag,'0')) for tag in ('CREATED','ALTERED','IGNORED','ERRORS','CANCELLED','DELETED')}
+    counts={tag:int(response.findtext('.//'+tag,'0')) for tag in ('CREATED','ALTERED','IGNORED','ERRORS','CANCELLED','DELETED','EXCEPTIONS')}
     errors=[n.text for n in response.iter('LINEERROR') if n.text]
     if response.findtext('.//STATUS')=='0':errors.append('Tally returned failure status')
     if not any(response.find('.//'+tag) is not None for tag in counts):
@@ -289,7 +291,7 @@ def reply_status(raw):
     """Counters distinguish a reported rejection from an unknown import result."""
     doc=response_xml(raw)
     return 'reported' if any(doc.find('.//'+tag) is not None for tag in
-                            ('CREATED','ALTERED','IGNORED','ERRORS','CANCELLED','DELETED')) else 'unknown'
+                            ('CREATED','ALTERED','IGNORED','ERRORS','CANCELLED','DELETED','EXCEPTIONS')) else 'unknown'
 
 
 def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_already_available=False,submit_all=False):
@@ -334,7 +336,7 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
                                          'response_xml':raw_response.decode('utf-8',errors='replace')})
                     for tag,value in reported.items():counts[tag]=counts.get(tag,0)+value
                     errors.extend('Unit '+symbol+': '+issue for issue in issues)
-                    if status=='unknown' or (not submit_all and (issues or any(reported.get(tag,0) for tag in ('ERRORS','CANCELLED')))):break
+                    if status=='unknown' or (not submit_all and (issues or any(reported.get(tag,0) for tag in ('ERRORS','CANCELLED','EXCEPTIONS')))):break
                 entry={'file':name,'company':company,'counts':counts,'errors':errors,
                        'attempted_units':attempted_units,
                        'unit_request_xml':unit_definitions,'unit_results':unit_results,'existing_unit_definitions':existing_definitions,
@@ -359,7 +361,7 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
                 entry.update(counts=counts,unit_results=unit_results,attempted_units=attempted_units,unit_request_xml=unit_definitions,existing_unit_definitions=existing_definitions)
                 if reused:entry['existing_units_reused']=reused
         results.append(entry)
-        failed=entry.get('errors') or any(entry.get('counts',{}).get(tag,0) for tag in ('ERRORS','CANCELLED'))
+        failed=entry.get('errors') or any(entry.get('counts',{}).get(tag,0) for tag in ('ERRORS','CANCELLED','EXCEPTIONS'))
         if entry.get('status')=='unknown' or (failed and not submit_all):break
         if failed and name!='Sales_Vouchers.xml':entry['continued_after_reported_error']=True
     return results

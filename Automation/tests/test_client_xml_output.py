@@ -118,8 +118,10 @@ def test_packs_export_has_distinct_explicit_formal_name_and_preserves_stock_unit
     for item in records[0]['invoice']['items']:item['unit']='Packs'
     export_all(tmp_path,records,True);folder=Path(records[0]['output_path'])
     unit=ET.parse(folder/'Units.xml').find('.//UNIT')
-    assert unit.get('NAME')==unit.findtext('ORIGINALNAME')=='Packs'
-    assert unit.findtext('ADDITIONALNAME')=='Packs (selling unit)'
+    assert unit.get('NAME')==unit.findtext('NAME')=='Packs'
+    assert unit.findtext('ORIGINALNAME')=='Packs (selling unit)'
+    assert unit.find('ADDITIONALNAME') is None
+    assert unit.findtext('MAILINGNAME')=='Packs (selling unit)'
     assert {n.text for n in ET.parse(folder/'Masters.xml').findall('.//BASEUNITS')}=={'Packs'}
     assert all(n.text.endswith(' Packs') for n in ET.parse(folder/'Sales_Vouchers.xml').findall('.//ACTUALQTY'))
 
