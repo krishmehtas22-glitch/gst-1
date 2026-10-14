@@ -285,8 +285,18 @@ def import_reply(raw):
     return counts,errors
 
 
-def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_already_available=False):
-    """No automatic retry: a lost response may follow a committed Tally import."""
+def reply_status(raw):
+    """Counters distinguish a reported rejection from an unknown import result."""
+    doc=response_xml(raw)
+    return 'reported' if any(doc.find('.//'+tag) is not None for tag in
+                            ('CREATED','ALTERED','IGNORED','ERRORS','CANCELLED','DELETED')) else 'unknown'
+
+
+def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_already_available=False,submit_all=False):
+    """Submit once; ALL mode retains reported errors and attempts later stages.
+
+    An unknown response still stops dispatch: no ambiguous import is retried.
+    """
     if company not in loaded_companies(transport):raise ValueError('The selected company is no longer available in Tally. Open it in Tally and refresh the company list.')
     results=[]
     for name,data in plan:
@@ -296,14 +306,14 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
             continue
         progress('Importing '+name+' into '+company+'…')
         try:
-            reused=[];renamed=[];attempted_units=[];unit_definitions=None;counts={};unit_results=[];existing_definitions=[]
+            reused=[];renamed=[];attempted_units=[];unit_definitions=None;counts={};unit_results=[];existing_definitions=[];request=None;attempted=False;raw_response=None
             if name=='Units.xml':
                 existing=loaded_units(company,transport)
                 existing_definitions=[ET.tostring(node,encoding='unicode') for node in existing]
                 data,reused,renamed=prepare_units(data,existing)
-                attempted_units=[n.get('NAME') or n.findtext('NAME') for n in response_xml(data).findall('.//UNIT')]
+                pending_units=[n.get('NAME') or n.findtext('NAME') for n in response_xml(data).findall('.//UNIT')]
                 unit_definitions=data.decode('utf-8')
-                if not attempted_units:
+                if not pending_units:
                     results.append({'file':name,'company':company,'errors':[],'counts':{},'existing_units_reused':reused,'existing_unit_definitions':existing_definitions,'skipped':True})
                     continue
             if name=='Units.xml':
@@ -314,29 +324,44 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
                     destination[:]=[deepcopy(message)]
                     symbol=message.find('UNIT').get('NAME') or message.findtext('UNIT/NAME')
                     progress('Creating unit '+symbol+' in '+company+'…')
-                    raw_response=transport(company_payload(ET.tostring(single,encoding='utf-8'),company))
+                    request=company_payload(ET.tostring(single,encoding='utf-8'),company);attempted=True
+                    attempted_units.append(symbol)
+                    raw_response=None
+                    raw_response=transport(request)
                     reported,issues=import_reply(raw_response)
-                    unit_results.append({'unit':symbol,'counts':reported,'errors':issues,
+                    status=reply_status(raw_response)
+                    unit_results.append({'unit':symbol,'counts':reported,'errors':issues,'status':status,'request_xml':request.decode('utf-8'),
                                          'response_xml':raw_response.decode('utf-8',errors='replace')})
                     for tag,value in reported.items():counts[tag]=counts.get(tag,0)+value
                     errors.extend('Unit '+symbol+': '+issue for issue in issues)
-                    if issues or any(reported.get(tag,0) for tag in ('ERRORS','CANCELLED')):break
+                    if status=='unknown' or (not submit_all and (issues or any(reported.get(tag,0) for tag in ('ERRORS','CANCELLED')))):break
                 entry={'file':name,'company':company,'counts':counts,'errors':errors,
-                       'attempted_units':[item['unit'] for item in unit_results],
-                       'unit_request_xml':unit_definitions,'unit_results':unit_results,'existing_unit_definitions':existing_definitions}
+                       'attempted_units':attempted_units,
+                       'unit_request_xml':unit_definitions,'unit_results':unit_results,'existing_unit_definitions':existing_definitions,
+                       'status':'unknown' if any(r['status']=='unknown' for r in unit_results) else 'reported','request_attempted':attempted}
             else:
-                raw_response=transport(company_payload(data,company))
+                request=company_payload(data,company);attempted=True
+                raw_response=None
+                raw_response=transport(request)
                 counts,errors=import_reply(raw_response)
-                entry={'file':name,'company':company,'counts':counts,'errors':errors}
+                entry={'file':name,'company':company,'counts':counts,'errors':errors,'status':reply_status(raw_response),
+                       'request_attempted':True,'request_xml':request.decode('utf-8'),
+                       'response_xml':raw_response.decode('utf-8',errors='replace')}
+                if name=='Sales_Vouchers.xml':entry['requested_vouchers']=len(response_xml(data).findall('.//VOUCHER'))
             if reused:entry['existing_units_reused']=reused
             if renamed:entry['unit_original_names_adjusted']=renamed
         except (ValueError,OSError) as exc:
-            entry={'file':name,'company':company,'errors':[str(exc)],'status':'unknown'}
+            entry={'file':name,'company':company,'errors':[str(exc)],'status':'unknown','request_attempted':attempted}
+            if request is not None:entry['request_xml']=request.decode('utf-8')
+            if raw_response is not None:entry['response_xml']=raw_response.decode('utf-8',errors='replace')
+            if name=='Sales_Vouchers.xml':entry['requested_vouchers']=len(response_xml(data).findall('.//VOUCHER'))
             if name=='Units.xml':
                 entry.update(counts=counts,unit_results=unit_results,attempted_units=attempted_units,unit_request_xml=unit_definitions,existing_unit_definitions=existing_definitions)
                 if reused:entry['existing_units_reused']=reused
         results.append(entry)
-        if entry.get('errors') or any(entry.get('counts',{}).get(tag,0) for tag in ('ERRORS','CANCELLED')):break
+        failed=entry.get('errors') or any(entry.get('counts',{}).get(tag,0) for tag in ('ERRORS','CANCELLED'))
+        if entry.get('status')=='unknown' or (failed and not submit_all):break
+        if failed and name!='Sales_Vouchers.xml':entry['continued_after_reported_error']=True
     return results
 
 

@@ -224,3 +224,66 @@ def test_existing_units_mode_does_not_ignore_master_failure_or_resend_vouchers()
     result=send_plan([('Units.xml',xml(unit('Packs','Packs'))),('Masters.xml',xml()),('Sales_Vouchers.xml',ET.tostring(sales))],'Chosen',transport,units_already_available=True)
     assert posts==['All Masters'] and len(result)==2
     assert result[-1]['errors']==['Unit Packs is missing']
+
+
+def test_import_all_continues_after_reported_unit_and_master_errors_and_sends_all_50_vouchers():
+    from Common_Rules.tally_import import company_payload
+    source=xml(unit('PCS','Pieces'),unit('Packs','Packs'),unit('BOX','Boxes'))
+    masters,data=envelope('','All Masters');stock=ET.SubElement(message(data),'STOCKITEM',{'NAME':'Keep stock'})
+    text(stock,'BASEUNITS','Packs')
+    sales,data=envelope('','Vouchers')
+    for index in range(50):
+        voucher=ET.SubElement(message(data),'VOUCHER')
+        for tag,value in {'GUID':'keep-'+str(index),'DATE':'20261014','PARTYLEDGERNAME':'Keep buyer',
+                          'STOCKITEMNAME':'Keep stock','ACTUALQTY':str(index+1)+' Packs','RATE':'1.234/Packs','AMOUNT':'100.00'}.items():text(voucher,tag,value)
+    plan=[('Units.xml',source),('Masters.xml',ET.tostring(masters)),('Sales_Vouchers.xml',ET.tostring(sales))]
+    original=list(plan);posts=[]
+    def transport(payload):
+        doc=ET.fromstring(payload)
+        if doc.findtext('./HEADER/TALLYREQUEST')=='Export':
+            if doc.findtext('./HEADER/ID')=='InvoiceReaderUnits':return b'<ENVELOPE><COLLECTION>'+ET.tostring(unit('PCS','PCS'))+b'</COLLECTION></ENVELOPE>'
+            return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
+        posts.append(payload);node=doc.find('.//UNIT')
+        if node is not None:
+            if node.get('NAME')=='Packs':return b'<RESPONSE><CREATED>0</CREATED><ERRORS>0</ERRORS><LINEERROR>DUPLICATE ORIGINAL NAME</LINEERROR></RESPONSE>'
+            return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
+        if doc.find('.//STOCKITEM') is not None:return b"<RESPONSE><CREATED>1</CREATED><ALTERED>78</ALTERED><ERRORS>0</ERRORS><LINEERROR>Unit 'Packs' does not exist!</LINEERROR></RESPONSE>"
+        assert len(doc.findall('.//VOUCHER'))==50
+        return b'<RESPONSE><CREATED>38</CREATED><ERRORS>12</ERRORS><LINEERROR>Stock item missing</LINEERROR></RESPONSE>'
+    results=send_plan(plan,'Chosen',transport,submit_all=True)
+    assert [r['file'] for r in results]==['Units.xml','Masters.xml','Sales_Vouchers.xml']
+    assert results[0]['attempted_units']==['Packs','BOX'] and results[0]['counts']['CREATED']==1
+    assert results[0]['errors']==['Unit Packs: DUPLICATE ORIGINAL NAME']
+    assert results[1]['errors']==["Unit 'Packs' does not exist!"] and results[1]['counts']['ALTERED']==78
+    assert results[2]['requested_vouchers']==50 and results[2]['counts']['CREATED']==38 and results[2]['counts']['ERRORS']==12
+    assert len(posts)==4 and results[2]['errors']==['Stock item missing']
+    assert posts[-2:]==[company_payload(data,'Chosen') for name,data in plan if name!='Units.xml']
+    assert results[1]['request_xml'].encode()==posts[-2] and results[2]['request_xml'].encode()==posts[-1]
+    assert results[2]['response_xml'].startswith('<RESPONSE>') and plan==original
+
+
+@pytest.mark.parametrize('failure',[b'<html>unreadable</html>',b'<RESPONSE><STATUS>0</STATUS></RESPONSE>'])
+def test_import_all_still_stops_unknown_responses_without_retry(failure):
+    posts=[]
+    def transport(payload):
+        doc=ET.fromstring(payload)
+        if doc.findtext('./HEADER/TALLYREQUEST')=='Export':return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
+        posts.append(payload);return failure
+    sales,_=envelope('','Vouchers')
+    result=send_plan([('Units.xml',xml(unit('Packs','Packs'))),('Masters.xml',xml()),('Sales_Vouchers.xml',ET.tostring(sales))],'Chosen',transport,submit_all=True)
+    assert len(posts)==1 and len(result)==1 and result[0]['status']=='unknown'
+
+
+def test_import_all_stops_after_master_timeout_preserves_unit_counts_and_attempted_request():
+    posts=[]
+    def transport(payload):
+        doc=ET.fromstring(payload)
+        if doc.findtext('./HEADER/TALLYREQUEST')=='Export':return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
+        posts.append(payload)
+        if doc.find('.//UNIT') is None:raise OSError('Response lost after master request')
+        return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
+    sales,_=envelope('','Vouchers')
+    result=send_plan([('Units.xml',xml(unit('Packs','Packs'))),('Masters.xml',xml()),('Sales_Vouchers.xml',ET.tostring(sales))],'Chosen',transport,submit_all=True)
+    assert len(posts)==len(result)==2 and result[0]['counts']['CREATED']==1
+    assert result[1]['status']=='unknown' and result[1]['request_attempted']
+    assert result[1]['request_xml'].encode()==posts[1]

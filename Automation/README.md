@@ -1,6 +1,33 @@
 # Sales invoice automation
 
 
+## Reader 7.23: Import ALL submits every XML stage after reported rejections
+
+The previous Import ALL label still used stop-on-error dispatch. A reported
+Packs unit rejection stopped the unit loop and prevented Masters.xml,
+Sales_Vouchers.xml and subsequent seller groups from being sent. The desktop
+button now enables `submit_all`: each new unit is attempted once, then masters
+and vouchers are attempted once in order even when Tally reports definite
+rejections with import counters. Those errors and counters remain visible so
+accepted vouchers and Tally exceptions can be reviewed. Submission is not proof
+that Tally accepted every voucher; missing units/dates may still reject entries.
+
+Unknown responses, local preflight conflicts or connection loss still stop
+further dispatch. No request is automatically retried. Compatible existing units
+are reused; financial fields, exact single-seller master/voucher snapshots,
+quantities, buyer/seller identity and GUIDs remain unchanged. Later seller groups
+continue after reported rejections and retain explicit destination choices.
+
+Receipts now include actual attempted unit names and per-unit requests/responses,
+full master/voucher request and response XML, status and requested voucher count.
+The result window shows how many vouchers were requested. Regression checks
+reproduce duplicate-name and missing-unit LINEERRORs with ERRORS=0 and confirm
+all 50 vouchers are still submitted without altering their data.
+
+Close the reader, extract the update and rebuild the EXE if used. Verify Reader
+7.23, then use Import ALL. No AI reread or XML regeneration is needed. Check
+previously accepted vouchers before another import; no automatic retries occur.
+
 ## Reader 7.22: one button for the complete Tally import
 
 The import dialog now has one action: **Import ALL: Units + Masters + Vouchers**.

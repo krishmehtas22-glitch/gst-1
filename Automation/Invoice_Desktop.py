@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.22'
+APP_VERSION='Reader 7.23'
 
 
 def quantity_unit_summary(invoice):
@@ -440,13 +440,13 @@ class InvoiceApp:
                 try:
                     results=[]
                     for group,target in zip(chosen_groups,targets):
-                        try:received=send_plan(group['plan'],target,progress=lambda text:messages.put(('progress',text)))
+                        try:received=send_plan(group['plan'],target,progress=lambda text:messages.put(('progress',text)),submit_all=True)
                         except (ValueError,OSError) as exc:
-                            received=[{'file':'Company/connection check','company':target,'errors':[str(exc)]}]
+                            received=[{'file':'Company/connection check','company':target,'errors':[str(exc)],'status':'unknown'}]
                         for result in received:result['xml_folders']=[str(p) for p in group['folders']]
                         results.extend(received)
-                        if any(r.get('errors') or any(r.get('counts',{}).get(t,0) for t in ('ERRORS','CANCELLED')) for r in received):break
-                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'import_mode':'full','output_generation':groups[0].get('generation',record.get('output_generation')),'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results})
+                        if any(r.get('status')=='unknown' for r in received):break
+                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'import_mode':'full-submit-all','output_generation':groups[0].get('generation',record.get('output_generation')),'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results})
                     except OSError:pass
                     messages.put(('imported',results))
                 except Exception as exc:messages.put(('import_error',str(exc)))
@@ -493,6 +493,8 @@ class InvoiceApp:
                         lines=[];failed=False
                         for result in value:
                             counts=result.get('counts',{})
+                            if result.get('requested_vouchers') is not None:lines.append('Voucher request: '+str(result['requested_vouchers'])+' invoices')
+                            if result.get('continued_after_reported_error'):lines.append('Tally rejection recorded; ALL mode continued to the next XML stage.')
                             if result.get('existing_units_reused'):lines.append('Existing units reused: '+', '.join(result['existing_units_reused']))
                             if result.get('unit_original_names_adjusted'):lines.append('Unit formal names made distinct. Selling symbols unchanged.')
                             detail=result.get('reason','Already available; no import sent') if result.get('skipped') else ', '.join(f'{key.lower()} {number}' for key,number in counts.items())

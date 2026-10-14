@@ -72,7 +72,9 @@ The user explicitly requires complete XML batches for review in Tally.
   A missing GSTIN may share a routing group only when the normalized seller name
   has exactly one known GSTIN in that client batch; never fill missing invoice
   GSTIN fields or merge distinct known GSTINs. Report
-  actual server counters, stop dependent imports after errors, and never retry an
+  actual server counters and retain rejections. Import ALL must attempt later XML
+  stages once after definite Tally rejections; stop on unknown responses or
+  connection failures, and never retry an
   ambiguous timed-out import automatically. Keep import receipts separate from
   financial/import history; do not mark all invoices imported from aggregate counts.
 
@@ -127,16 +129,18 @@ The user explicitly requires complete XML batches for review in Tally.
   and reuse compatible existing units without overwriting them. Preserve selling
   symbols, stock BASEUNITS, quantity/rate values and saved XML. Disambiguate only
   colliding formal/original names in the transport copy for new symbols. Never
-  ignore a DUPLICATE ORIGINAL NAME error and blindly send dependent vouchers;
-  report unit conflicts/insufficient precision and preserve real server counters.
+  hide a DUPLICATE ORIGINAL NAME error. For Import ALL, retain that reported
+  rejection and attempt remaining masters/vouchers once for Tally exception
+  review; do not claim acceptance. Preserve real server counters and stop on
+  ambiguous connection/response failures or unsafe local precision conflicts.
 
 - Native unit XML must use ORIGINALNAME as the exact selling symbol/identity,
   with the formal description in ADDITIONALNAME. Correct legacy unit envelopes
   in a transport copy; do not guess physical measures or alter voucher values.
   Send each new unit once and retain per-unit request/response diagnostics and
   real counters, identifying the exact failing symbol. Existing unit reuse and
-  multi-folder coalescing remain mandatory; never blindly suppress line errors
-  or retry ambiguous requests. Mock tests do not certify live Tally acceptance.
+  multi-folder coalescing remain mandatory; retain line errors while Import ALL
+  attempts later stages once, and never retry ambiguous requests. Mock tests do not certify live Tally acceptance.
 
 - Unit formal names must not repeat their own symbol. Always write an explicit,
   distinct ADDITIONALNAME using the shared unit_formal_name helper; omission
@@ -145,12 +149,17 @@ The user explicitly requires complete XML batches for review in Tally.
   Disambiguate descriptive formal-name collisions against other current symbols
   and existing target names/descriptions without changing NAME, ORIGINALNAME,
   stock BASEUNITS, quantities, rates or voucher fields. Preserve fetched existing
-  unit definitions in import receipts for diagnosis; do not treat genuine server
-  LINEERRORs as success or send dependent vouchers after a failed prerequisite.
+  unit definitions in import receipts for diagnosis; do not treat server
+  LINEERRORs as success. Import ALL must submit remaining XML stages after
+  reported rejections so vouchers can reach Tally exception review.
 
 - The desktop import dialog must expose one full import action:
   Import ALL: Units + Masters + Vouchers. Always run the full dependency sequence
   in the explicitly selected company; compatible existing units are reused.
-  Do not expose a units-skipped or masters-only bypass button. Genuine unit/master
-  failures stop dependent requests and are reported; do not suppress errors.
+  Do not expose a units-skipped or masters-only bypass button. The action must
+  enable submit_all: reported unit/master rejections are retained and subsequent
+  XML files and seller groups are attempted once. Unknown responses/connection
+  losses stop dispatch without retries. Log each stage, actual unit requests,
+  full master/voucher request and response, and requested voucher count. Never
+  claim all requested vouchers were accepted from submission alone.
   Preserve exact current XML snapshots, financial fields and seller routing.
