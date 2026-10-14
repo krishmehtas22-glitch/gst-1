@@ -119,7 +119,7 @@ def test_packs_export_has_distinct_explicit_formal_name_and_preserves_stock_unit
     export_all(tmp_path,records,True);folder=Path(records[0]['output_path'])
     unit=ET.parse(folder/'Units.xml').find('.//UNIT')
     assert unit.findtext('NAME')=='Packs'
-    assert unit.findtext('ORIGINALNAME')=='Packs (selling unit)'
+    assert unit.findtext('ORIGINALNAME')=='Pack'
     assert unit.attrib=={'Action':'Create'}
     assert unit.find('ADDITIONALNAME') is None
     assert {n.text for n in ET.parse(folder/'Masters.xml').findall('.//BASEUNITS')}=={'Packs'}

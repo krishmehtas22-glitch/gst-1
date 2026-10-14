@@ -45,15 +45,49 @@ UNITS = {
 }
 
 
-def unit_formal_name(symbol,description=None):
-    """Keep an explicit descriptive name distinct from the selling symbol.
+# Descriptions are words, separate from symbols and GST reporting labels.
+FORMAL_SINGULAR = {
+    'packs':'Pack','units':'Unit','vials':'Vial','tubes':'Tube','liters':'Liter',
+    'numbers':'Number','pieces':'Piece','kilograms':'Kilogram','grammes':'Gramme',
+    'litres':'Litre','metres':'Metre','meters':'Metre','boxes':'Box','sets':'Set',
+    'rolls':'Roll','pairs':'Pair','reams':'Ream','packets':'Packet','dozens':'Dozen',
+    'bottles':'Bottle','bags':'Bag','cartons':'Carton','tablets':'Tablet',
+    'cases':'Case','strips':'Strip','jars':'Jar','ampoules':'Ampoule',
+}
+STANDARD_UQC = {'NOS':'NOS-NUMBERS','PCS':'PCS-PIECES','KGS':'KGS-KILOGRAMS',
+    'GMS':'GMS-GRAMMES','LTR':'LTR-LITRES','MTR':'MTR-METERS','BOX':'BOX-BOX',
+    'SET':'SET-SETS','UNT':'UNT-UNITS','OTH':'OTH-OTHERS'}
+STANDARD_UQC.update({entry['uqc']:entry['tally_uqc'] for entry in UNITS.values()
+                     if entry.get('tally_uqc')})
 
-    Omitting the description allows Tally to default it back to the symbol.
-    This label does not imply a quantity conversion or change stock references.
-    """
+
+def unit_uqc(symbol,value=None):
+    """Assign catalog UQC for known symbols; custom units use OTH unless explicit."""
+    catalog=next((v for k,v in UNITS.items() if k.casefold()==str(symbol).strip().casefold()),{})
+    expected=catalog.get('tally_uqc') or STANDARD_UQC.get(catalog.get('uqc'))
+    value=str(value or '').strip()
+    if not value or value.casefold() in {'not applicable','not applicable-','na','none','unknown','oth','oth-others','unt','unt-units'}:
+        return expected or 'OTH-OTHERS'
+    return STANDARD_UQC.get(value.upper(),value if '-' in value else (expected or 'OTH-OTHERS'))
+
+
+def unit_formal_name(symbol,description=None,uqc=None):
+    """Use a plain description distinct from the symbol and UQC code/label."""
     name=str(symbol).strip()
     normalize=lambda value:' '.join(str(value or '').split()).casefold()
-    formal=str(description or UNITS.get(name,{}).get('formal_name') or '').strip()
-    if not formal or normalize(formal)==normalize(name):
-        formal=name+' (selling unit)'
+    catalog=next((v for k,v in UNITS.items() if k.casefold()==name.casefold()),{})
+    formal=str(description or catalog.get('formal_name') or '').strip()
+    labels=[uqc,catalog.get('uqc'),catalog.get('tally_uqc'),unit_uqc(name,uqc)]
+    forbidden={normalize(name)}
+    for label in labels:
+        if label:
+            forbidden.add(normalize(label))
+            parts=str(label).split('-',1)
+            forbidden.update(normalize(part) for part in parts)
+    if not formal or normalize(formal) in forbidden or '(selling unit)' in normalize(formal):
+        candidate=str(catalog.get('formal_name') or name)
+        formal=FORMAL_SINGULAR.get(normalize(candidate),FORMAL_SINGULAR.get(normalize(name),'Measure of '+name))
+        if normalize(formal) in forbidden:
+            formal={'ream':'Paper ream','roll':'Material roll','set':'Item set',
+                    'box':'Container box'}.get(normalize(name),'Measure of '+name)
     return formal

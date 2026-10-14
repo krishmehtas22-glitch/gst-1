@@ -23,7 +23,7 @@ def test_units_are_imported_separately_before_stock_and_vouchers(tmp_path):
     assert not units.findall('.//STOCKITEM') and not units.findall('.//LEDGER')
     assert not masters.findall('.//UNIT')
     assert defined['Nos'].findtext('NAME')=='Nos'
-    assert defined['Nos'].findtext('ORIGINALNAME')=='Numbers'
+    assert defined['Nos'].findtext('ORIGINALNAME')=='Number'
     assert defined['Nos'].attrib=={'Action':'Create'}
     assert defined['KG'].findtext('GSTREPUOM')=='KGS-KILOGRAMS'
     assert defined['ROLL'].findtext('GSTREPUOM')=='ROL-ROLLS'

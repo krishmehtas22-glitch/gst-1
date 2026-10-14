@@ -24,10 +24,10 @@ def test_duplicate_symbol_across_folders_uses_max_precision_once():
     nodes=ET.fromstring(combined).findall('.//UNIT')
     assert len(nodes)==1 and nodes[0].findtext('NAME')=='PCS'
     assert nodes[0].findtext('DECIMALPLACES')=='3'
-    assert nodes[0].findtext('ORIGINALNAME')=='Pieces'
+    assert nodes[0].findtext('ORIGINALNAME')=='Piece'
     assert nodes[0].find('ADDITIONALNAME') is None
-    assert nodes[0].findtext('ORIGINALNAME')=='Pieces'
-    assert not reused and renamed==[{'unit':'PCS','original_name':'Pieces','formal_name':'Pieces'}]
+    assert nodes[0].findtext('ORIGINALNAME')=='Piece'
+    assert not reused and renamed==[{'unit':'PCS','original_name':'Piece','formal_name':'Piece'}]
     assert len(ET.fromstring(original).findall('.//UNIT'))==2
 
 
@@ -44,15 +44,15 @@ def test_duplicate_original_name_new_alias_retains_symbol_and_uqc():
     prepared,reused,renamed=prepare_units(xml(unit('KG','Kilograms',3),unit('KGS','Kilograms',3)),[])
     nodes=ET.fromstring(prepared).findall('.//UNIT')
     assert [n.findtext('NAME') for n in nodes]==['KG','KGS']
-    assert [n.findtext('ORIGINALNAME') for n in nodes]==['Kilograms','Kilograms [unit KGS]']
+    assert [n.findtext('ORIGINALNAME') for n in nodes]==['Kilogram','Kilogram [unit KGS]']
     assert all(n.attrib=={'Action':'Create'} for n in nodes)
-    assert [n.findtext('GSTREPUOM') for n in nodes]==['UNT-UNITS','UNT-UNITS']
+    assert [n.findtext('GSTREPUOM') for n in nodes]==['KGS-KILOGRAMS','KGS-KILOGRAMS']
     assert len(renamed)==2
 
 
 def test_existing_formal_name_collision_new_symbol_disambiguated():
-    prepared,_,renamed=prepare_units(xml(unit('PCS','Pieces')),[unit('Pieces','Pieces')])
-    assert ET.fromstring(prepared).findtext('.//ORIGINALNAME')=='Pieces [unit PCS]'
+    prepared,_,renamed=prepare_units(xml(unit('PCS','Pieces')),[unit('Piece','Piece')])
+    assert ET.fromstring(prepared).findtext('.//ORIGINALNAME')=='Piece [unit PCS]'
     assert ET.fromstring(prepared).find('.//UNIT').get('NAME') is None
     assert ET.fromstring(prepared).find('.//UNIT').findtext('NAME')=='PCS'
 
@@ -117,7 +117,7 @@ def test_native_descriptive_original_names_preserved_before_tally_post():
         if node is not None:
             assert node.findtext('NAME')=='Nos'
             assert node.attrib=={'Action':'Create'}
-            assert node.findtext('ORIGINALNAME')=='Numbers'
+            assert node.findtext('ORIGINALNAME')=='Number'
             assert node.find('MAILINGNAME') is None
             assert node.find('ADDITIONALNAME') is None
         return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
@@ -149,7 +149,7 @@ def test_many_folder_definitions_create_each_symbol_once():
     merged,_,_=prepare_units(source,[])
     units=ET.fromstring(merged).findall('.//UNIT')
     assert len(units)==1 and units[0].findtext('DECIMALPLACES')=='3'
-    assert units[0].findtext('ORIGINALNAME')=='Pieces'
+    assert units[0].findtext('ORIGINALNAME')=='Piece'
     assert units[0].findtext('NAME')=='PCS'
 
 
@@ -159,12 +159,12 @@ def test_formal_name_equal_to_symbol_is_replaced_without_changing_symbol(symbol)
     source=xml(node);prepared,_,adjusted=prepare_units(source,[])
     result=ET.fromstring(prepared).find('.//UNIT')
     assert result.findtext('NAME')==symbol
-    assert result.findtext('ORIGINALNAME')==symbol+' (selling unit)'
+    assert result.findtext('ORIGINALNAME')==symbol[:-1]
     assert result.find('ADDITIONALNAME') is None
-    assert result.findtext('ORIGINALNAME')==symbol+' (selling unit)'
+    assert result.findtext('ORIGINALNAME')==symbol[:-1]
     assert result.findtext('DECIMALPLACES')=='3'
     assert ET.fromstring(source).findtext('.//ADDITIONALNAME')==symbol
-    assert adjusted==[{'unit':symbol,'original_name':symbol+' (selling unit)','formal_name':symbol+' (selling unit)'}]
+    assert adjusted==[{'unit':symbol,'original_name':symbol[:-1],'formal_name':symbol[:-1]}]
 
 
 @pytest.mark.parametrize('explicit_formal',[False,True])
@@ -322,11 +322,11 @@ def test_real_native_export_schema_repairs_legacy_packs_request_and_imports_all_
         if node is not None:
             # Enforce the actual server-exported schema, not the previous guess.
             assert node.findtext('NAME')==node.findtext('NAME')=='Packs'
-            assert node.findtext('ORIGINALNAME')=='Packs (selling unit)'
+            assert node.findtext('ORIGINALNAME')=='Pack'
             assert node.attrib=={'Action':'Create'}
             assert node.find('MAILINGNAME') is None
             assert node.find('ADDITIONALNAME') is None
-            assert node.findtext('GSTREPUOM')=='UNT-UNITS' and node.findtext('DECIMALPLACES')=='0'
+            assert node.findtext('GSTREPUOM')=='PAC-PACKS' and node.findtext('DECIMALPLACES')=='0'
             accepted=True
             return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS><EXCEPTIONS>0</EXCEPTIONS></RESPONSE>'
         assert accepted
@@ -356,7 +356,8 @@ def test_official_creation_sample_has_no_name_attribute_and_preserves_both_units
     for sample in examples:
         node=simple_unit(sample.findtext('NAME'),sample.findtext('ORIGINALNAME'),sample.findtext('DECIMALPLACES'),'OTH-OTHERS')
         assert node.attrib==sample.attrib=={'Action':'Create'}
-        for field in ('NAME','ISSIMPLEUNIT','ORIGINALNAME','DECIMALPLACES'):
+        assert node.findtext('ORIGINALNAME')==('Piece' if sample.findtext('NAME')=='Pcs' else 'Dozen')
+        for field in ('NAME','ISSIMPLEUNIT','DECIMALPLACES'):
             assert node.findtext(field)==sample.findtext(field)
         assert node.get('NAME') is None and node.find('MAILINGNAME') is None
     raw=ET.tostring(official.getroot());fixed,_,_=prepare_units(raw,[])

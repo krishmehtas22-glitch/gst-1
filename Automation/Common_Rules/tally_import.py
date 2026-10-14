@@ -261,7 +261,7 @@ def prepare_units(data,existing):
         legacy_additional=unit.find('ADDITIONALNAME') is not None
         # Tally names must not repeat the symbol, another unit's symbol or
         # formal name. Change only the descriptive field on the transport copy.
-        formal=unit_formal_name(name,formal)
+        formal=unit_formal_name(name,formal,unit.findtext('GSTREPUOM'))
         if key(formal) in reserved:
             base=formal+' [unit '+name+']';formal=base;index=2
             while key(formal) in reserved:

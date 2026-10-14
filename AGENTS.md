@@ -1,5 +1,17 @@
 # Invoice batch contract
 
+- For every current and future unit, keep the selling symbol, formal description,
+  and UQC code in their own fields. The formal description must not equal the
+  symbol or short/full UQC code (ignoring case/extra spaces). Repair only the
+  description via shared unit_formal_name in generation and legacy transport.
+  Preserve valid UQC codes, stock BASEUNITS, quantity/rate values and vouchers.
+  This naming rule is not proof that a pending Tally exception is repaired.
+  Use plain natural descriptions: Packs has formal name Pack and UQC PAC-PACKS;
+  never append '(selling unit)'. Distinguish descriptions from the UQC's display
+  label as well as its short/full code. Assign the catalog UQC to known units
+  with absent/generic codes; retain explicit custom codes, using OTH-OTHERS for
+  unmapped custom units. Apply this to legacy transport and future generation.
+
 The user explicitly requires complete XML batches for review in Tally.
 
 - All future Cerebras, Gemini, Groq, or other AI batch integrations must use the complete
