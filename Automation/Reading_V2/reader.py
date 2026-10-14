@@ -8,22 +8,58 @@ from Common_Rules.accounting import state_code,EXPORT_COUNTRIES
 from Common_Rules.party_evidence import BUYER_ROLES,SELLER_ROLES
 from .document import read_document,positioned_text,union
 
-VERSION='invoice-reading-v2-shadow-1'
+VERSION='invoice-reading-v2-shadow-2'
 CORE=('number','date','seller_name','buyer_name','taxable','total','cgst','sgst','igst','currency','place_of_supply')
-NUMERIC={'taxable','total','cgst','sgst','igst','cess','round_off','quantity','rate','value','gst_rate','printed_gst'}
+NUMERIC={'taxable','total','cgst','sgst','igst','cess','round_off','quantity','rate','value','gst_rate','printed_gst','gross_value'}
 SECTIONS={'supply details','invoice details','invoice information','shipping details','ship to','bank details','payment details'}
 
 
 def key(value):return ' '.join(re.sub(r'[^\w%]+',' ',str(value or '').casefold()).split())
 
 
-def decimal(value):
-    raw=str(value or '').strip()
-    if ',' in raw and not re.fullmatch(r'[+-]?(?:\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})*,\d{3})(?:\.\d+)?',raw):return None
-    text=raw.replace(',','')
-    if not re.fullmatch(r'[+-]?\d+(?:\.\d+)?',text):return None
-    try:return Decimal(text)
+def decimal(value,locale=None):
+    raw=str(value if value is not None else '').strip().replace('\u00a0',' ')
+    raw=re.sub(r'^(?:Rs\.?|INR|USD|EUR|GBP|[$₹€£])\s*','',raw,flags=re.I)
+    raw=re.sub(r'\s*(?:INR|USD|EUR|GBP|[$₹€£])$','',raw,flags=re.I).strip()
+    if locale=='comma':
+        if not re.fullmatch(r'[+-]?(?:\d+|\d{1,3}(?:[. ]\d{3})+)(?:,\d+)?',raw):return None
+        raw=raw.replace('.','').replace(' ','').replace(',','.')
+    elif ',' in raw:
+        if not re.fullmatch(r'[+-]?(?:\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})*,\d{3})(?:\.\d+)?',raw):return None
+        raw=raw.replace(',','')
+    if not re.fullmatch(r'[+-]?\d+(?:\.\d+)?',raw):return None
+    try:return Decimal(raw)
     except InvalidOperation:return None
+
+
+MONTHS={
+    'januar':'January','janvier':'January','januari':'January',
+    'februar':'February','février':'February','februari':'February',
+    'märz':'March','mars':'March','maart':'March','avril':'April',
+    'mai':'May','mei':'May','juin':'June','juni':'June',
+    'juillet':'July','juli':'July','août':'August','augustus':'August',
+    'septembre':'September','oktober':'October','octobre':'October',
+    'novembre':'November','dezember':'December','décembre':'December'}
+
+
+def date_value(text):
+    text=re.sub(r'\s+,',',',text.strip())
+    for name,english in MONTHS.items():text=re.sub(r'\b'+name+r'\b',english,text,flags=re.I)
+    text=re.sub(r'(?<=\d)\.\s+(?=[A-Za-z])',' ',text)
+    for fmt in ('%Y-%m-%d','%d/%m/%Y','%d-%m-%Y','%d.%m.%Y','%d %b %Y','%d-%b-%Y','%d %B %Y','%B %d, %Y','%b %d, %Y'):
+        try:return datetime.strptime(text,fmt).date().isoformat()
+        except ValueError:pass
+    # Month-first numeric dates are accepted only when the second number > 12.
+    match=re.fullmatch(r'(\d{1,2})/(\d{1,2})/(\d{4})',text)
+    if match and int(match[2])>12:
+        try:return datetime(int(match[3]),int(match[1]),int(match[2])).date().isoformat()
+        except ValueError:pass
+    return None
+
+
+def regional_numbers(document):
+    text=' '.join(l['text'] for p in document['pages'] for l in p['lines'])
+    return 'comma' if re.search(r'\b(?:factuur|facture|rechnungsdatum|rechnungsnr)\b',text,re.I) and re.search(r'\d,\d{2}\b',text) else None
 
 
 def equal(a,b,field):
@@ -64,18 +100,15 @@ def labels(line,aliases):
     return found
 
 
-def valid_field(field,text):
+def valid_field(field,text,locale=None):
     text=text.strip(' :=|')
     if not text:return None
     if field in NUMERIC:
-        return text if decimal(text) is not None else None
+        value=decimal(text,locale)
+        return str(value) if value is not None else None
     if field=='number':
-        return text if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9./_-]*',text) and any(c.isdigit() for c in text) else None
-    if field=='date':
-        for fmt in ('%Y-%m-%d','%d/%m/%Y','%d-%m-%Y','%d.%m.%Y','%d %b %Y','%d-%b-%Y','%d %B %Y'):
-            try:return datetime.strptime(text,fmt).date().isoformat()
-            except ValueError:pass
-        return None
+        return text.lstrip('# ').strip() if re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9./_-]*',text.lstrip('# ').strip()) and any(c.isdigit() for c in text) else None
+    if field=='date':return date_value(text)
     if field in {'seller_state','buyer_state','place_of_supply'}:
         state=re.sub(r'\s*\(\d{2}\)\s*$','',text)
         if field=='place_of_supply' and key(state) in {'outside india','96 other countries','other countries'}:return 'Outside India'
@@ -119,13 +152,32 @@ def fields_from_document(document):
     aliases.update({key(a):'buyer_name' for a in BUYER_ROLES})
     aliases.update({key(a):'seller_name' for a in SELLER_ROLES})
     aliases.update({'invoice':'number','invoice reference':'number','issue date':'date',
-        'total payable inr':'total','total value of goods':'taxable','gstin':'gstin'})
+        'total payable inr':'total','total value of goods':'taxable','gstin':'gstin',
+        'reference':'reference','due date':'due_date','order date':'order_date','date due':'due_date',
+        'factuurdatum':'date','factuur datum':'date','rechnungsdatum':'date',
+        'factuurnummer':'number','factuur':'number','facture n°':'number','rechnungsnr':'number',
+        'kundennr':'reference','vervaldatum':'due_date','klant':'reference','order':'reference',
+        'total':'total','totaal':'total','total ttc':'total','total for this invoice':'total',
+        'factuur totaal':'total','somme à payer':'total','total ht':'taxable','total facture':'total',
+        'orderdatum':'order_date','date limite de paiement le':'due_date'})
     aliases.update({section:'section' for section in SECTIONS})
-    found={}
+    aliases={key(alias):field for alias,field in aliases.items()}
+    found={};locale=regional_numbers(document)
     for page in document['pages']:
         roles=[];lines=page['lines']
         for index,line in enumerate(lines):
             marks=labels(line,aliases)
+            # Attached n° identifiers retain their original source token.
+            inline=re.search(r'\bfacture\s+n[°º]\s*(\w+)\s+du\s+(.+?)(?:\s+Détail|$)',line['text'],re.I)
+            if inline:
+                for field,raw in [('number',inline[1]),('date',inline[2])]:
+                    value=valid_field(field,raw,locale)
+                    if value is not None and not any(equal(v['value'],value,field) for v in found.get(field,[])):
+                        found.setdefault(field,[]).append({'value':value,'evidence':trace(line['tokens'],page['number'],'positioned_label')})
+            # A standalone # identifier under an invoice heading is explicit.
+            if re.fullmatch(r'#\s*[\w./-]+',line['text']) and any(re.search(r'\binvoice\b',r['text'],re.I) for r in lines[max(0,index-3):index]):
+                value=valid_field('number',line['text'])
+                if value and not any(equal(e['value'],value,'number') for e in found.get('number',[])):found.setdefault('number',[]).append({'value':value,'evidence':trace(line['tokens'],page['number'],'positioned_label')})
             marks=[m for m in marks if not(m['field'] in {'buyer_name','seller_name'}
                 and not role_boundary(line,m,marks) and any(r['field']==m['field']
                     and abs(r['box'][0]-m['box'][0])<.12 and 0<m['box'][1]-r['box'][3]<.06 for r in roles))]
@@ -134,7 +186,8 @@ def fields_from_document(document):
                 if mark['field'] in {'buyer_name','seller_name'}:roles.append(mark)
             for position,mark in enumerate(marks):
                 field=mark['field']
-                if field=='section':continue
+                if field in {'section','reference','due_date','order_date'}:continue
+                if field=='total' and header_columns(line):continue
                 if field=='gstin':
                     nearby=[r for r in roles if abs(r['box'][0]-mark['box'][0])<.12]
                     owner=max(nearby,key=lambda r:r['box'][1]) if nearby else None
@@ -148,9 +201,20 @@ def fields_from_document(document):
                     next_marks=labels(following,aliases)
                     if header_columns(following):break
                     if any(role_boundary(following,m,next_marks) for m in next_marks):break
+                    if any(left<=m['box'][0]<right and (m['field'] not in {'buyer_name','seller_name'} or role_boundary(following,m,next_marks)) for m in next_marks):break
                     candidates.append([t for t in following['tokens'] if left<=(t['box'][0]+t['box'][2])/2<right])
                 for tokens in candidates:
-                    value=valid_field(field,' '.join(t['text'] for t in tokens))
+                    value=valid_field(field,' '.join(t['text'] for t in tokens),locale)
+                    if value is None and field in {'date','number','total'}:
+                        # A typed value may precede text belonging to a separate
+                        # nearby panel; keep only an unambiguous leading value.
+                        for limit in range(min(len(tokens),5),0,-1):
+                            raw=' '.join(t['text'] for t in tokens[:limit])
+                            value=valid_field(field,raw,locale)
+                            if value is not None:
+                                if field=='total' and any(re.search(r'\d',t['text']) for t in tokens[limit:]):
+                                    value=None;continue
+                                tokens=tokens[:limit];break
                     if value is None:continue
                     if field.endswith('_name') and tokens:
                         bottom=max(t['box'][3] for t in tokens)
@@ -159,16 +223,38 @@ def fields_from_document(document):
                         suffix=' '.join(t['text'] for t in continuation)
                         if re.fullmatch(r'(?:(?:limited|ltd\.?|private|pvt\.?|llp|llc|inc\.?|incorporated|company)\s*)+',suffix,re.I):
                             tokens=tokens+continuation;value+=' '+suffix
-                    entry={'value':value,'evidence':trace(tokens,page['number'],'positioned_label')}
+                    entry={'value':value,'priority':2 if field=='date' and key(' '.join(t['text'] for t in line['tokens'][mark['start']:mark['end']])) not in {'date','dated'} else 1,'evidence':trace(tokens,page['number'],'positioned_label')}
                     if not any(equal(v['value'],value,field) for v in found.get(field,[])):found.setdefault(field,[]).append(entry)
                     break
+    for field,entries in list(found.items()):
+        unique=[]
+        for entry in entries:
+            if not any(equal(e['value'],entry['value'],field) for e in unique):unique.append(entry)
+        entries=unique
+        priority=max(e.get('priority',1) for e in entries)
+        found[field]=[e for e in entries if e.get('priority',1)==priority]
     return found
 
 
 def header_columns(line):
     aliases={key(a):field for field,values in HEADERS.items() for a in values}
-    aliases.update({'gst amount':'printed_gst','gst amt':'printed_gst'})
+    aliases.update({'gst amount':'printed_gst','gst amt':'printed_gst',
+        'title':'name','price ₹':'rate','total ₹':'value','total':'value','tax':'printed_gst',
+        'disc %':'discount_rate','taxes':'gst_rate',
+        'artikel':'name','omschrijving':'name','aantal':'quantity','hoeveelheid':'quantity',
+        'prijs per stuk':'rate','prijs incl btw':'value','prijs':'rate','bedrag':'value','btw':'gst_rate',
+        'désignation':'name','nombre':'quantity','p u ht':'rate','montant ht':'value',
+        'beschreibung':'name','menge':'quantity','vk preis':'rate','zeilenbetrag':'value','rabatt %':'discount_rate','pos':'position'})
     marks=labels(line,aliases)
+    # Product/category and Title can coexist: use the detailed title column.
+    names=[m for m in marks if m['field']=='name']
+    if len(names)>1:marks=[m for m in marks if m['field']!='name' or m is names[-1]]
+    values=[m for m in marks if m['field']=='value']
+    if len(values)==2:
+        taxable=next((m for m in values if 'taxable' in key(' '.join(t['text'] for t in line['tokens'][m['start']:m['end']]))),None)
+        if taxable:
+            for m in values:
+                if m is not taxable:m['field']='gross_value'
     if len({m['field'] for m in marks})!=len(marks):return None
     required={'name','quantity','rate','value'}
     if not required<={m['field'] for m in marks}:return None
@@ -176,7 +262,7 @@ def header_columns(line):
 
 
 def tables_from_document(document):
-    tables=[]
+    tables=[];locale=regional_numbers(document)
     for page in document['pages']:
         lines=page['lines']
         for index,line in enumerate(lines):
@@ -187,9 +273,26 @@ def tables_from_document(document):
             rows=[];notes=[]
             for following in lines[index+1:]:
                 if header_columns(following):break
-                if re.match(r'^(?:total|subtotal|sub total|grand total|net total|tax summary|taxable value|CGST|SGST|IGST|round off|amount payable)\b',following['text'],re.I):break
+                if re.match(r'^(?:subtotal|sub total)\b',following['text'],re.I):continue
+                if re.match(r'^(?:total|grand total|net total|tax summary|tax\s+\d+|TVA|totaal|exclusief btw|factuur totaal|taxable value|CGST|SGST|IGST|round off|amount payable)\b',following['text'],re.I):break
                 cells={m['field']:[t for t in following['tokens'] if edges[i]<=(t['box'][0]+t['box'][2])/2<edges[i+1]] for i,m in enumerate(columns)}
                 values={field:' '.join(t['text'] for t in tokens) for field,tokens in cells.items()}
+                # Long item names can extend into the whitespace before Qty.
+                # Move text before a trailing quantity back to the name cell;
+                # require its geometry to precede the numeric quantity token.
+                quantity_tokens=cells.get('quantity',[])
+                split=next((i for i,t in enumerate(quantity_tokens) if decimal(t['text'],locale) is not None and all(re.fullmatch(r'[A-Za-z][A-Za-z./]*',v['text']) for v in quantity_tokens[i+1:])),None)
+                if split is not None and split>0 and all(decimal(t['text'],locale) is None for t in quantity_tokens[:split]):
+                    cells['name']+=quantity_tokens[:split];cells['quantity']=quantity_tokens[split:]
+                    values['name']=' '.join(t['text'] for t in cells['name']);values['quantity']=' '.join(t['text'] for t in cells['quantity'])
+                # Units printed inside Qty remain separate, without conversion.
+                qty=re.fullmatch(r'([+-]?[\d.,]+)\s+([A-Za-z][A-Za-z./]*)',values.get('quantity',''))
+                if qty and 'unit' not in values:
+                    values['quantity'],values['unit']=qty.groups();cells['unit']=cells['quantity']
+                for field in NUMERIC:
+                    if field in values:
+                        number=decimal(values[field],locale)
+                        if number is not None:values[field]=str(number)
                 if all(decimal(values.get(field)) is not None for field in ('quantity','rate','value')) and values.get('name'):
                     if 'hsn' in values and not re.fullmatch(r'\d{4,8}',values['hsn']):notes.append('HSN cell needs review.')
                     rows.append({'values':{k:v for k,v in values.items() if v},'evidence':{k:trace(v,page['number'],'positioned_table') for k,v in cells.items() if v}})
@@ -239,14 +342,17 @@ def validate(invoice):
     return checks
 
 
-def read_invoice(path,baseline=None):
+def read_invoice(path,baseline=None,correct_local_baseline=False):
+    correct_local_baseline=correct_local_baseline or baseline is None
     document=read_document(path)
     baseline=deepcopy(baseline) if baseline is not None else parse_text(text_from_pdf(path))
     candidates=fields_from_document(document);tables=tables_from_document(document)
     invoice=deepcopy(baseline);evidence={};conflicts=[];fallback=[]
     for field in set(CORE)|set(candidates):
         choices=candidates.get(field,[])
-        if len(choices)==1 and (invoice.get(field) in (None,'') or equal(invoice[field],choices[0]['value'],field)):
+        if len(choices)==1 and (invoice.get(field) in (None,'') or equal(invoice[field],choices[0]['value'],field) or (correct_local_baseline and field in {'number','date','total'})):
+            if invoice.get(field) not in (None,'') and not equal(invoice[field],choices[0]['value'],field):
+                conflicts.append({'field':field,'legacy_value':invoice[field],'positioned_values':[choices[0]['value']],'resolution':'Unique printed label used in comparison only.'})
             invoice[field]=choices[0]['value'];evidence[field]=choices[0]['evidence']
         elif choices:
             conflicts.append({'field':field,'legacy_value':invoice.get(field),'positioned_values':[c['value'] for c in choices]})
@@ -258,8 +364,11 @@ def read_invoice(path,baseline=None):
     matches=len(spatial_items)==len(baseline_items) and all(
         all(equal(row['values'].get(f),item.get(f),f) for f in ('name','quantity','rate','value'))
         for row,item in zip(spatial_items,baseline_items))
-    if spatial_items and not multiple_invoices and (not baseline_items or matches):
-        if not baseline_items:invoice['items']=[deepcopy(row['values']) for row in spatial_items]
+    can_correct_items=correct_local_baseline and len(spatial_items)>=len(baseline_items) and not any(t['warnings'] for t in tables)
+    if spatial_items and not multiple_invoices and (not baseline_items or matches or can_correct_items):
+        if not baseline_items or (can_correct_items and not matches):
+            if baseline_items:conflicts.append({'field':'items','resolution':'Complete positioned rows used in comparison; legacy rows retained in baseline report.'})
+            invoice['items']=[deepcopy(row['values']) for row in spatial_items]
         item_evidence=[row['evidence'] for row in spatial_items]
     else:
         item_evidence=[{f:find_value_evidence(document,item.get(f),f) for f in ('name','quantity','unit','rate','value')} for item in baseline_items]
@@ -267,7 +376,10 @@ def read_invoice(path,baseline=None):
         if baseline_items:fallback.append('items')
     checks=validate(invoice)
     warnings=list(document['warnings'])+baseline.get('extraction_warnings',[])+[w for t in tables for w in t['warnings']]
-    return {'version':VERSION,'mode':'shadow_only','source_sha256':document['source_sha256'],
+    first_lines=' '.join(l['text'] for p in document['pages'][:1] for l in p['lines'][:3])
+    document_kind='payment_receipt' if re.search(r'\bpayment receipt\b',first_lines,re.I) else 'invoice_candidate'
+    if document_kind=='payment_receipt':warnings.append('Payment receipt: do not substitute Booking ID for an invoice number.')
+    return {'version':VERSION,'document_kind':document_kind,'mode':'shadow_only','source_sha256':document['source_sha256'],
         'invoice':invoice,'document':document,'field_evidence':evidence,'item_evidence':item_evidence,
         'table_candidates':tables,'legacy_fallback_fields':sorted(set(fallback)),
         'conflicts':conflicts,'checks':checks,'warnings':warnings,

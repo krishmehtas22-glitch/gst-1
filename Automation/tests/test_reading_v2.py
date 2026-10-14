@@ -149,3 +149,80 @@ def test_invoice_markup_cannot_escape_report_data(tmp_path,monkeypatch):
     html=(tmp_path/'comparison/Report.html').read_text()
     assert '</script><script>alert("unsafe")' not in html
     assert '\\u003c/script\\u003e' in html
+
+
+def test_invoice_date_outranks_order_and_due_dates():
+    d=document([[('Order',.05,.10,.07),('Date:',.13,.10,.07),('15-10-2025',.22,.10,.14)],
+                [('Invoice',.05,.14,.10),('Date:',.16,.14,.07),('20-10-2025',.25,.14,.14)],
+                [('Due',.05,.18,.06),('Date:',.12,.18,.07),('30-10-2025',.21,.18,.14)]])
+    assert [e['value'] for e in fields_from_document(d)['date']]==['2025-10-20']
+
+
+def test_adjacent_reference_is_not_another_invoice_identifier():
+    d=document([[('Invoice',.05,.10,.10),('INV/2030/001',.16,.10,.20)],
+                [('Invoice',.05,.15,.10),('Date:',.16,.15,.06),('Due',.40,.15,.07),('Date:',.48,.15,.06),('Reference:',.70,.15,.15)],
+                [('03/20/2030',.05,.18,.16),('04/04/2030',.40,.18,.16),('REF123',.70,.18,.13)]])
+    found=fields_from_document(d)
+    assert [e['value'] for e in found['number']]==['INV/2030/001']
+    assert [e['value'] for e in found['date']]==['2030-03-20']
+
+
+def test_currency_prefixes_and_regional_commas_require_context():
+    assert decimal('$ 279.84')==decimal('279.84')
+    assert decimal('Rs 1939')==decimal('1939')
+    assert decimal('€ 2.321,00',locale='comma')==decimal('2321.00')
+    assert decimal('1,50') is None
+    assert decimal('12 34,00',locale='comma') is None
+    assert decimal('12 USD 99') is None
+
+
+def test_english_and_regional_months_are_normalized():
+    from Reading_V2.reader import date_value
+    assert date_value('August 3 , 2014')=='2014-08-03'
+    assert date_value('7. Mai 2014')=='2014-05-07'
+    assert date_value('29 maart 2014')=='2014-03-29'
+    assert date_value('02 Juillet 2015')=='2015-07-02'
+    assert date_value('31/02/2025') is None
+
+
+def test_currency_item_rows_keep_quantity_units_and_group_subtotals():
+    d=document([[('Description',.02,.20,.15),('Qty',.35,.20,.05),('Unit',.55,.20,.05),('Price',.61,.20,.06),('Amount',.85,.20,.10)],
+                [('Steel',.02,.24,.06),('2.375',.35,.24,.08),('kg',.44,.24,.04),('$',.55,.24,.02),('40.00',.60,.24,.07),('$',.85,.24,.02),('95.00',.90,.24,.07)],
+                [('Subtotal',.75,.28,.08),('$95.00',.90,.28,.07)],
+                [('Wood',.02,.32,.06),('1',.35,.32,.03),('PCS',.42,.32,.05),('$',.55,.32,.02),('10.00',.60,.32,.07),('$',.85,.32,.02),('10.00',.90,.32,.07)],
+                [('Total',.75,.36,.08),('$105.00',.90,.36,.08)]])
+    rows=tables_from_document(d)[0]['rows']
+    assert len(rows)==2
+    assert rows[0]['values']['quantity']=='2.375' and rows[0]['values']['unit']=='kg'
+    assert rows[0]['values']['rate']=='40.00' and rows[0]['values']['value']=='95.00'
+
+
+def test_attached_french_invoice_number_and_date_keep_source_evidence():
+    d=document([[('Facture',.05,.10,.10),('n°12345678',.17,.10,.17),('du',.36,.10,.03),('02',.40,.10,.03),('Juillet',.45,.10,.10),('2015',.57,.10,.06)]])
+    found=fields_from_document(d)
+    assert found['number'][0]['value']=='12345678'
+    assert found['date'][0]['value']=='2015-07-02'
+    assert found['number'][0]['evidence']['token_ids']
+
+
+def test_number_label_with_degree_symbol_is_normalized():
+    d=document([[('Facture',.05,.10,.10),('n°',.17,.10,.03),('12345678',.22,.10,.17)]])
+    assert fields_from_document(d)['number'][0]['value']=='12345678'
+
+
+def test_inventory_table_keeps_taxable_and_gross_columns_separate():
+    path=Path(__file__).parent/'fixtures/client12/INV05_B2C_inter.pdf'
+    result=read_invoice(path)
+    rows=[r for t in result['table_candidates'] for r in t['rows']]
+    assert len(rows)==2
+    assert decimal(rows[0]['values']['value'])==decimal('235500')
+    assert decimal(rows[0]['values']['gross_value'])==decimal('277890')
+
+
+def test_table_does_not_treat_tax_summary_as_another_item():
+    d=document([[('Description',.02,.20,.15),('Qty',.35,.20,.05),('Rate',.60,.20,.06),('Amount',.85,.20,.10)],
+                [('Steel',.02,.24,.06),('2',.35,.24,.03),('40.00',.60,.24,.07),('80.00',.85,.24,.07)],
+                [('Subtotal',.75,.28,.08),('80.00',.85,.28,.07)],
+                [('Tax',.02,.32,.05),('15%',.09,.32,.05),('on',.15,.32,.03),('80.00',.35,.32,.07),('12.00',.85,.32,.07)]])
+    table=tables_from_document(d)[0]
+    assert len(table['rows'])==1 and not table['warnings']

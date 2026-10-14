@@ -31,7 +31,10 @@ The view reconstructs positioned text; the source PDF remains authoritative.
   Support repeated table headers across pages; incomplete/contradictory tables
   stay in the review queue.
 - Use the existing local parser as an explicitly reported fallback. Retain
-  conflicts rather than overwriting nonempty existing facts. This is a staged
+  conflicts and protect explicitly supplied baselines. In the evaluator only,
+  unique printed number/date/total evidence can correct automated local-parser
+  values, and complete positioned tables can replace incomplete local rows.
+  Every correction remains visible in the review report. This is a staged
   replacement, not a claim that the legacy parser has already been eliminated.
 - Check core fields, quantity/rate/value and available printed totals using
   Decimal. Do not convert quantities, invent missing tax or scale financial
@@ -56,3 +59,20 @@ integration using the existing shared provider budget and Stop/cache contracts,
 and tests of scanned, rotated, multilingual and damaged invoices. The locked
 UQC/import/writer code must remain intact. No change to financial history or
 approved corrections is authorized by running this comparison.
+
+Version 2 adds explicit invoice/order/due-date roles, source-based local-parser
+corrections, currency parsing, contextual decimal commas, shared French/German/
+Dutch field labels, quantity cells containing units, and tables with category
+subtotals. The version-2 installer uses a separate Reading_V2_2 namespace so it
+can coexist with an earlier evaluator without overwriting it.
+
+Public development benchmark: 31/32 published identifier/date/total checks
+now match (previously 7/32); all measured fields match on the 10 invoice/test
+documents. The remaining identifier is an OYO receipt Booking ID, which must
+not become an invoice number. These PDFs were used during development and are
+not a held-out accuracy sample. Item/buyer/tax completeness remains unproven;
+service tables, missing rates and bundles still require review.
+
+Run the new downloadable `Start_Reading_V2_Evaluation_2.py` in the invoice
+source folder. It installs only `Reading_V2_2/` and `Read_Invoice_V2_2.py`; the
+active desktop app and an earlier evaluator remain untouched.

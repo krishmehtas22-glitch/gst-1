@@ -32,7 +32,7 @@ def compare(paths,output,emit_ai_input=False,progress=print):
         entry={'path':str(path.resolve()),'file':path.name}
         try:
             baseline=parse_text(text_from_pdf(path))
-            result=read_invoice(path,baseline)
+            result=read_invoice(path,baseline,correct_local_baseline=True)
             filename=f'{index:04d}_{result["source_sha256"][:16]}.json'
             (output/filename).write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
             differences={field:{'current':baseline.get(field),'candidate':result['invoice'].get(field)}
