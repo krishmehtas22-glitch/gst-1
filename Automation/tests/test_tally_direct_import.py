@@ -1,6 +1,6 @@
 """Direct import changes destination only and observes actual Tally replies."""
 from pathlib import Path
-import shutil
+import shutil,json
 import xml.etree.ElementTree as ET
 import pytest
 from Common_Rules.desktop import inspect_sources,process_sources
@@ -122,7 +122,22 @@ def split_case_run(root,different_gstin=False):
         row['invoice']['seller_name']='Western Trade Supplies' if i<8 else 'WESTERN TRADE SUPPLIES'
         row['invoice']['seller_gstin']='27DEMOA1000A1Z5' if i<8 or not different_gstin else '29DEMOA1000A1Z5'
     exported=export_all(root,rows,True)
-    return Path(exported[0]['output_path']),Path(exported[0]['group_output_path']),Path(exported[8]['group_output_path'])
+    # Exercise compatibility with historical split-folder batches.
+    current=Path(exported[0]['output_path']);run=root/'legacy-run';run.mkdir()
+    report=json.loads((current/'Batch_Report.json').read_text());report.pop('layout')
+    folders=[run/'01_Western_Trade_Supplies',run/'02_WESTERN_TRADE_SUPPLIES']
+    for index,subset in enumerate((exported[:8],exported[8:])):
+        target=folders[index];target.mkdir()
+        for name in ('Units.xml','Masters.xml'):shutil.copy2(current/name,target/name)
+        wanted={r['digest'] for r in subset}
+        matching=[r for r in report['invoices'] if r['digest'] in wanted]
+        guids={r['voucher_guid'] for r in matching}
+        doc=ET.parse(current/'Sales_Vouchers.xml');data=doc.find('.//REQUESTDATA')
+        data[:]=[msg for msg in data if msg.findtext('VOUCHER/GUID') in guids]
+        doc.write(target/'Sales_Vouchers.xml',encoding='utf-8',xml_declaration=True)
+        for row in matching:row['xml_folder']=str(target)
+    (run/'Batch_Report.json').write_text(json.dumps(report))
+    return run,*folders
 
 
 def test_uppercase_and_normal_case_sets_import_together_without_output_change(tmp_path):

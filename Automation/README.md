@@ -1,5 +1,28 @@
 # Sales invoice automation
 
+
+## Reader 7.17: one current XML folder per client
+
+**Open client XML folder** now opens one stable `current` folder with
+`Units.xml`, `Masters.xml`, `Sales_Vouchers.xml` and `Batch_Report.json`.
+AI checkpoints replace the complete current set instead of creating timestamp
+runs and seller subfolders. One internal `previous` backup is retained; existing
+historical folders are left untouched.
+
+**Import to Tally** includes the complete current client batch. Case/space variants
+of a seller share a destination when GSTINs match. Missing-GSTIN rows can share
+that destination only when the same seller has exactly one known GSTIN in the
+batch; their original blank GSTINs remain blank. Genuinely different sellers or
+known GSTINs still require explicit company choices. Routing happens in memory,
+without seller subfolders or changes to invoice quantities, amounts or GUIDs.
+Existing unit reuse and real server error reporting remain in place.
+
+Close the reader, extract this update into the original source folder and rebuild
+the Windows EXE with `Build_Windows_EXE.bat`. Scan the client to generate the new
+folder layout using saved AI results; no fresh AI read is required. Check prior
+imports before sending vouchers again. Cloud tests cannot certify live Tally
+acceptance.
+
 ## Reader 7.16: correct native unit identity and report the exact failing symbol
 
 Unit ORIGINALNAME now contains the exact symbol (PCS, Nos, KG, etc.); the formal
@@ -283,10 +306,10 @@ posted visibly to **Invoice differences - review**, without replacing printed
 amounts. Missing dates or other essential facts can still cause Tally to reject
 a voucher; XML creation is not proof of import or correct GST reporting.
 
-**Open client XML folder** opens the current complete run, containing exactly
-one `Masters.xml` and `Sales_Vouchers.xml` per seller. Import masters first into
-the matching selected Tally company; ignore duplicate existing masters. Multiple
-sellers use separate subfolders. Older output runs remain retained. Financial
+**Open client XML folder** opens the complete client `current` folder, containing
+one `Units.xml`, `Masters.xml` and `Sales_Vouchers.xml`. Import in that order
+using explicit destination-company choices. Compatible existing units are reused;
+conflicts remain visible. One previous backup and older historical exports are retained. Financial
 history/manual corrections are preserved; existing voucher GUIDs are reused
 where recoverable. XML generation does not mark anything imported.
 

@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.16'
+APP_VERSION='Reader 7.17'
 
 
 def quantity_unit_summary(invoice):
@@ -388,9 +388,10 @@ class InvoiceApp:
         try:
             selected_plan=import_plan(folder)
             groups=client_import_groups(record['output_path'],folder)
-            selected_group=next(i for i,g in enumerate(groups) if folder.resolve() in g['folders'])
+            selected_group=next(i for i,g in enumerate(groups) if (g.get('group_id')==record.get('output_seller_group') if 'group_id' in g else folder.resolve() in g['folders']))
+            if 'group_id' in groups[selected_group]:selected_plan=groups[selected_group]['plan']
             plan=groups[selected_group]['plan']
-            all_folder_count=sum(len(g['folders']) for g in groups)
+            all_folder_count=len({p for g in groups for p in g['folders']})
             all_voucher_count=sum(voucher_count(g['plan']) for g in groups)
         except (OSError,ValueError) as exc:
             messagebox.showerror('Import to Tally',str(exc));return
@@ -400,8 +401,8 @@ class InvoiceApp:
         ttk.Label(dialog,text='Current XML: '+str(folder),wraplength=680).pack(anchor='w',padx=12,pady=10)
         ttk.Label(dialog,text='Open the destination company in Tally, then choose it below.\nOrder: '+ ' → '.join(name for name,_ in plan)).pack(anchor='w',padx=12)
         include_all=tk.BooleanVar(value=True)
-        if all_folder_count>1:
-            ttk.Checkbutton(dialog,text=f'Include ALL current client XML folders: {all_voucher_count} invoices ({all_folder_count} folders)',variable=include_all).pack(anchor='w',padx=12,pady=6)
+        if all_folder_count>1 or len(groups)>1:
+            ttk.Checkbutton(dialog,text=f'Include complete client batch: {all_voucher_count} invoices',variable=include_all).pack(anchor='w',padx=12,pady=6)
             ttk.Label(dialog,text=f'Untick to import only this selected set ({voucher_count(selected_plan)} invoices), when completing an earlier partial import.',wraplength=760).pack(anchor='w',padx=12)
         else:
             ttk.Label(dialog,text=f'This import contains {all_voucher_count} invoices.',wraplength=720).pack(anchor='w',padx=12)
@@ -445,7 +446,7 @@ class InvoiceApp:
                         for result in received:result['xml_folders']=[str(p) for p in group['folders']]
                         results.extend(received)
                         if any(r.get('errors') or any(r.get('counts',{}).get(t,0) for t in ('ERRORS','CANCELLED')) for r in received):break
-                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results})
+                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'output_generation':groups[0].get('generation',record.get('output_generation')),'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results})
                     except OSError:pass
                     messages.put(('imported',results))
                 except Exception as exc:messages.put(('import_error',str(exc)))

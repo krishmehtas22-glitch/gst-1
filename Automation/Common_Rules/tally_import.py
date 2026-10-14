@@ -107,7 +107,10 @@ def client_import_groups(run_folder,selected_folder):
     path=run/'Batch_Report.json'
     if not path.exists():
         return [{'label':'Selected XML set','plan':import_plan(selected),'folders':[selected]}]
-    rows=json.loads(path.read_text(encoding='utf-8')).get('invoices',[])
+    manifest=json.loads(path.read_text(encoding='utf-8'))
+    rows=manifest.get('invoices',[])
+    if manifest.get('layout')=='client-current-v1':
+        return consolidated_import_groups(run,selected,manifest)
     identities={};folders=set()
     for row in rows:
         folder=Path(row.get('xml_folder','')).resolve()
@@ -124,6 +127,55 @@ def client_import_groups(run_folder,selected_folder):
         groups.append({'label':info['label']+(' — '+gstin if gstin else ' — GSTIN not supplied'),
                        'plan':plan,'folders':group_folders})
     if covered!=folders:raise ValueError('Not all current XML folders are covered by the import plan')
+    return groups
+
+
+def consolidated_import_groups(run,selected,manifest):
+    """Route a single complete client set without altering voucher contents."""
+    from copy import deepcopy
+    if selected!=run:raise ValueError('Select the current client XML folder')
+    plan=import_plan(run)
+    if json.loads((run/'Batch_Report.json').read_text()).get('generation')!=manifest.get('generation'):
+        raise ValueError('Client XML was updated while reading; reopen Import to Tally')
+    documents={name:response_xml(data) for name,data in plan}
+    vouchers=documents['Sales_Vouchers.xml'].findall('.//VOUCHER')
+    guids=[v.findtext('GUID') for v in vouchers]
+    rows=manifest['invoices'];expected=[row['voucher_guid'] for row in rows]
+    if len(set(guids))!=len(guids) or len(set(expected))!=len(expected) or set(guids)!=set(expected):
+        raise ValueError('Client report and voucher identities do not match')
+    if len(rows)!=manifest.get('input_count') or len(rows)!=manifest.get('xml_voucher_count'):
+        raise ValueError('Client batch count is incomplete')
+    partitions={}
+    for row in rows:
+        if Path(row['xml_folder']).resolve()!=run:raise ValueError('Report references another client XML folder')
+        partitions.setdefault(row['seller_group'],[]).append(row)
+    groups=[]
+    for identity,part in partitions.items():
+        wanted={row['voucher_guid'] for row in part}
+        selected_vouchers=[v for v in vouchers if v.findtext('GUID') in wanted]
+        ledgers={n.text for v in selected_vouchers for n in v.iter('LEDGERNAME')}
+        stocks={n.text for v in selected_vouchers for n in v.iter('STOCKITEMNAME')}
+        master_nodes=documents['Masters.xml'].find('.//REQUESTDATA')
+        chosen=[msg for msg in master_nodes if any((n.tag=='LEDGER' and n.get('NAME') in ledgers) or
+                    (n.tag=='STOCKITEM' and n.get('NAME') in stocks) for n in msg)]
+        declared_ledgers={n.get('NAME') for msg in chosen for n in msg if n.tag=='LEDGER'}
+        declared_stocks={n.get('NAME') for msg in chosen for n in msg if n.tag=='STOCKITEM'}
+        if not ledgers<=declared_ledgers or not stocks<=declared_stocks:
+            raise ValueError('Client vouchers reference missing prerequisite masters')
+        units={n.findtext('BASEUNITS') for msg in chosen for n in msg if n.tag=='STOCKITEM'}
+        chosen_units=[msg for msg in documents['Units.xml'].find('.//REQUESTDATA') if msg.find('UNIT').get('NAME') in units]
+        if units!={msg.find('UNIT').get('NAME') for msg in chosen_units}:
+            raise ValueError('Client stock masters reference missing units')
+        filtered=[]
+        for filename in ('Units.xml','Masters.xml','Sales_Vouchers.xml'):
+            doc=deepcopy(documents[filename]);dest=doc.find('.//REQUESTDATA')
+            if filename=='Sales_Vouchers.xml':
+                dest[:]=[msg for msg in dest if msg.findtext('VOUCHER/GUID') in wanted]
+            else:dest[:]=deepcopy(chosen_units if filename=='Units.xml' else chosen)
+            filtered.append((filename,ET.tostring(doc,encoding='utf-8',xml_declaration=True)))
+        first=part[0];gstin=first['seller_group_gstin']
+        groups.append({'group_id':identity,'generation':manifest['generation'],'label':first['seller_group_label']+(' — '+gstin if gstin else ' — GSTIN not supplied'),
+                       'plan':filtered,'folders':[run]})
     return groups
 
 

@@ -69,7 +69,8 @@ def test_repair_run_preserves_source_quantities_stock_names_and_guids(tmp_path):
     names=[n.text for n in old.findall('.//STOCKITEMNAME')];guid=old.findtext('.//GUID')
     export_all(tmp_path,rows,True)
     latest=Path(rows[0]['output_path']);new=ET.parse(latest/'Sales_Vouchers.xml')
-    assert latest!=path
+    assert latest==path
+    assert (latest.parent/'previous'/'Sales_Vouchers.xml').is_file()
     assert new.findtext('.//GUID')==guid and [n.text for n in new.findall('.//STOCKITEMNAME')]==names
     assert rows[0]['invoice']==before
     assert (latest/'Units.xml').exists() and len(new.findall('.//VOUCHER'))==1

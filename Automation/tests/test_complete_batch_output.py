@@ -43,9 +43,10 @@ def test_10_primary_4_secondary_and_6_python_all_become_xml(tmp_path,monkeypatch
     assert report['xml_voucher_count']==report['input_count']==20
     assert {x['provider'] for x in report['invoices']}=={'Gemini','Groq','Python'}
     assert len(list(output.glob('*Masters*.xml')))==1
-    # A later scan points to a new current run and never asks the APIs again.
+    # A later scan points to the same complete current folder and never asks the APIs again.
     latest=process_sources(tmp_path)
-    assert latest[0]['output_path']!=processed[0]['output_path']
+    assert latest[0]['output_path']==processed[0]['output_path']
+    assert latest[0]['output_generation']!=processed[0]['output_generation']
     assert len(ET.parse(Path(latest[0]['output_path'])/'Sales_Vouchers.xml').findall('.//VOUCHER'))==20
     assert calls=={'Gemini':11,'Groq':5}
     import Invoice_Desktop
@@ -118,7 +119,8 @@ def test_clients_and_sellers_stay_separate(tmp_path):
     rows[1]['invoice']['seller_name']='Other seller';rows[2]['client']='Other client'
     export_all(tmp_path,rows,True)
     assert rows[0]['output_path']==rows[1]['output_path']
-    assert rows[0]['group_output_path']!=rows[1]['group_output_path']
+    assert rows[0]['group_output_path']==rows[1]['group_output_path']
+    assert rows[0]['output_seller_group']!=rows[1]['output_seller_group']
     assert rows[0]['output_path']!=rows[2]['output_path']
 
 

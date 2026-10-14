@@ -24,9 +24,12 @@ The user explicitly requires complete XML batches for review in Tally.
   Printed units and human corrections outrank assumptions. Qty is a heading,
   not a selling unit. Never scale quantities/rates or confuse medicine strength
   with sold weight/volume. Retain explicit custom printed units.
-- Keep separate clients and sellers isolated. Fresh output paths must contain
-  Units.xml first, then one consolidated Masters.xml and Sales_Vouchers.xml per seller, with an exact
-  input/output count. Open client XML folder must show this latest run.
+- Keep separate clients and sellers isolated. Each client must have one stable current XML folder containing
+  Units.xml, Masters.xml and Sales_Vouchers.xml with an exact input/output count.
+  Keep one managed previous-output backup, without creating timestamp/seller
+  directories on each checkpoint. Preserve historical exports. Open client XML
+  folder must show the complete current folder. Route genuinely distinct sellers
+  to explicitly selected companies in memory, preserving all voucher fields.
 - Export unit definitions separately before any stock masters. Use the unit
   catalog's formal names/UQC labels and sufficient quantity decimal precision.
   Check stock BASEUNITS against Units.xml and inventory names/quantity suffixes
@@ -65,7 +68,10 @@ The user explicitly requires complete XML batches for review in Tally.
   output, change financial fields/GUIDs, or infer import success from file creation.
   Preserve generated files and all voucher fields; set SVCURRENTCOMPANY only in
   the transport copy. Combine existing sets only for case/space-equivalent seller
-  names with matching GSTINs, deduplicating identical prerequisite masters. Report
+  names with matching GSTINs, deduplicating compatible prerequisite masters.
+  A missing GSTIN may share a routing group only when the normalized seller name
+  has exactly one known GSTIN in that client batch; never fill missing invoice
+  GSTIN fields or merge distinct known GSTINs. Report
   actual server counters, stop dependent imports after errors, and never retry an
   ambiguous timed-out import automatically. Keep import receipts separate from
   financial/import history; do not mark all invoices imported from aggregate counts.
