@@ -226,3 +226,50 @@ def test_table_does_not_treat_tax_summary_as_another_item():
                 [('Tax',.02,.32,.05),('15%',.09,.32,.05),('on',.15,.32,.03),('80.00',.35,.32,.07),('12.00',.85,.32,.07)]])
     table=tables_from_document(d)[0]
     assert len(table['rows'])==1 and not table['warnings']
+
+
+def test_fixture_banner_is_not_a_supplier_name():
+    d=document([[('SYNTHETIC',.05,.03,.12),('FIXTURE',.18,.03,.10),('SUPPLIER',.30,.03,.10),('FOR',.42,.03,.05),('SOFTWARE',.48,.03,.12),('TESTING',.62,.03,.10)],
+                [('Fictional',.05,.08,.10),('Gulf',.17,.08,.05),('Foods',.24,.08,.07),('LLC',.33,.08,.05)],
+                [('Bill',.05,.18,.05),('To:',.11,.18,.04),('Buyer',.16,.18,.06),('Ltd',.23,.18,.04)]])
+    assert fields_from_document(d)['seller_name'][0]['value']=='Fictional Gulf Foods LLC'
+
+
+def test_reporting_currency_does_not_replace_invoice_currency():
+    d=document([[('Currency:',.05,.10,.13),('USD',.20,.10,.06)],
+                [('Merchant',.05,.14,.11),('store',.17,.14,.07),('currency:',.25,.14,.12),('AED',.40,.14,.06)]])
+    assert [e['value'] for e in fields_from_document(d)['currency']]==['USD']
+
+
+def test_bare_dollar_symbol_does_not_establish_usd():
+    d=document([[('Total',.05,.10,.08),('$100.00',.60,.10,.12)]])
+    assert 'currency' not in fields_from_document(d)
+
+
+def test_delivery_date_is_not_an_invoice_date_label():
+    d=document([[('Delv.',.05,.10,.07),('Date:',.13,.10,.07),('5/16/2024',.22,.10,.14)]])
+    found=fields_from_document(d)
+    assert 'date' not in found and found['_other_dates'][0]['value']=='2024-05-16'
+
+
+def test_ocr_deskew_preserves_real_boxes_and_correct_total_pairing():
+    class Bitmap:
+        def to_numpy(self):
+            import numpy as np
+            return np.zeros((300,600,3),dtype='uint8')
+        def close(self):pass
+    class Page:
+        def render(self,scale):return Bitmap()
+    def box(x,width,y):
+        return [[x,y+.06*x],[x+width,y+.06*(x+width)],
+                [x+width,y+10+.06*(x+width)],[x,y+10+.06*x]]
+    def engine(_):
+        return SimpleNamespace(boxes=[box(20,80,130),box(420,70,130),box(20,50,150),box(420,70,150),box(20,400,220)],
+                               txts=['VAT 5%','AED 3.00','Total','AED 63.00','Invoice footer text'],scores=[.99]*5)
+    words=ocr_words(Page(),0,engine)
+    lines=cluster_lines(words)
+    for i,line in enumerate(lines):line.update(id=f'p1l{i+1}',text=' '.join(w['text'] for w in line['tokens']))
+    d={'pages':[{'number':1,'tokens':words,'lines':lines}]}
+    assert fields_from_document(d)['total'][0]['value']=='63.00'
+    assert all(w['box_scope']=='ocr_line_region' for w in words)
+    assert words[0]['box'][1] != words[2]['box'][1]

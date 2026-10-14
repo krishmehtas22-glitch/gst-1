@@ -5,7 +5,7 @@ import hashlib
 import math
 import threading
 
-VERSION='positioned-document-v1'
+VERSION='positioned-document-v2'
 _ocr=None
 _ocr_lock=threading.Lock()
 
@@ -17,13 +17,13 @@ def union(boxes):
 
 def cluster_lines(tokens):
     rows=[]
-    for token in sorted(tokens,key=lambda t:((t['box'][1]+t['box'][3])/2,t['box'][0])):
-        box=token['box'];middle=(box[1]+box[3])/2;height=box[3]-box[1]
+    for token in sorted(tokens,key=lambda t:(t.get('reading_y',(t['box'][1]+t['box'][3])/2),t['box'][0])):
+        box=token['box'];middle=token.get('reading_y',(box[1]+box[3])/2);height=token.get('reading_height',box[3]-box[1])
         row=next((r for r in reversed(rows[-4:]) if abs(r['middle']-middle)<=max(r['height'],height,.004)*.55),None)
         if row is None:
             row={'middle':middle,'height':height,'tokens':[]};rows.append(row)
         row['tokens'].append(token)
-        row['middle']=median((t['box'][1]+t['box'][3])/2 for t in row['tokens'])
+        row['middle']=median(t.get('reading_y',(t['box'][1]+t['box'][3])/2) for t in row['tokens'])
         row['height']=max(row['height'],height)
     return [{'tokens':sorted(row['tokens'],key=lambda t:t['box'][0]),
              'box':union([t['box'] for t in row['tokens']])} for row in rows]
@@ -70,13 +70,26 @@ def ocr_words(page,index,engine=None):
                 engine=_ocr
             output=engine(pixels)
         rows=list(zip(output.boxes,output.txts,output.scores)) if output.boxes is not None and output.txts is not None else []
+        slopes=[float((box[1][1]-box[0][1])/(box[1][0]-box[0][0])) for box,_,_ in rows
+                if box[1][0]-box[0][0]>100 and abs((box[1][1]-box[0][1])/(box[1][0]-box[0][0]))<.15]
+        slope=median(slopes) if slopes else 0
         words=[]
         for box,text,confidence in rows:
             if not str(text).strip():continue
-            words.append({'id':f'p{index+1}w{len(words)+1}','text':str(text),
-                'box':[float(min(p[0] for p in box))/width,float(min(p[1] for p in box))/height,
-                       float(max(p[0] for p in box))/width,float(max(p[1] for p in box))/height],
-                'origin':'ocr','ocr_confidence':float(confidence)})
+            bounds=[float(min(p[0] for p in box))/width,float(min(p[1] for p in box))/height,
+                    float(max(p[0] for p in box))/width,float(max(p[1] for p in box))/height]
+            region_id=f'p{index+1}r{len(words)+1}'
+            center_x=sum(float(p[0]) for p in box)/4
+            center_y=sum(float(p[1]) for p in box)/4
+            reading_y=(center_y-slope*(center_x-width/2))/height
+            reading_height=max(.001,float((box[3][1]-box[0][1]+box[2][1]-box[1][1])/2)/height)
+            # RapidOCR supplies line-region boxes, not individual word boxes.
+            # Keep that scope explicit rather than inventing character geometry.
+            for part in str(text).split():
+                words.append({'id':f'p{index+1}w{len(words)+1}','text':part,
+                    'box':bounds,'box_scope':'ocr_line_region','ocr_region_id':region_id,
+                    'reading_y':reading_y,'reading_height':reading_height,
+                    'origin':'ocr','ocr_confidence':float(confidence)})
         return words
     finally:bitmap.close()
 
