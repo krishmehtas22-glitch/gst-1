@@ -113,13 +113,13 @@ def test_export_and_import_manifest_use_utf8_with_windows_default_encoding(tmp_p
     assert voucher_count(groups[0]['plan'])==4
 
 
-def test_packs_export_omits_redundant_formal_name_and_preserves_stock_unit(tmp_path):
+def test_packs_export_has_distinct_explicit_formal_name_and_preserves_stock_unit(tmp_path):
     records=rows(tmp_path)[:1]
     for item in records[0]['invoice']['items']:item['unit']='Packs'
     export_all(tmp_path,records,True);folder=Path(records[0]['output_path'])
     unit=ET.parse(folder/'Units.xml').find('.//UNIT')
     assert unit.get('NAME')==unit.findtext('ORIGINALNAME')=='Packs'
-    assert unit.find('ADDITIONALNAME') is None
+    assert unit.findtext('ADDITIONALNAME')=='Packs (selling unit)'
     assert {n.text for n in ET.parse(folder/'Masters.xml').findall('.//BASEUNITS')}=={'Packs'}
     assert all(n.text.endswith(' Packs') for n in ET.parse(folder/'Sales_Vouchers.xml').findall('.//ACTUALQTY'))
 

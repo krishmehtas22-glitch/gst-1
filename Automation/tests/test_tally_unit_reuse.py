@@ -149,19 +149,21 @@ def test_many_folder_definitions_create_each_symbol_once():
 
 
 @pytest.mark.parametrize('symbol',['Packs','Units','Vials','Tubes','Liters'])
-def test_formal_name_equal_to_symbol_is_removed_without_changing_symbol(symbol):
+def test_formal_name_equal_to_symbol_is_replaced_without_changing_symbol(symbol):
     node=unit(symbol,symbol,3);text(node,'ADDITIONALNAME',symbol)
     source=xml(node);prepared,_,adjusted=prepare_units(source,[])
     result=ET.fromstring(prepared).find('.//UNIT')
     assert result.get('NAME')==result.findtext('NAME')==result.findtext('ORIGINALNAME')==symbol
-    assert result.find('ADDITIONALNAME') is None
+    assert result.findtext('ADDITIONALNAME')==symbol+' (selling unit)'
     assert result.findtext('DECIMALPLACES')=='3'
     assert ET.fromstring(source).findtext('.//ADDITIONALNAME')==symbol
-    assert adjusted==[{'unit':symbol,'original_name':symbol,'formal_name':''}]
+    assert adjusted==[{'unit':symbol,'original_name':symbol,'formal_name':symbol+' (selling unit)'}]
 
 
-def test_packs_conflict_repair_reaches_masters_and_vouchers_with_same_values():
-    packs=unit('Packs','Packs');text(packs,'ADDITIONALNAME','Packs')
+@pytest.mark.parametrize('explicit_formal',[False,True])
+def test_packs_conflict_repair_reaches_masters_and_vouchers_with_same_values(explicit_formal):
+    packs=unit('Packs','Packs')
+    if explicit_formal:text(packs,'ADDITIONALNAME','Packs')
     source=xml(unit('PCS','PCS'),unit('REAM','REAM'),unit('ROLL','ROLL'),packs)
     sales,data=envelope('','Vouchers');v=ET.SubElement(message(data),'VOUCHER')
     for tag,value in {'GUID':'keep-guid','DATE':'20261014','PARTYLEDGERNAME':'Keep buyer',
@@ -174,7 +176,7 @@ def test_packs_conflict_repair_reaches_masters_and_vouchers_with_same_values():
                 return b'<ENVELOPE><COLLECTION>'+b''.join(ET.tostring(unit(n,n)) for n in ('PCS','REAM','ROLL'))+b'</COLLECTION></ENVELOPE>'
             return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
         posts.append(doc);node=doc.find('.//UNIT')
-        if node is not None and node.findtext('ADDITIONALNAME')==node.findtext('ORIGINALNAME'):
+        if node is not None and node.findtext('ADDITIONALNAME',node.findtext('NAME'))==node.findtext('ORIGINALNAME'):
             return b'<RESPONSE><CREATED>0</CREATED><ERRORS>0</ERRORS><LINEERROR>DUPLICATE ORIGINAL NAME</LINEERROR></RESPONSE>'
         return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
     results=send_plan([('Units.xml',source),('Masters.xml',xml()),('Sales_Vouchers.xml',saved)],'Chosen',transport)
@@ -184,7 +186,7 @@ def test_packs_conflict_repair_reaches_masters_and_vouchers_with_same_values():
     assert len(results[0]['existing_unit_definitions'])==3
     assert [doc.findtext('.//REPORTNAME') for doc in posts]==['All Masters','All Masters','Vouchers']
     assert ET.tostring(posts[-1].find('.//VOUCHER'))==ET.tostring(ET.fromstring(saved).find('.//VOUCHER'))
-    assert ET.fromstring(source).find(".//UNIT[@NAME='Packs']/ADDITIONALNAME").text=='Packs'
+    assert ET.fromstring(source).findtext(".//UNIT[@NAME='Packs']/ADDITIONALNAME")==('Packs' if explicit_formal else None)
 
 
 def test_explicit_existing_units_mode_sends_unchanged_masters_then_sales_without_unit_write():

@@ -11,7 +11,7 @@ from .engine import read_json,write_json
 from .accounting import money,cents,STATES,gstin_valid,invoice_key
 from .tally_xml import envelope,message,text,display_name,allocation,save_document,HEADS,UQC,gst_details
 from .processing_lock import guard
-from .unit_catalog import UNITS
+from .unit_catalog import UNITS,unit_formal_name
 
 
 def policy_path(root,client):
@@ -149,9 +149,9 @@ def export_all(root,records,demo):
                                     definition=UNITS.get(unit,{})
                                     uqc=definition.get('tally_uqc') or UQC.get(definition.get('uqc',unit).upper(),'OTH-OTHERS')
                                     decimals=max(int(definition.get('decimal_places',3)),max(0,-quantity.normalize().as_tuple().exponent))
-                                    formal=definition.get('formal_name',unit)
+                                    formal=unit_formal_name(unit,definition.get('formal_name'))
                                     fields={'NAME':unit,'ISSIMPLEUNIT':'Yes','ORIGINALNAME':unit,'DECIMALPLACES':str(decimals),'GSTREPUOM':uqc}
-                                    if formal.strip().casefold()!=unit.strip().casefold():fields['ADDITIONALNAME']=formal
+                                    fields['ADDITIONALNAME']=formal
                                     for tag,val in fields.items():text(un,tag,val)
                                 else:
                                     un=known[('unit',unit)]

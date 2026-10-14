@@ -138,8 +138,10 @@ The user explicitly requires complete XML batches for review in Tally.
   multi-folder coalescing remain mandatory; never blindly suppress line errors
   or retry ambiguous requests. Mock tests do not certify live Tally acceptance.
 
-- Unit formal names must not repeat their own symbol. Omit redundant
-  ADDITIONALNAME in generated XML and repair legacy copies at transport time.
+- Unit formal names must not repeat their own symbol. Always write an explicit,
+  distinct ADDITIONALNAME using the shared unit_formal_name helper; omission
+  can allow Tally to default the description back to the symbol. Apply this to
+  generated XML and legacy transport copies for every AI/Python integration.
   Disambiguate descriptive formal-name collisions against other current symbols
   and existing target names/descriptions without changing NAME, ORIGINALNAME,
   stock BASEUNITS, quantities, rates or voucher fields. Preserve fetched existing

@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import xml.etree.ElementTree as ET
+from .unit_catalog import unit_formal_name
 from urllib.request import Request,build_opener,ProxyHandler
 from urllib.error import URLError
 
@@ -254,8 +255,8 @@ def prepare_units(data,existing):
         old_formal=formal
         # Tally names must not repeat the symbol, another unit's symbol or
         # formal name. Change only the descriptive field on the transport copy.
-        if key(formal)==identity:formal=''
-        elif formal and key(formal) in reserved:
+        formal=unit_formal_name(name,formal)
+        if key(formal) in reserved:
             base=formal+' [unit '+name+']';formal=base;index=2
             while key(formal) in reserved:
                 formal=base+' '+str(index);index+=1

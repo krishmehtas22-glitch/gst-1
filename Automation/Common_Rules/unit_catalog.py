@@ -43,3 +43,17 @@ UNITS = {
     'QTL': {'formal_name':'Quintals','uqc':'QTL','decimal_places':3,'tally_uqc':'QTL-QUINTAL'},
     'Qty': {'formal_name':'Quantity (unspecified measure)','uqc':'OTH','decimal_places':6},
 }
+
+
+def unit_formal_name(symbol,description=None):
+    """Keep an explicit descriptive name distinct from the selling symbol.
+
+    Omitting the description allows Tally to default it back to the symbol.
+    This label does not imply a quantity conversion or change stock references.
+    """
+    name=str(symbol).strip()
+    normalize=lambda value:' '.join(str(value or '').split()).casefold()
+    formal=str(description or UNITS.get(name,{}).get('formal_name') or '').strip()
+    if not formal or normalize(formal)==normalize(name):
+        formal=name+' (selling unit)'
+    return formal

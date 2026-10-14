@@ -8,6 +8,7 @@ No Excel mapping or external template is used by this exporter.
 from decimal import Decimal
 import uuid
 import xml.etree.ElementTree as ET
+from .unit_catalog import unit_formal_name
 
 from .accounting import STATES, TAXES, EXPORT_MODES, export_notice, accounting_entries, cents, money, sales_ledger
 from .masters import identity, required_masters
@@ -90,8 +91,7 @@ def masters_document(config, masters, invoices):
             text(node,'NAME',master['name'])
             text(node,'ISSIMPLEUNIT','Yes')
             text(node,'ORIGINALNAME',master['name'])
-            if master['formal_name'].strip().casefold()!=master['name'].strip().casefold():
-                text(node,'ADDITIONALNAME',master['formal_name'])
+            text(node,'ADDITIONALNAME',unit_formal_name(master['name'],master['formal_name']))
             text(node,'DECIMALPLACES',master['decimal_places'])
             uqc = master.get('tally_uqc') or UQC.get(master['uqc'].upper())
             if not uqc:

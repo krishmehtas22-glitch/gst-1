@@ -1,6 +1,30 @@
 # Sales invoice automation
 
 
+## Reader 7.21: Python assigns explicit distinct unit formal names
+
+The uploaded client-31 Units.xml omitted Packs' formal name, while Tally's
+exception alteration screen showed both symbol and formal name as Packs.
+The previous omission-based correction was insufficient. Both XML exporters
+and direct-import transport now use shared `unit_formal_name`: known distinct
+catalog descriptions are preserved; an absent or identical description gets
+an explicit label such as `Packs (selling unit)`. The selling symbol remains
+Packs. Existing target-name collisions are disambiguated on transport only.
+
+This applies after every AI provider or local Python extraction and also to
+existing saved XML during full button import. It does not change source unit
+symbols, stock references, quantities, rates, parties, dates, invoice amounts
+or GUIDs. No AI reread, manual unit renaming or XML regeneration is required
+for the transport correction. Existing accepted compatible units are reused.
+Server errors remain visible and dependent requests stop on genuine failures.
+
+Close the reader, extract the update and rebuild the EXE if used. Verify the
+window title is Reader 7.21, select the company and use the ordinary full import
+button (Units → Masters → Vouchers). Tests cover explicit duplicate descriptions
+and omitted descriptions with a simulated Tally default/rejection. They do not
+prove acceptance by the user's live Tally server. The uploaded voucher set also
+contains two missing dates, which can still cause voucher exceptions.
+
 ## Reader 7.20: match the working manual masters-and-vouchers import
 
 The full button's Packs prerequisite error prevents Masters.xml and
