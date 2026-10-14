@@ -44,6 +44,15 @@ requested that this part be locked. Baseline commit:
 
 The user explicitly requires complete XML batches for review in Tally.
 
+- The user authorized a separate coordinate-aware reading prototype and
+  comparison before replacing the existing reading approach. Reading_V2 and
+  Read_Invoice_V2.py must remain isolated from the active desktop/provider/XML
+  code. Evaluation must be read-only with respect to source PDFs, existing
+  caches, financial history, approvals, UQC policy and Import ALL. Report source
+  coordinates, explicit legacy fallback, conflicts and validation. Benchmark
+  completion/agreement is not accuracy. Do not promote the prototype until
+  independently reviewed layout coverage and quality support the change.
+
 - The Goods description/HSN/Qty/UOM/Rate/Taxable/GST %/GST amount family must
   support both vertical PDF token streams and positioned rows. Read printed
   invoice identifiers/dates, explicit buyer panels, corroborated seller names,
