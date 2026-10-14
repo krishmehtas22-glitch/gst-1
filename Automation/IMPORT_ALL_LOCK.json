@@ -1,0 +1,16 @@
+{
+  "baseline_commit": "f7fae39b29e0f992ef471a9adca44904a8acadc4",
+  "user_confirmed_working": true,
+  "locked_on": "2026-10-14",
+  "change_requires": "Explicit user authorization to modify this locked import behavior",
+  "files": {
+    "Automation/Common_Rules/tally_import.py": "aa0ac53f912f80b9cb14e82457ccc5bf674358d7c8d075bf78a0f1c08900810c",
+    "Automation/Common_Rules/tally_units.py": "1fc16af22c7a314d6c2fa2de34b316cd2b084fb25325523ebefc9d7f4b74f65a",
+    "Automation/Common_Rules/unit_catalog.py": "1c65416884fd3d89108ab23acb19d7299d41ab376be995bc808c316517afcab9"
+  },
+  "methods": {
+    "Automation/Invoice_Desktop.py:import_tally": {
+      "sha256": "fac0183455ef501e6ecbacaa3baaa4f93cad1537ad1e5e3bebb618be5fbb807f"
+    }
+  }
+}

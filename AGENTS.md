@@ -1,5 +1,26 @@
 # Invoice batch contract
 
+## Locked working Import ALL baseline — user instruction, 14 October 2026
+
+The user confirmed that the current Import ALL button is error-free and explicitly
+requested that this part be locked. Baseline commit:
+`f7fae39b29e0f992ef471a9adca44904a8acadc4`.
+
+- Do not change `Invoice_Desktop.py`'s `import_tally` method, the import-button
+  command, its company selection, dispatch, sequence or result handling.
+- Do not change `Common_Rules/tally_import.py`, `tally_units.py`, or
+  `unit_catalog.py`. Preserve current UQC assignments, plain formal names,
+  existing-unit reuse, destination routing and Units → Masters → Vouchers order.
+- Do not bypass this lock through changes in callers, generated XML or new
+  transport helpers. Unrelated tasks must preserve this working behavior.
+- Only an explicit later user instruction authorizing changes to this locked
+  part can override the lock. General cleanup, refactoring, UI redesign or
+  suggestions are not authorization to alter it.
+- `Automation/IMPORT_ALL_LOCK.json` records the baseline fingerprints. Verify
+  them before/after unrelated work; do not silently regenerate them to conceal
+  changes. This lock takes precedence over older implementation recommendations
+  below. It is a maintenance rule, not filesystem access control.
+
 - For every current and future unit, keep the selling symbol, formal description,
   and UQC code in their own fields. The formal description must not equal the
   symbol or short/full UQC code (ignoring case/extra spaces). Repair only the
