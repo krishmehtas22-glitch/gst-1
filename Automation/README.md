@@ -1,5 +1,20 @@
 # Sales invoice automation
 
+## Reader 7.14: preserve locally read identity when AI omits it
+
+A saved AI response that omits the invoice number or buyer no longer erases those
+fields already read from the verified source PDF. Missing identity is recovered
+from the local reading, with evidence, before manual corrections are applied.
+Valid AI/human fields, seller, items, quantities, units, amounts and raw AI caches
+are unchanged. Existing verified date-only recovery remains in use. Missing source
+facts remain unresolved; the app does not fabricate dates or buyer names.
+
+Rebuild the EXE after extracting the update, then **Scan and generate XML** in the
+existing invoice folder to reuse AI caches without new API requests. Compare the
+repaired identities/dates with the PDFs. Retry only the rejected vouchers in Tally;
+do not reimport already accepted vouchers. A missing unit needs the actual current
+Units.xml/master/import receipt checked in the SAME Tally company.
+
 ## Reader 7.13: OpenRouter free-only integration
 
 Privately set the Windows User environment variable **OPENROUTER_API_KEY**, reopen

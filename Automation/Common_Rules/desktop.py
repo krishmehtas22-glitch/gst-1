@@ -146,7 +146,10 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                     record['errors'].append(f'PDF extraction failed: {exc}')
                 from .api_selection import candidate
                 api_candidate=candidate(root,record)
-                if api_candidate is not None:record['invoice']=api_candidate
+                if api_candidate is not None:
+                    from .invoice_identity import recover_missing_identity
+                    record['invoice']=recover_missing_identity(root,record,api_candidate,record['invoice'])
+                    record.setdefault('notices',[]).extend(record['invoice'].get('identity_evidence',[]))
                 restore_known_supplier(root,record,demo)
                 declared_test=confirmed_test(root,record)
                 if declared_test:

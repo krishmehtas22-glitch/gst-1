@@ -108,3 +108,10 @@ The user explicitly requires complete XML batches for review in Tally.
   at zero. Never enable billing or request key values in chat. Apply the same
   Groq text/OCR prompt, normalizer, cache proof, attempt budget, Stop/checkpoint
   workflow and unchanged Tally output to OpenRouter and future providers.
+
+- Incomplete AI results must not erase verified local invoice numbers or buyer
+  identity. Overlay only missing fields before manual reviews; preserve all valid
+  AI/human values, sellers/items/units/amounts, source caches and stable GUID rules.
+  Retain identity-recovery evidence. Never invent a missing date/buyer from a file
+  name, today's date, seller identity or another invoice. Diagnose Tally missing
+  units using the actual current XML and import receipts, not screenshot guesses.
