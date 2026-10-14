@@ -22,7 +22,8 @@ def test_units_are_imported_separately_before_stock_and_vouchers(tmp_path):
     assert set(defined)=={'Nos','KG','SET','ROLL'}
     assert not units.findall('.//STOCKITEM') and not units.findall('.//LEDGER')
     assert not masters.findall('.//UNIT')
-    assert defined['Nos'].findtext('ORIGINALNAME')=='Numbers'
+    assert defined['Nos'].findtext('ORIGINALNAME')=='Nos'
+    assert defined['Nos'].findtext('ADDITIONALNAME')=='Numbers'
     assert defined['KG'].findtext('GSTREPUOM')=='KGS-KILOGRAMS'
     assert defined['ROLL'].findtext('GSTREPUOM')=='ROL-ROLLS'
     assert int(defined['Nos'].findtext('DECIMALPLACES'))>=3

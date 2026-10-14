@@ -1,5 +1,26 @@
 # Sales invoice automation
 
+## Reader 7.16: correct native unit identity and report the exact failing symbol
+
+Unit ORIGINALNAME now contains the exact symbol (PCS, Nos, KG, etc.); the formal
+text (Pieces, Numbers, Kilograms) is stored in ADDITIONALNAME. Both exporters use
+this structure, and direct import repairs legacy XML in memory without rewriting
+those saved files. Quantities, rates, stock references and voucher amounts remain
+unchanged. No source/AI reread is needed for the direct-import repair.
+
+Compatible existing units are reused. Each remaining new symbol is sent once,
+with per-unit actual counters and the complete response captured in
+`Last_Tally_Import.json`. Errors identify the exact symbol rather than only
+'DUPLICATE ORIGINAL NAME'. Partial unit successes are retained in the receipt;
+stock/voucher import stops if a required unit is still rejected. There are no
+automatic retries. Multi-folder precision coalescing remains in place.
+
+Close the app, extract the update, rebuild the EXE, and retry the unit/master stage
+using the prepared current run. Review actual Tally results before repeating
+vouchers previously accepted. If a unit still fails, upload Last_Tally_Import.json
+from the current XML folder to diagnose its exact request/response. Cloud tests
+simulate native responses; live Tally compatibility must be verified on your PC.
+
 ## Reader 7.15: reuse Tally units and resolve duplicate original names
 
 The direct-import unit stage now reads existing units from your explicitly chosen

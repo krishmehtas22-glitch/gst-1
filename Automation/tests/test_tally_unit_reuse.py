@@ -24,8 +24,9 @@ def test_duplicate_symbol_across_folders_uses_max_precision_once():
     nodes=ET.fromstring(combined).findall('.//UNIT')
     assert len(nodes)==1 and nodes[0].get('NAME')=='PCS'
     assert nodes[0].findtext('DECIMALPLACES')=='3'
-    assert nodes[0].findtext('ORIGINALNAME')=='Pieces'
-    assert not reused and not renamed
+    assert nodes[0].findtext('ORIGINALNAME')=='PCS'
+    assert nodes[0].findtext('ADDITIONALNAME')=='Pieces'
+    assert not reused and renamed==[{'unit':'PCS','original_name':'PCS','formal_name':'Pieces'}]
     assert len(ET.fromstring(original).findall('.//UNIT'))==2
 
 
@@ -42,14 +43,16 @@ def test_duplicate_original_name_new_alias_retains_symbol_and_uqc():
     prepared,reused,renamed=prepare_units(xml(unit('KG','Kilograms',3),unit('KGS','Kilograms',3)),[])
     nodes=ET.fromstring(prepared).findall('.//UNIT')
     assert [n.get('NAME') for n in nodes]==['KG','KGS']
-    assert [n.findtext('ORIGINALNAME') for n in nodes]==['Kilograms','Kilograms (KGS)']
+    assert [n.findtext('ORIGINALNAME') for n in nodes]==['KG','KGS']
+    assert [n.findtext('ADDITIONALNAME') for n in nodes]==['Kilograms','Kilograms']
     assert [n.findtext('GSTREPUOM') for n in nodes]==['UNT-UNITS','UNT-UNITS']
-    assert len(renamed)==1
+    assert len(renamed)==2
 
 
 def test_existing_formal_name_collision_new_symbol_disambiguated():
     prepared,_,renamed=prepare_units(xml(unit('PCS','Pieces')),[unit('Pieces','Pieces')])
-    assert ET.fromstring(prepared).findtext('.//ORIGINALNAME')=='Pieces (PCS)'
+    assert ET.fromstring(prepared).findtext('.//ORIGINALNAME')=='PCS'
+    assert ET.fromstring(prepared).findtext('.//ADDITIONALNAME')=='Pieces'
     assert ET.fromstring(prepared).find('.//UNIT').get('NAME')=='PCS'
 
 
@@ -92,4 +95,54 @@ def test_duplicate_original_error_still_stops_if_not_resolved():
             return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
         return b'<RESPONSE><CREATED>0</CREATED><ALTERED>3</ALTERED><ERRORS>0</ERRORS><LINEERROR>DUPLICATE ORIGINAL NAME</LINEERROR></RESPONSE>'
     result=send_plan([('Units.xml',xml(unit('PCS','Pieces'))),('Masters.xml',xml())],'Chosen',transport)
-    assert len(result)==1 and result[0]['errors']==['DUPLICATE ORIGINAL NAME']
+    assert len(result)==1 and result[0]['errors']==['Unit PCS: DUPLICATE ORIGINAL NAME']
+    assert result[0]['attempted_units']==['PCS']
+    assert 'DUPLICATE ORIGINAL NAME' in result[0]['unit_results'][0]['response_xml']
+
+
+def test_legacy_descriptive_original_names_fixed_before_tally_post():
+    # Same situation as the screenshot: three already-existing symbols, plus
+    # a new symbol whose legacy XML incorrectly used a description as identity.
+    source=xml(unit('PCS','Pieces'),unit('REAM','Reams'),unit('ROLL','Rolls'),unit('Nos','Numbers'))
+    existing=b'<ENVELOPE><COLLECTION>'+b''.join(ET.tostring(unit(n,n)) for n in ('PCS','REAM','ROLL'))+b'</COLLECTION></ENVELOPE>'
+    posted=[]
+    def transport(payload):
+        root=ET.fromstring(payload)
+        if root.findtext('./HEADER/TALLYREQUEST')=='Export':
+            if root.findtext('./HEADER/ID')=='InvoiceReaderUnits':return existing
+            return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
+        posted.append(root)
+        node=root.find('.//UNIT')
+        if node is not None:
+            assert node.get('NAME')==node.findtext('ORIGINALNAME')=='Nos'
+            assert node.findtext('ADDITIONALNAME')=='Numbers'
+        return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
+    result=send_plan([('Units.xml',source),('Masters.xml',xml())],'Chosen',transport)
+    assert not any(r['errors'] for r in result)
+    assert result[0]['existing_units_reused']==['PCS','REAM','ROLL']
+    assert result[0]['attempted_units']==['Nos']
+    assert len(posted)==2
+    assert ET.fromstring(source).find(".//UNIT[@NAME='Nos']/ORIGINALNAME").text=='Numbers'
+
+
+def test_failure_diagnostic_names_exact_unit_and_preserves_earlier_counters():
+    posted=[]
+    def transport(payload):
+        root=ET.fromstring(payload)
+        if root.findtext('./HEADER/TALLYREQUEST')=='Export':return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
+        posted.append(root.find('.//UNIT').get('NAME'))
+        if len(posted)==1:return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
+        return b'<RESPONSE><CREATED>0</CREATED><ERRORS>0</ERRORS><LINEERROR>DUPLICATE ORIGINAL NAME</LINEERROR></RESPONSE>'
+    result=send_plan([('Units.xml',xml(unit('PCS','Pieces'),unit('Units','Units'))),('Masters.xml',xml())],'Chosen',transport)
+    assert len(result)==1 and result[0]['counts']['CREATED']==1
+    assert result[0]['errors']==['Unit Units: DUPLICATE ORIGINAL NAME']
+    assert posted==['PCS','Units']
+    assert result[0]['unit_results'][1]['unit']=='Units'
+
+
+def test_many_folder_definitions_create_each_symbol_once():
+    source=xml(*(unit('PCS','Pieces',i%4) for i in range(16)))
+    merged,_,_=prepare_units(source,[])
+    units=ET.fromstring(merged).findall('.//UNIT')
+    assert len(units)==1 and units[0].findtext('DECIMALPLACES')=='3'
+    assert units[0].findtext('ORIGINALNAME')=='PCS'

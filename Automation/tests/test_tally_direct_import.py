@@ -28,8 +28,14 @@ def test_direct_import_order_exact_business_output_and_files_unchanged(tmp_path)
         posts.append(payload);return OK
     result=send_plan(plan,'Client & Sons',transport)
     assert [r['file'] for r in result]==['Units.xml','Masters.xml','Sales_Vouchers.xml']
-    assert all(r['counts']['CREATED']==12 and not r['errors'] for r in result)
-    for (_,original),sent in zip(plan,posts):
+    unit_count=len(ET.fromstring(plan[0][1]).findall('.//UNIT'))
+    assert result[0]['counts']['CREATED']==12*unit_count
+    assert all(r['counts']['CREATED']==12 and not r['errors'] for r in result[1:])
+    assert len(posts)==unit_count+2
+    original_units=ET.fromstring(plan[0][1]).findall('.//UNIT')
+    sent_units=[unit for data in posts[:-2] for unit in ET.fromstring(data).findall('.//UNIT')]
+    assert [ET.canonicalize(ET.tostring(n,encoding='unicode'),strip_text=True) for n in original_units]==[ET.canonicalize(ET.tostring(n,encoding='unicode'),strip_text=True) for n in sent_units]
+    for (_,original),sent in zip(plan[1:],posts[-2:]):
         before_doc=ET.fromstring(original);after_doc=ET.fromstring(sent)
         assert after_doc.findtext('.//SVCURRENTCOMPANY')=='Client & Sons'
         assert ET.tostring(before_doc.find('.//REQUESTDATA'))==ET.tostring(after_doc.find('.//REQUESTDATA'))
@@ -41,9 +47,9 @@ def test_master_rejection_does_not_send_dependent_vouchers(tmp_path):
     def transport(payload):
         if ET.fromstring(payload).findtext('./HEADER/TALLYREQUEST')=='Export':return COMPANIES
         calls.append(payload)
-        return OK if len(calls)==1 else b'<RESPONSE><ERRORS>1</ERRORS><LINEERROR>Missing stock unit</LINEERROR></RESPONSE>'
+        return OK if ET.fromstring(payload).find('.//UNIT') is not None else b'<RESPONSE><ERRORS>1</ERRORS><LINEERROR>Missing stock unit</LINEERROR></RESPONSE>'
     result=send_plan(plan,'Other Company',transport)
-    assert len(calls)==len(result)==2
+    assert len(result)==2 and len(calls)==len(ET.fromstring(plan[0][1]).findall('.//UNIT'))+1
     assert result[-1]['errors']==['Missing stock unit']
 
 

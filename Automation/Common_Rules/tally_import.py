@@ -146,7 +146,7 @@ def company_payload(data,company):
 
 
 def loaded_units(company,transport=post_xml):
-    document=ET.fromstring('''<ENVELOPE><HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>InvoiceReaderUnits</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES><TDL><TDLMESSAGE><COLLECTION NAME="InvoiceReaderUnits" ISMODIFY="No"><TYPE>Unit</TYPE><FETCH>Name,OriginalName,DecimalPlaces,IsSimpleUnit,GSTRepUOM</FETCH></COLLECTION></TDLMESSAGE></TDL></DESC></BODY></ENVELOPE>''')
+    document=ET.fromstring('''<ENVELOPE><HEADER><VERSION>1</VERSION><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Collection</TYPE><ID>InvoiceReaderUnits</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES><TDL><TDLMESSAGE><COLLECTION NAME="InvoiceReaderUnits" ISMODIFY="No"><TYPE>Unit</TYPE><FETCH>Name,OriginalName,AdditionalName,DecimalPlaces,IsSimpleUnit,GSTRepUOM</FETCH></COLLECTION></TDLMESSAGE></TDL></DESC></BODY></ENVELOPE>''')
     ET.SubElement(document.find('.//STATICVARIABLES'),'SVCURRENTCOMPANY').text=company
     response=response_xml(transport(ET.tostring(document,encoding='utf-8')))
     errors=[n.text for n in response.iter('LINEERROR') if n.text]
@@ -182,7 +182,6 @@ def prepare_units(data,existing):
             node.text=str(precision)
         else:by_name[identity]=deepcopy(unit);messages[identity]=deepcopy(message)
     existing_by_name={key(n.get('NAME') or n.findtext('NAME')):n for n in existing}
-    original_names={key(n.findtext('ORIGINALNAME')):identity for identity,n in existing_by_name.items() if n.findtext('ORIGINALNAME')}
     destination[:]=[];reused=[];renamed=[]
     for identity,unit in by_name.items():
         name=unit.get('NAME') or unit.findtext('NAME');present=existing_by_name.get(identity)
@@ -192,18 +191,30 @@ def prepare_units(data,existing):
             if decimals(present)<decimals(unit):
                 raise ValueError('Existing unit '+name+' needs decimal precision '+str(decimals(unit))+'; increase it in Tally before importing. Quantities were not rounded.')
             reused.append(name);continue
+        # ORIGINALNAME is the unit's identity, not its formal description.
+        # Keep the legacy descriptive text in ADDITIONALNAME on transport only.
         original=unit.findtext('ORIGINALNAME') or name
-        if key(original) in original_names and original_names[key(original)]!=identity:
-            original=original+' ('+name+')'
-            suffix=2
-            while key(original) in original_names:
-                original=(unit.findtext('ORIGINALNAME') or name)+' ('+name+' '+str(suffix)+')';suffix+=1
-            node=unit.find('ORIGINALNAME')
-            if node is None:node=ET.SubElement(unit,'ORIGINALNAME')
-            node.text=original;renamed.append({'unit':name,'original_name':original})
-        original_names[key(original)]=identity
+        formal=unit.findtext('ADDITIONALNAME') or (original if key(original)!=identity else '')
+        node=unit.find('ORIGINALNAME')
+        if node is None:node=ET.SubElement(unit,'ORIGINALNAME')
+        node.text=name
+        if formal:
+            description=unit.find('ADDITIONALNAME')
+            if description is None:description=ET.SubElement(unit,'ADDITIONALNAME')
+            description.text=formal
+        if original!=name:renamed.append({'unit':name,'original_name':name,'formal_name':formal})
         message=messages[identity];message[:]=[unit];destination.append(message)
     return ET.tostring(document,encoding='utf-8',xml_declaration=True),reused,renamed
+
+
+def import_reply(raw):
+    response=response_xml(raw)
+    counts={tag:int(response.findtext('.//'+tag,'0')) for tag in ('CREATED','ALTERED','IGNORED','ERRORS','CANCELLED','DELETED')}
+    errors=[n.text for n in response.iter('LINEERROR') if n.text]
+    if response.findtext('.//STATUS')=='0':errors.append('Tally returned failure status')
+    if not any(response.find('.//'+tag) is not None for tag in counts):
+        errors.append('No import counters returned; status unknown. Check Tally before retrying.')
+    return counts,errors
 
 
 def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
@@ -213,23 +224,43 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
     for name,data in plan:
         progress('Importing '+name+' into '+company+'…')
         try:
-            reused=[];renamed=[]
+            reused=[];renamed=[];attempted_units=[];unit_definitions=None;counts={};unit_results=[]
             if name=='Units.xml':
                 data,reused,renamed=prepare_units(data,loaded_units(company,transport))
-                if not response_xml(data).findall('.//UNIT'):
+                attempted_units=[n.get('NAME') or n.findtext('NAME') for n in response_xml(data).findall('.//UNIT')]
+                unit_definitions=data.decode('utf-8')
+                if not attempted_units:
                     results.append({'file':name,'company':company,'errors':[],'counts':{},'existing_units_reused':reused,'skipped':True})
                     continue
-            response=response_xml(transport(company_payload(data,company)))
-            counts={tag:int(response.findtext('.//'+tag,'0')) for tag in ('CREATED','ALTERED','IGNORED','ERRORS','CANCELLED','DELETED')}
-            errors=[n.text for n in response.iter('LINEERROR') if n.text]
-            if response.findtext('.//STATUS')=='0':errors.append('Tally returned failure status')
-            if not any(response.find('.//'+tag) is not None for tag in counts):
-                errors.append('No import counters returned; status unknown. Check Tally before retrying.')
-            entry={'file':name,'company':company,'counts':counts,'errors':errors}
+            if name=='Units.xml':
+                from copy import deepcopy
+                template=response_xml(data);counts={};errors=[];unit_results=[]
+                for message in template.find('.//REQUESTDATA'):
+                    single=deepcopy(template);destination=single.find('.//REQUESTDATA')
+                    destination[:]=[deepcopy(message)]
+                    symbol=message.find('UNIT').get('NAME') or message.findtext('UNIT/NAME')
+                    progress('Creating unit '+symbol+' in '+company+'…')
+                    raw_response=transport(company_payload(ET.tostring(single,encoding='utf-8'),company))
+                    reported,issues=import_reply(raw_response)
+                    unit_results.append({'unit':symbol,'counts':reported,'errors':issues,
+                                         'response_xml':raw_response.decode('utf-8',errors='replace')})
+                    for tag,value in reported.items():counts[tag]=counts.get(tag,0)+value
+                    errors.extend('Unit '+symbol+': '+issue for issue in issues)
+                    if issues or any(reported.get(tag,0) for tag in ('ERRORS','CANCELLED')):break
+                entry={'file':name,'company':company,'counts':counts,'errors':errors,
+                       'attempted_units':[item['unit'] for item in unit_results],
+                       'unit_request_xml':unit_definitions,'unit_results':unit_results}
+            else:
+                raw_response=transport(company_payload(data,company))
+                counts,errors=import_reply(raw_response)
+                entry={'file':name,'company':company,'counts':counts,'errors':errors}
             if reused:entry['existing_units_reused']=reused
             if renamed:entry['unit_original_names_adjusted']=renamed
         except (ValueError,OSError) as exc:
             entry={'file':name,'company':company,'errors':[str(exc)],'status':'unknown'}
+            if name=='Units.xml':
+                entry.update(counts=counts,unit_results=unit_results,attempted_units=attempted_units,unit_request_xml=unit_definitions)
+                if reused:entry['existing_units_reused']=reused
         results.append(entry)
         if entry.get('errors') or any(entry.get('counts',{}).get(tag,0) for tag in ('ERRORS','CANCELLED')):break
     return results

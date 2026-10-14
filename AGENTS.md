@@ -123,3 +123,11 @@ The user explicitly requires complete XML batches for review in Tally.
   colliding formal/original names in the transport copy for new symbols. Never
   ignore a DUPLICATE ORIGINAL NAME error and blindly send dependent vouchers;
   report unit conflicts/insufficient precision and preserve real server counters.
+
+- Native unit XML must use ORIGINALNAME as the exact selling symbol/identity,
+  with the formal description in ADDITIONALNAME. Correct legacy unit envelopes
+  in a transport copy; do not guess physical measures or alter voucher values.
+  Send each new unit once and retain per-unit request/response diagnostics and
+  real counters, identifying the exact failing symbol. Existing unit reuse and
+  multi-folder coalescing remain mandatory; never blindly suppress line errors
+  or retry ambiguous requests. Mock tests do not certify live Tally acceptance.
