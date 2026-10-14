@@ -1,6 +1,20 @@
 # Sales invoice automation
 
 
+## Reader 7.22: one button for the complete Tally import
+
+The import dialog now has one action: **Import ALL: Units + Masters + Vouchers**.
+After choosing the destination company, one click runs Units.xml → Masters.xml
+→ Sales_Vouchers.xml through the working full-import path. Compatible existing
+units are reused automatically. The separate masters-and-vouchers-only button
+has been removed so units cannot be accidentally skipped. Import receipts now
+always record full mode for this UI action.
+
+Invoice reading, saved XML, quantities, parties, dates, amounts and GUIDs are
+unchanged. Genuine errors still stop dependent requests and remain visible.
+Close the reader, extract this update and rebuild the EXE if used. Verify the
+window title is Reader 7.22. No AI reread or XML regeneration is needed.
+
 ## Reader 7.21: Python assigns explicit distinct unit formal names
 
 The uploaded client-31 Units.xml omitted Packs' formal name, while Tally's

@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.21'
+APP_VERSION='Reader 7.22'
 
 
 def quantity_unit_summary(invoice):
@@ -427,7 +427,7 @@ class InvoiceApp:
                 try:messages.put(('companies',loaded_companies(lambda data:post_xml(data,timeout=3))))
                 except Exception as exc:messages.put(('connection',str(exc)))
             threading.Thread(target=worker,daemon=True).start()
-        def import_now(units_already_available=False):
+        def import_now():
             if running[0]:return
             chosen_groups=groups if include_all.get() else [{**groups[selected_group],'plan':selected_plan}]
             indices=list(range(len(groups))) if include_all.get() else [selected_group]
@@ -440,25 +440,22 @@ class InvoiceApp:
                 try:
                     results=[]
                     for group,target in zip(chosen_groups,targets):
-                        try:received=send_plan(group['plan'],target,progress=lambda text:messages.put(('progress',text)),units_already_available=units_already_available)
+                        try:received=send_plan(group['plan'],target,progress=lambda text:messages.put(('progress',text)))
                         except (ValueError,OSError) as exc:
                             received=[{'file':'Company/connection check','company':target,'errors':[str(exc)]}]
                         for result in received:result['xml_folders']=[str(p) for p in group['folders']]
                         results.extend(received)
                         if any(r.get('errors') or any(r.get('counts',{}).get(t,0) for t in ('ERRORS','CANCELLED')) for r in received):break
-                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'import_mode':'masters-and-vouchers-only' if units_already_available else 'full','output_generation':groups[0].get('generation',record.get('output_generation')),'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results})
+                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'import_mode':'full','output_generation':groups[0].get('generation',record.get('output_generation')),'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results})
                     except OSError:pass
                     messages.put(('imported',results))
                 except Exception as exc:messages.put(('import_error',str(exc)))
             threading.Thread(target=worker,daemon=True).start()
         buttons=ttk.Frame(dialog);buttons.pack(anchor='w',padx=12,pady=8)
         ttk.Button(buttons,text='Refresh companies',command=refresh).pack(side='left')
-        import_button=ttk.Button(buttons,text='Import into selected company',command=import_now,state='disabled')
+        import_button=ttk.Button(buttons,text='Import ALL: Units + Masters + Vouchers',command=import_now,state='disabled')
         import_button.pack(side='left',padx=8)
-        existing_units_button=ttk.Button(buttons,text='Import masters + vouchers only',command=lambda:import_now(True),state='disabled')
-        existing_units_button.pack(side='left',padx=8)
         ttk.Button(buttons,text='Close',command=close).pack(side='left')
-        ttk.Label(dialog,text='Masters + vouchers only: use when units are already set up in the selected company, as with a successful manual import. This skips Units.xml; missing units may cause Tally to reject stock masters.',wraplength=780).pack(anchor='w',padx=12,pady=6)
         def poll():
             if not dialog.winfo_exists():return
             try:
@@ -471,10 +468,9 @@ class InvoiceApp:
                             choice.config(values=value)
                             if variable.get() not in value:variable.set('')
                         import_button.config(state='normal' if value else 'disabled')
-                        existing_units_button.config(state='normal' if value else 'disabled')
                         state.config(text='Choose a company and import.' if value else 'No company is available. Open your company in Tally and click Refresh companies.')
                     elif kind=='connection':
-                        import_button.config(state='disabled');existing_units_button.config(state='disabled');state.config(text=value)
+                        import_button.config(state='disabled');state.config(text=value)
                         if not launch_attempted[0] and os.name=='nt':
                             launch_attempted[0]=True
                             # Do not launch a second instance when Tally is already open.
@@ -506,7 +502,6 @@ class InvoiceApp:
                         title='Tally import needs attention' if failed else 'Tally import result'
                         state.config(text=title+'. Review the server counters below and check the vouchers in Tally.')
                         import_button.config(state='disabled')  # deliberate refresh before another import
-                        existing_units_button.config(state='disabled')
                         messagebox.showinfo(title,'\n'.join(lines)+'\n\nCheck Tally before retrying. No automatic retries were sent.',parent=dialog)
                     else:state.config(text=value)
             except queue.Empty:pass
