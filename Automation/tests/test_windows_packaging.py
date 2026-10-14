@@ -22,7 +22,7 @@ def test_exe_mode_uses_executable_folder_not_temporary_bundle(tmp_path,monkeypat
 def test_parser_revision_files_are_preserved_and_spec_includes_them():
     from Common_Rules.desktop import PARSER_REVISION
     root=Path(__file__).parents[1]
-    names=('extraction.py','document_structure.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','tax_treatment.py','country_catalog.py','supplier_layouts.py','ocr.py')
+    names=('extraction.py','document_structure.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','goods_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','tax_treatment.py','country_catalog.py','supplier_layouts.py','ocr.py')
     expected=hashlib.sha256(b''.join((root/'Common_Rules'/name).read_bytes() for name in names)).hexdigest()
     assert PARSER_REVISION==expected
     specification=(root/'InvoiceReader.spec').read_text()

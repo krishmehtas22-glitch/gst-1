@@ -21,7 +21,7 @@ from .processing_lock import client_lock
 from .supplier_identity import restore_known_supplier
 
 PARSER_REVISION = hashlib.sha256(b''.join((Path(__file__).parent/name).read_bytes()
-    for name in ('extraction.py','document_structure.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','tax_treatment.py','country_catalog.py','supplier_layouts.py','ocr.py'))).hexdigest()
+    for name in ('extraction.py','document_structure.py','paired_layout.py','section_layout.py','tabular_layout.py','flat_layout.py','goods_layout.py','party_evidence.py','unit_catalog.py','unit_inference.py','tax_treatment.py','country_catalog.py','supplier_layouts.py','ocr.py'))).hexdigest()
 
 
 def _same_review_value(left,right):

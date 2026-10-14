@@ -44,6 +44,16 @@ requested that this part be locked. Baseline commit:
 
 The user explicitly requires complete XML batches for review in Tally.
 
+- The Goods description/HSN/Qty/UOM/Rate/Taxable/GST %/GST amount family must
+  support both vertical PDF token streams and positioned rows. Read printed
+  invoice identifiers/dates, explicit buyer panels, corroborated seller names,
+  totals and supply declarations. Never read SUPPLY DETAILS as a buyer or a
+  seller address number as the invoice number. Recover missing saved-AI identity
+  from verified source evidence without overwriting valid AI/human values.
+  Reading fixes must preserve the locked Import ALL method/transport and reuse
+  saved AI data without new API calls. Keep parser revision dependencies and
+  Windows bundled sources aligned. Complete XML output is not live import proof.
+
 - All future Cerebras, Gemini, Groq, or other AI batch integrations must use the complete
   batch workflow (`read_with_fallback`, then `process_sources` with the saved
   client batch policy). Never let API quota expiry discard successful reads.

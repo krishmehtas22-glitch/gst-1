@@ -9,6 +9,7 @@ from .tabular_layout import parse_role_table, parse_receipt, marked_sample
 from .ocr import MARKER, read_page
 from .supplier_layouts import layout_text
 from .flat_layout import parse_flat_layout, supported_flat
+from .goods_layout import parse_goods_layout
 from .party_evidence import read_party_roles, role_heading, read_seller_masthead
 from .unit_inference import quantity_parts, canonical_unit, default_missing_quantity
 from .tax_treatment import apply_printed_treatment
@@ -288,6 +289,8 @@ def parse_text(text, field_mappings=None, header_aliases=None):
         paired = parse_section_layout(text, headers)
     if paired is None:
         paired = parse_paired_layout(text,headers)
+    if paired is None:
+        paired = parse_goods_layout(text)
     if paired is not None:
         for key,rule in field_mappings.items():
             value=mapped_field(text,rule,key,field_aliases,paired['extraction_warnings'])
