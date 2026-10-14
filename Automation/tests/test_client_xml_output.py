@@ -89,3 +89,25 @@ def test_generation_change_rejects_mixed_snapshot(tmp_path,monkeypatch):
         return result
     monkeypatch.setattr(tally_import,'import_plan',concurrent)
     with pytest.raises(ValueError,match='updated while reading'):client_import_groups(folder,folder)
+
+
+def test_export_and_import_manifest_use_utf8_with_windows_default_encoding(tmp_path,monkeypatch):
+    records=rows(tmp_path)
+    for row in records:
+        row['invoice']['seller_name']='व्यापार Supplies'
+        row['invoice']['buyer_name']='ग्राहक Buyer'
+    write_text=Path.write_text;read_text=Path.read_text
+    def windows_write(path,data,encoding=None,errors=None,newline=None):
+        return write_text(path,data,encoding=encoding or 'cp1252',errors=errors,newline=newline)
+    def windows_read(path,encoding=None,errors=None):
+        return read_text(path,encoding=encoding or 'cp1252',errors=errors)
+    monkeypatch.setattr(Path,'write_text',windows_write)
+    monkeypatch.setattr(Path,'read_text',windows_read)
+    export_all(tmp_path,records,True)
+    folder=Path(records[0]['output_path'])
+    assert '→' in (folder/'Import_Instructions.txt').read_text(encoding='utf-8')
+    assert len(ET.parse(folder/'Sales_Vouchers.xml').findall('.//VOUCHER'))==4
+    assert (folder/'Batch_Report.json').is_file()
+    groups=client_import_groups(folder,folder)
+    assert len(groups)==1 and 'व्यापार Supplies' in groups[0]['label']
+    assert voucher_count(groups[0]['plan'])==4

@@ -1,6 +1,18 @@
 # Sales invoice automation
 
 
+## Reader 7.18: fix Windows text encoding during export
+
+The Reader 7.17 instructions-file write could fail on Windows with
+`charmap codec can't encode character` for the arrow symbol. The file is now
+written explicitly as UTF-8. The consolidated import manifest is also read as
+UTF-8 so non-English seller names remain intact. Invoice parsing, quantities,
+party names, dates, amounts, GUIDs and XML contents are unchanged.
+
+Close the reader, extract this update into the original folder, rebuild with
+`Build_Windows_EXE.bat` if using the EXE, and scan the client using saved AI
+results. No new AI read is needed to recover from this export error.
+
 ## Reader 7.17: one current XML folder per client
 
 **Open client XML folder** now opens one stable `current` folder with

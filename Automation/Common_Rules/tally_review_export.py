@@ -209,7 +209,7 @@ def export_all(root,records,demo):
                 if len(vouchers.findall('.//VOUCHER'))!=len(group):raise ValueError('Consolidated voucher count differs from source count')
                 save_document(units,run/'Units.xml');save_document(masters,run/'Masters.xml');save_document(vouchers,run/'Sales_Vouchers.xml')
                 write_json(run/'Batch_Report.json',{'layout':LAYOUT,'generation':generation,'client':client,'input_count':len(group),'xml_voucher_count':len(report),'invoices':report})
-                (run/'Import_Instructions.txt').write_text('Current complete client XML: 1. Units.xml → 2. Masters.xml → 3. Sales_Vouchers.xml. Use Import to Tally for explicit company selection and existing-unit reuse. Distinct sellers are routed separately in memory. Review warnings in Batch_Report.json; do not reimport already accepted vouchers. One internal previous-output backup is retained. XML creation is not import confirmation.\n')
+                (run/'Import_Instructions.txt').write_text('Current complete client XML: 1. Units.xml → 2. Masters.xml → 3. Sales_Vouchers.xml. Use Import to Tally for explicit company selection and existing-unit reuse. Distinct sellers are routed separately in memory. Review warnings in Batch_Report.json; do not reimport already accepted vouchers. One internal previous-output backup is retained. XML creation is not import confirmation.\n',encoding='utf-8')
                 publish(base,run)
                 write_json(base/'latest.json',{'output_path':str(current),'count':len(report),'generation':generation})
     return records

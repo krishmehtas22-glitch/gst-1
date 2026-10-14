@@ -135,7 +135,7 @@ def consolidated_import_groups(run,selected,manifest):
     from copy import deepcopy
     if selected!=run:raise ValueError('Select the current client XML folder')
     plan=import_plan(run)
-    if json.loads((run/'Batch_Report.json').read_text()).get('generation')!=manifest.get('generation'):
+    if json.loads((run/'Batch_Report.json').read_text(encoding='utf-8')).get('generation')!=manifest.get('generation'):
         raise ValueError('Client XML was updated while reading; reopen Import to Tally')
     documents={name:response_xml(data) for name,data in plan}
     vouchers=documents['Sales_Vouchers.xml'].findall('.//VOUCHER')
