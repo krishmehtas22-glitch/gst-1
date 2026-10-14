@@ -175,7 +175,7 @@ def consolidated_import_groups(run,selected,manifest):
             filtered.append((filename,ET.tostring(doc,encoding='utf-8',xml_declaration=True)))
         first=part[0];gstin=first['seller_group_gstin']
         groups.append({'group_id':identity,'generation':manifest['generation'],'label':first['seller_group_label']+(' — '+gstin if gstin else ' — GSTIN not supplied'),
-                       'plan':filtered,'folders':[run]})
+                       'plan':plan if len(partitions)==1 else filtered,'folders':[run]})
     return groups
 
 
@@ -284,11 +284,15 @@ def import_reply(raw):
     return counts,errors
 
 
-def send_plan(plan,company,transport=post_xml,progress=lambda text:None):
+def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_already_available=False):
     """No automatic retry: a lost response may follow a committed Tally import."""
     if company not in loaded_companies(transport):raise ValueError('The selected company is no longer available in Tally. Open it in Tally and refresh the company list.')
     results=[]
     for name,data in plan:
+        if name=='Units.xml' and units_already_available:
+            results.append({'file':name,'company':company,'errors':[],'counts':{},'skipped':True,
+                            'reason':'Explicit masters-and-vouchers-only import; user indicates units already available'})
+            continue
         progress('Importing '+name+' into '+company+'…')
         try:
             reused=[];renamed=[];attempted_units=[];unit_definitions=None;counts={};unit_results=[];existing_definitions=[]

@@ -122,3 +122,10 @@ def test_packs_export_omits_redundant_formal_name_and_preserves_stock_unit(tmp_p
     assert unit.find('ADDITIONALNAME') is None
     assert {n.text for n in ET.parse(folder/'Masters.xml').findall('.//BASEUNITS')}=={'Packs'}
     assert all(n.text.endswith(' Packs') for n in ET.parse(folder/'Sales_Vouchers.xml').findall('.//ACTUALQTY'))
+
+
+def test_single_seller_button_plan_uses_exact_current_xml_files(tmp_path):
+    records=rows(tmp_path);export_all(tmp_path,records,True)
+    folder=Path(records[0]['output_path']);groups=client_import_groups(folder,folder)
+    assert len(groups)==1
+    assert dict(groups[0]['plan'])=={name:(folder/name).read_bytes() for name in ('Units.xml','Masters.xml','Sales_Vouchers.xml')}

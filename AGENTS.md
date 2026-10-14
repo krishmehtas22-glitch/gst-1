@@ -145,3 +145,12 @@ The user explicitly requires complete XML batches for review in Tally.
   stock BASEUNITS, quantities, rates or voucher fields. Preserve fetched existing
   unit definitions in import receipts for diagnosis; do not treat genuine server
   LINEERRORs as success or send dependent vouchers after a failed prerequisite.
+
+- Keep an explicit masters-and-vouchers-only direct-import action for companies
+  where the user indicates units are already set up, matching manual file import.
+  This action must deliberately skip Units.xml before any unit request, record
+  the chosen mode/skipped stage without invented counters, then send the existing
+  Masters.xml and Sales_Vouchers.xml in order. Still stop on genuine master or
+  voucher errors; never automatically bypass a failed unit import. For a single
+  seller, snapshot the exact current XML files without filtering/rebuilding them.
+  Distinct-seller company routing and full dependency-order import remain intact.

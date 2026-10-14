@@ -185,3 +185,40 @@ def test_packs_conflict_repair_reaches_masters_and_vouchers_with_same_values():
     assert [doc.findtext('.//REPORTNAME') for doc in posts]==['All Masters','All Masters','Vouchers']
     assert ET.tostring(posts[-1].find('.//VOUCHER'))==ET.tostring(ET.fromstring(saved).find('.//VOUCHER'))
     assert ET.fromstring(source).find(".//UNIT[@NAME='Packs']/ADDITIONALNAME").text=='Packs'
+
+
+def test_explicit_existing_units_mode_sends_unchanged_masters_then_sales_without_unit_write():
+    from Common_Rules.tally_import import company_payload
+    masters,data=envelope('','All Masters');stock=ET.SubElement(message(data),'STOCKITEM',{'NAME':'Keep stock'})
+    text(stock,'BASEUNITS','Packs')
+    sales,data=envelope('','Vouchers');v=ET.SubElement(message(data),'VOUCHER')
+    for tag,value in {'GUID':'keep-id','DATE':'20261014','PARTYLEDGERNAME':'Keep buyer','ACTUALQTY':'76 Packs','RATE':'1.234/Packs','AMOUNT':'93.78'}.items():text(v,tag,value)
+    plan=[('Units.xml',xml(unit('Packs','Packs'))),('Masters.xml',ET.tostring(masters)),('Sales_Vouchers.xml',ET.tostring(sales))]
+    before=list(plan);posts=[]
+    def transport(payload):
+        doc=ET.fromstring(payload)
+        if doc.findtext('./HEADER/TALLYREQUEST')=='Export':
+            assert doc.findtext('./HEADER/ID')=='InvoiceReaderCompanies'
+            return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
+        assert doc.find('.//UNIT') is None
+        posts.append(payload)
+        return b'<RESPONSE><CREATED>1</CREATED><ERRORS>0</ERRORS></RESPONSE>'
+    result=send_plan(plan,'Chosen',transport,units_already_available=True)
+    assert result[0]['skipped'] and result[0]['counts']=={} and result[0]['errors']==[]
+    assert 'Explicit masters-and-vouchers-only' in result[0]['reason']
+    assert posts==[company_payload(data,'Chosen') for name,data in plan if name!='Units.xml']
+    assert plan==before and len(result)==3
+
+
+def test_existing_units_mode_does_not_ignore_master_failure_or_resend_vouchers():
+    posts=[]
+    def transport(payload):
+        doc=ET.fromstring(payload)
+        if doc.findtext('./HEADER/TALLYREQUEST')=='Export':
+            return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
+        posts.append(doc.findtext('.//REPORTNAME'))
+        return b'<RESPONSE><CREATED>0</CREATED><ERRORS>1</ERRORS><LINEERROR>Unit Packs is missing</LINEERROR></RESPONSE>'
+    sales,_=envelope('','Vouchers')
+    result=send_plan([('Units.xml',xml(unit('Packs','Packs'))),('Masters.xml',xml()),('Sales_Vouchers.xml',ET.tostring(sales))],'Chosen',transport,units_already_available=True)
+    assert posts==['All Masters'] and len(result)==2
+    assert result[-1]['errors']==['Unit Packs is missing']

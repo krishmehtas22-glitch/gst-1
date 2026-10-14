@@ -1,6 +1,30 @@
 # Sales invoice automation
 
 
+## Reader 7.20: match the working manual masters-and-vouchers import
+
+The full button's Packs prerequisite error prevents Masters.xml and
+Sales_Vouchers.xml from being sent, even when those files import successfully
+through Tally's file importer. The import dialog now has a separate
+**Import masters + vouchers only** action. Use it when units are already set up
+in the selected company. It deliberately skips Units.xml and sends Masters.xml
+then Sales_Vouchers.xml, changing only the transport destination company.
+For a single-seller current batch, the plan snapshots the exact saved files
+without filtering or rebuilding them. Distinct sellers retain separate routing.
+
+This is an explicit manual-sequence option, not automatic suppression of the
+Packs error. The ordinary full import remains available for new companies.
+Missing units can still make Tally reject stock masters in this mode; any
+master/voucher failure stops dependent requests. Receipts record the mode,
+skipped unit step and actual server counters. No automatic retries are sent.
+Check prior manually imported vouchers before sending them again.
+
+Close the reader, extract this update and rebuild the EXE if used. Verify the
+window title is Reader 7.20, choose the intended company, then use the new button.
+No AI reread, scan or XML regeneration is needed. Local live Tally acceptance
+remains unverified in the cloud; tests verify the exact submitted masters/sales
+payloads and that no unit request is sent in this explicit mode.
+
 ## Reader 7.19: prevent redundant and colliding unit formal names
 
 Client 31's import receipt identifies `Unit Packs: DUPLICATE ORIGINAL NAME`.
