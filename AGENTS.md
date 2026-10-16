@@ -1,5 +1,18 @@
 # Invoice batch contract
 
+## Explicit AI control — user correction, 16 October 2026
+
+Startup, folder watching, refresh, choosing folders/clients and changing settings
+must only list PDF filenames/metadata. No PDF/OCR analysis, API calls or XML
+generation may run automatically. Only an explicit AI button followed by the
+user's confirmation can analyse selected PDFs or a chosen client batch. Support
+one file or multiple selected files (including 100). Freeze confirmed source paths
+and cap fresh attempts across all providers to that confirmed PDF count. New files
+arriving during a run must stay queued. Reuse successful caches/approvals. Stop
+must prevent further calls. Manual correction/revalidation may use Python locally
+without AI. This overrides earlier automatic AI-on-scan/watch instructions below.
+Keep the working Import ALL/UQC/XML transport lock unchanged.
+
 ## Locked working Import ALL baseline — user instruction, 14 October 2026
 
 Later explicit authorization: the user supplied the Tally UQC dropdown and

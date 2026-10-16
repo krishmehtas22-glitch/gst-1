@@ -39,7 +39,8 @@ def approved_result(root, record):
 
 def run_ai_first(root, demo=True, client_names=None, auto_units=True,
                  summary_accounting=False, primary=None, progress=lambda message: None,
-                 stop_event=None, batch_runner=None, selected_source=None, confirm_test=False):
+                 stop_event=None, batch_runner=None, selected_source=None, confirm_test=False,
+                 selected_paths=None, max_new_requests=None):
     from .desktop import inspect_sources, process_sources
     from .gemini_batch import read_with_fallback, find_retained, RequestBudget
     from .tally_review_export import enable
@@ -49,6 +50,14 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
         raise ValueError('Choose an active invoice AI provider.')
     progress('Preparing PDF text/OCR for AI; XML conversion has not started.')
     records = inspect_sources(root, client_names, demo, auto_units)
+    approved_paths = None if selected_paths is None else {str(Path(p).resolve()) for p in selected_paths}
+    if approved_paths is not None:
+        present = {str(Path(r.get('source_path', r['path'])).resolve()) for r in records}
+        if not approved_paths or not approved_paths.issubset(present):
+            raise ValueError('Selected PDFs changed or disappeared; refresh the list and choose again.')
+    def selected(record):
+        return ((selected_source is None or token(record) == selected_source) and
+                (approved_paths is None or str(Path(record.get('source_path', record['path'])).resolve()) in approved_paths))
     if selected_source is not None and selected_source not in {token(r) for r in records}:
         raise ValueError('Selected source changed or disappeared; scan the client again.')
     decisions, pending, warnings = {}, [], []
@@ -65,13 +74,16 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
             continue
         if approved:
             decisions[token(record)] = approved
-        elif selected_source is not None and token(record) != selected_source:
+        elif not selected(record):
             retained = find_retained(root, record, primary)
             decisions[token(record)] = ({'status': 'extracted', 'provider': retained['provider'], 'cached': True}
                 if retained else {'status': 'not_selected_for_new_ai', 'provider': 'Python', 'cached': False})
         else:
             pending.append(record)
-    budget = RequestBudget(len(pending))
+    limit = len(pending)
+    if approved_paths is not None:limit = min(limit, len(approved_paths))
+    if max_new_requests is not None:limit = min(limit, max(0, int(max_new_requests)))
+    budget = RequestBudget(limit)
     progress(f'AI stage: {len(pending)} sources use saved AI reads or new extraction; '
              f'{len(records)-len(pending)} sources retain manual/source review status.')
     try:
@@ -101,7 +113,7 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
     if confirm_test:
         from .source_documents import confirm_test_document
         for record in records:
-            if selected_source is None or token(record) == selected_source:
+            if selected(record):
                 try:
                     verify_source(root, record)
                     confirm_test_document(root, record)

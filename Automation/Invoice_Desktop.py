@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.27'
+APP_VERSION='Reader 7.28'
 
 
 def quantity_unit_summary(invoice):
@@ -77,7 +77,8 @@ class InvoiceApp:
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
-        ttk.Button(actions,text='AI read and generate XML',command=self.start).pack(side='left')
+        ttk.Button(actions,text='Refresh invoice list',command=self.start).pack(side='left')
+        ttk.Button(actions,text='Analyse selected PDFs',command=self.analyse_selected).pack(side='left',padx=8)
         ttk.Button(actions,text='Review selected invoice',command=self.review).pack(side='left',padx=8)
         ttk.Button(actions,text='Open client XML folder',command=self.open_output).pack(side='left')
         ttk.Button(actions,text='Import to Tally',command=self.import_tally).pack(side='left',padx=8)
@@ -87,7 +88,7 @@ class InvoiceApp:
         self.summary_accounting=tk.BooleanVar(value=False)
         ttk.Checkbutton(actions,text='Summary GST accounting',variable=self.summary_accounting,command=self.reset).pack(side='left',padx=8)
         self.auto = tk.BooleanVar(value=True)
-        ttk.Checkbutton(actions,text='Watch for new PDFs',variable=self.auto).pack(side='right')
+        ttk.Checkbutton(actions,text='Watch PDFs (list only)',variable=self.auto).pack(side='right')
         api_buttons=ttk.Frame(window,padding=(10,0));api_buttons.pack(fill='x')
         ttk.Button(api_buttons,text='Read client batch with Gemini → XML',command=self.read_gemini_batch).pack(side='left')
         ttk.Button(api_buttons,text='Read selected with Groq → XML',command=lambda:self.read_gemini('Groq')).pack(side='left',padx=8)
@@ -95,7 +96,7 @@ class InvoiceApp:
         from Common_Rules.ai_first import configured_primary
         from Common_Rules.ai_providers import ACTIVE_PROVIDERS
         self.ai_primary=tk.StringVar(value=configured_primary(self.root))
-        ttk.Label(api_buttons,text='Automatic AI:').pack(side='left',padx=(15,4))
+        ttk.Label(api_buttons,text='AI provider:').pack(side='left',padx=(15,4))
         primary_picker=ttk.Combobox(api_buttons,textvariable=self.ai_primary,values=ACTIVE_PROVIDERS,state='readonly',width=14)
         primary_picker.pack(side='left')
         primary_picker.bind('<<ComboboxSelected>>',lambda event:self.save_ai_provider())
@@ -108,7 +109,7 @@ class InvoiceApp:
         ttk.Button(router_buttons,text='Read client batch with OpenRouter (free) → XML',command=lambda:self.read_gemini_batch('OpenRouter')).pack(side='left',padx=8)
         ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
         ttk.Label(window,text='Complete batch import order: 1 Units.xml → 2 Masters.xml → 3 Sales_Vouchers.xml, in the SAME Tally company.').pack(anchor='w',padx=10)
-        self.status = ttk.Label(window,text='Ready. XML generation does not import into Tally.',padding=10,wraplength=1250)
+        self.status = ttk.Label(window,text='PDF listing only. AI runs only after you select files or a client batch and confirm.',padding=10,wraplength=1250)
         self.status.pack(fill='x')
         frame = ttk.Frame(window)
         frame.pack(fill='both',expand=True,padx=10)
@@ -125,6 +126,7 @@ class InvoiceApp:
         self.table.bind('<Double-1>',lambda event:self.review())
         self.detail = tk.Text(window,height=7,wrap='word')
         self.detail.pack(fill='x',padx=10,pady=10)
+        window.after(0,self.start)
         window.after(200,self.tick)
 
     def reset(self):
@@ -153,14 +155,14 @@ class InvoiceApp:
             messagebox.showerror('Re-read PDFs',str(exc))
             return
         self.reset()
-        self.start()
+        self.revalidate()
 
     def units(self):
         if self.busy:return
         watching=self.auto.get();self.auto.set(False)
         def done(changed):
             self.auto.set(watching)
-            if changed:self.reset();self.start()
+            if changed:self.reset();self.revalidate()
         open_unit_choices(self.window,self.root,self.records,done,self.selected())
 
     def close(self):
@@ -187,7 +189,7 @@ class InvoiceApp:
             for record in documents.values():confirm_test_document(self.root,record)
         except (ValueError,OSError) as exc:
             messagebox.showerror('Test PDF',str(exc));return
-        self.reset();self.start()
+        self.reset();self.revalidate()
 
     def select_all(self,event=None):
         self.table.selection_set(self.table.get_children())
@@ -214,7 +216,7 @@ class InvoiceApp:
             save_primary(self.root,self.ai_primary.get())
             self.reset()
         except (ValueError,OSError) as exc:
-            messagebox.showerror('Automatic AI',str(exc))
+            messagebox.showerror('AI provider',str(exc))
 
     def watch_signature(self):
         return (self.demo.get(),self.auto_units.get(),self.summary_accounting.get(),self.client_scope.get(),source_signature(self.root),self.ai_primary.get(),
@@ -223,27 +225,32 @@ class InvoiceApp:
                 tuple(p.stat().st_mtime_ns for p in (self.root/'.invoice_app').glob('unit_preferences.json')))
 
     def start(self):
+        """Startup, refresh and watcher only list filenames/metadata."""
         if self.busy:
             return
         self.busy = True
-        try:self.ai_scan_snapshot=self.watch_signature()
-        except OSError:self.ai_scan_snapshot=None
-        self.ai_stop=threading.Event()
-        self.status.config(text='AI will read invoice details first; Python will then validate and prepare XML…')
+        self.status.config(text='Listing PDFs. No AI requests or XML generation…')
+        root=self.root;previous=list(self.records)
+        selected=self.client_scope.get()
+        clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
+        def worker():
+            try:
+                from Common_Rules.invoice_queue import list_sources
+                self.events.put(('listed',list_sources(root,clients,previous)))
+            except Exception as exc:self.events.put(('error',str(exc)))
+        threading.Thread(target=worker,daemon=True).start()
+
+    def revalidate(self):
+        """Explicit manual corrections may revalidate locally, without AI."""
+        if self.busy:return
+        self.busy=True
         root, demo, auto_units, summary_accounting = self.root, self.demo.get(),self.auto_units.get(),self.summary_accounting.get()
         selected=self.client_scope.get()
         clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
-        primary=self.ai_primary.get()
-        stop_event=self.ai_stop
         def worker():
             try:
-                from Common_Rules.ai_first import run_ai_first,summary_text
-                updated,summary=run_ai_first(root,demo,clients,auto_units,summary_accounting,
-                    primary=primary,progress=lambda message:self.events.put(('progress',message)),stop_event=stop_event)
-                self.events.put(('ok',updated))
-                self.events.put(('progress',summary_text(summary)))
-            except Exception as exc:
-                self.events.put(('error',str(exc)))
+                self.events.put(('ok',process_sources(root,demo,clients,auto_units,summary_accounting)))
+            except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
     def stop_ai(self):
@@ -252,29 +259,33 @@ class InvoiceApp:
             self.status.config(text='Stopping AI: an active request may finish; completed reads are retained and XML will be prepared. No further provider will start.')
 
     def read_gemini(self,provider='Gemini'):
-        record=self.selected()
-        if self.busy or not record:return
-        if not record.get('digest'):
-            messagebox.showerror(provider,'Replace the unreadable PDF before requesting API extraction.');return
-        upload='PDF text (local OCR for scans) to '+provider
+        self.analyse_selected(provider)
+
+    def analyse_selected(self,provider=None):
+        if self.busy:return
+        records=[self.records[int(item)] for item in self.table.selection()]
+        if not records:
+            messagebox.showinfo('Analyse PDFs','Select one or more PDFs. Use Ctrl/Shift or Ctrl+A to choose a batch.');return
+        from Common_Rules.invoice_queue import source_path
+        count=len({source_path(r) for r in records})
+        provider=provider or self.ai_primary.get()
         demo=self.demo.get()
-        test_note=' Test invoices is enabled: continuing confirms this selected PDF is fictional test data.' if demo else ''
-        if not messagebox.askyesno(provider+' extraction → XML',f'Read this selected {upload} and prepare complete XML for its client? At most one new AI attempt across configured providers; successful saved reads and human approvals are reused. Other client invoices use saved/local data. Units, masters and sales vouchers are prepared with unresolved details retained for review in Tally. This does not import into Tally or approve invoice values. API quota and data-use terms apply.'+test_note):
+        test_note=' Test invoices is enabled: continuing confirms only these selected PDFs as fictional test data.' if demo else ''
+        if not messagebox.askyesno(provider+' — analyse selected PDFs',f'Analyse exactly {count} selected PDFs with {provider}? At most {count} new AI attempts across configured providers; saved reads and approvals are reused. AI requests may use quota or credits. No other PDFs will receive new AI requests. Python then prepares client XML using retained/local data for the other invoices; uncertainties remain for review. No Tally import is sent.'+test_note):
             return
-        self.auto.set(False);self.busy=True
+        self.busy=True
         self.ai_stop=threading.Event()
-        self.status.config(text='Reading selected PDF with '+provider+' and preparing complete client XML…')
+        self.status.config(text=f'Analysing {count} selected PDFs with '+provider+'…')
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
         stop_event=self.ai_stop
         def worker():
             try:
-                from Common_Rules.desktop_ai import selected_to_xml
-                results,updated,warnings=selected_to_xml(root,record,provider,demo,units,summary,
+                from Common_Rules.desktop_ai import analyse_paths
+                from Common_Rules.ai_first import summary_text
+                updated,report=analyse_paths(root,records,provider,demo,units,summary,
                     progress=lambda message:self.events.put(('progress',message)),stop_event=stop_event)
                 self.events.put(('ok',updated))
-                count=sum(bool(r.get('output_path')) and not r.get('errors') for r in updated)
-                self.events.put(('progress',f'{count} client XML vouchers prepared using saved AI/local data. Review warnings in Batch_Report.json. No Tally import sent.'+
-                    (' Some AI/checkpoint steps need attention; saved results were retained.' if warnings else '')))
+                self.events.put(('progress',summary_text(report)))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
@@ -287,12 +298,14 @@ class InvoiceApp:
         records=[r for r in self.records if r['client']==client]
         if not records:
             messagebox.showinfo(provider+' batch','Scan this client folder first.');return
+        from Common_Rules.invoice_queue import source_path
+        paths=sorted({source_path(r) for r in records})
         upload='PDF text (local OCR for scans) to '+provider
         demo=self.demo.get()
         test_note=' Test invoices is enabled: continuing confirms these batch PDFs are fictional test data.' if demo else ''
-        if not messagebox.askyesno(provider+' batch → XML',f'Read {len(records)} invoices from {client} as {upload}? At most {len(records)} new AI extraction attempts across all providers; cached successes are reused. If this API stops, try configured providers only within that shared limit, then Python. All invoices get XML with uncertainties retained for review in Tally. Inventory is posted when usable, otherwise accounting vouchers retain the item details in Batch_Report.json. Manual corrections/history are retained. Calls are spaced; cached reads are reused.'+test_note):
+        if not messagebox.askyesno(provider+' batch → XML',f'Analyse {len(paths)} PDFs from {client} as {upload}? At most {len(paths)} new AI attempts across configured providers; requests may use quota or credits. Only the PDFs in this confirmed list receive new AI requests. Saved reads and approvals are reused. Python then prepares complete client XML with uncertainties retained for review. No Tally import is sent.'+test_note):
             return
-        self.auto.set(False);self.busy=True
+        self.busy=True
         self.ai_stop=threading.Event()
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
         stop_event=self.ai_stop
@@ -301,7 +314,7 @@ class InvoiceApp:
                 from Common_Rules.ai_first import run_ai_first,summary_text
                 updated,report=run_ai_first(root,demo,[client],units,summary,primary=provider,
                     progress=lambda message:self.events.put(('progress',message)),
-                    confirm_test=demo,stop_event=stop_event)
+                    confirm_test=demo,stop_event=stop_event,selected_paths=paths,max_new_requests=len(paths))
                 self.events.put(('ok',updated))
                 self.events.put(('progress',summary_text(report)))
             except Exception as exc:self.events.put(('error',str(exc)))
@@ -321,29 +334,22 @@ class InvoiceApp:
             else:
                 previous=self.selected()
                 preferred=(previous.get('digest'),previous.get('client')) if previous else None
+                from Common_Rules.invoice_queue import source_path
+                signatures={source_path(r):r.get('listing_signature') for r in self.records}
+                for record in value:
+                    if 'listing_signature' not in record:
+                        record['listing_signature']=signatures.get(source_path(record))
                 self.records = value
                 self.table.delete(*self.table.get_children())
                 for index, record in enumerate(value):
                     inv = record['invoice']
                     state = invoice_status(record)
-                    self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),inv.get('seller_name') or ('Candidate: '+inv['seller_name_candidate'] if inv.get('seller_name_candidate') else 'Seller not detected — check PDF'),inv.get('total',''),quantity_unit_summary(inv),state))
-                self.status.config(text=scan_summary(value))
+                    self.table.insert('', 'end',iid=str(index),values=(record['client'],inv.get('number',Path(record['path']).name),'Pending AI' if record.get('listing_only') else inv.get('seller_name') or ('Candidate: '+inv['seller_name_candidate'] if inv.get('seller_name_candidate') else 'Seller not detected — check PDF'),inv.get('total',''),'Not analysed' if record.get('listing_only') else quantity_unit_summary(inv),state))
+                self.status.config(text=(f'{len(value)} PDFs listed. No AI calls or XML generation. Select PDFs or choose a client batch to analyse.' if kind=='listed' else scan_summary(value)))
                 if value:
                     selected=next((i for i,r in enumerate(value) if (r.get('digest'),r['client'])==preferred),
                                   next((i for i,r in enumerate(value) if r['errors']),0))
                     self.table.selection_set(str(selected));self.table.see(str(selected));self.details()
-                # Use the signature from before processing, so PDFs arriving
-                # during a run are noticed at the next stable scan.
-                snapshot=getattr(self,'ai_scan_snapshot',None)
-                if snapshot is not None:
-                    try:
-                        latest=self.watch_signature()
-                        if latest[:6]==snapshot[:6]:
-                            # Own cache/unit-estimate writes must not trigger a
-                            # second AI scan. A new PDF still changes part five.
-                            self.last=self.observed=latest
-                    except OSError:pass
-                    self.ai_scan_snapshot=None
         except queue.Empty:
             pass
         if self.closing and not self.busy:
@@ -399,7 +405,7 @@ class InvoiceApp:
             for company in companies:recover_legacy_lock(company)
         except (ValueError,OSError) as exc:
             messagebox.showerror('Processing lock',str(exc));return
-        self.reset();self.start()
+        self.reset();self.revalidate()
 
     def open_output(self):
         record = self.selected()
@@ -566,6 +572,9 @@ class InvoiceApp:
         record = self.selected()
         if self.busy or not record:
             return
+        if record.get('listing_only'):
+            messagebox.showinfo('Review','This PDF is waiting. Choose an AI action first; listing does not analyse it.')
+            return
         if not record.get('digest'):
             messagebox.showerror('Review','The PDF could not be read. Replace it with a readable copy.')
             return
@@ -636,6 +645,7 @@ class InvoiceApp:
             top.destroy()
             self.reset()
             self.auto.set(True)
+            self.revalidate()
         ttk.Button(buttons,text='Approve corrections and revalidate',command=approve).pack(side='left')
 
     def supplier_layout(self):
@@ -647,7 +657,7 @@ class InvoiceApp:
         def done(changed):
             self.auto.set(watching)
             if changed:
-                self.reset();self.start()
+                self.reset();self.revalidate()
         open_layout_editor(self.window,self.root,record,self.demo.get(),done)
 
 

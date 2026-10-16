@@ -151,7 +151,7 @@ def test_report_failure_does_not_discard_completed_xml(tmp_path,monkeypatch):
 
 
 @pytest.mark.parametrize('new_pdf',[False,True])
-def test_watch_acknowledges_own_metadata_but_preserves_new_pdf_trigger(monkeypatch,new_pdf):
+def test_watch_only_refreshes_listing_on_source_or_metadata_change(monkeypatch,new_pdf):
     import Invoice_Desktop as gui
     class Value:
         def __init__(self,value):self.value=value
@@ -163,21 +163,21 @@ def test_watch_acknowledges_own_metadata_but_preserves_new_pdf_trigger(monkeypat
         def config(self,**kwargs):pass
         def after(self,*args):pass
     app=gui.InvoiceApp.__new__(gui.InvoiceApp)
-    app.events=queue.Queue();app.events.put(('ok',[]));app.selected=lambda:None
+    app.events=queue.Queue();app.records=[];app.selected=lambda:None;app.busy=False
     app.status=Widget();app.table=Table();app.window=Widget();app.closing=False
-    app.auto=Value(False);app.refresh_clients=lambda:None
+    app.auto=Value(True);app.refresh_clients=lambda:None
     previous=(True,True,False,'All clients','old source','Groq','old metadata')
     latest=(True,True,False,'All clients','new source' if new_pdf else 'old source','Groq','new metadata')
-    app.last=previous;app.observed=previous;app.ai_scan_snapshot=previous
+    app.last=previous;app.observed=previous
     app.watch_signature=lambda:latest
-    app.tick()
-    assert app.ai_scan_snapshot is None
-    starts=[];app.start=lambda:starts.append(1);app.auto.value=True
+    from Common_Rules import ai_first
+    monkeypatch.setattr(ai_first,'run_ai_first',lambda *a,**kw:pytest.fail('Watcher must never invoke AI'))
+    starts=[];app.start=lambda:starts.append(1)
     app.tick();app.tick()
-    assert len(starts)==(1 if new_pdf else 0)
+    assert len(starts)==1
 
 
-def test_desktop_scan_dispatches_ai_first_flow(tmp_path,monkeypatch):
+def test_desktop_start_lists_only_without_ai_or_xml(tmp_path,monkeypatch):
     import Invoice_Desktop as gui
     from Common_Rules import ai_first
     class Value:
@@ -189,14 +189,11 @@ def test_desktop_scan_dispatches_ai_first_flow(tmp_path,monkeypatch):
         def __init__(self,target,**kwargs):self.target=target
         def start(self):self.target()
     app=gui.InvoiceApp.__new__(gui.InvoiceApp)
-    app.busy=False;app.root=tmp_path;app.status=Widget();app.events=queue.Queue()
+    app.busy=False;app.root=tmp_path;app.records=[];app.status=Widget();app.events=queue.Queue()
     app.demo=Value(True);app.auto_units=Value(True);app.summary_accounting=Value(False)
     app.client_scope=Value('Folder: Client');app.ai_primary=Value('Gemini');app.watch_signature=lambda:()
-    calls=[]
-    def run(root,demo,clients,units,summary,**kwargs):
-        calls.append((root,clients,kwargs['primary'],kwargs['stop_event']))
-        return [],dict(ai_read_invoices=0,approved_reviews_retained=0,local_or_review_fallbacks=0,xml_prepared=0)
-    monkeypatch.setattr(ai_first,'run_ai_first',run);monkeypatch.setattr(gui.threading,'Thread',ImmediateThread)
+    monkeypatch.setattr(ai_first,'run_ai_first',lambda *a,**kw:pytest.fail('Listing must not invoke AI'))
+    monkeypatch.setattr(desktop,'process_sources',lambda *a,**kw:pytest.fail('Listing must not create XML'))
+    monkeypatch.setattr(gui.threading,'Thread',ImmediateThread)
     app.start()
-    assert calls[0][1]==['Client'] and calls[0][2]=='Gemini'
-    assert app.events.get()[0]=='ok'
+    assert app.events.get()==('listed',[])

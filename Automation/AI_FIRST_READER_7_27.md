@@ -1,5 +1,10 @@
 # Desktop Reader 7.27: AI first, Python XML second
 
+Superseded by the user's explicit cost-control correction in Reader 7.28:
+startup/refresh/watching only list PDFs. AI-first processing applies only after
+the user chooses files/a client batch and confirms the request scope. See
+`MANUAL_AI_READER_7_28.md`. Do not restore automatic AI analysis.
+
 The desktop's normal Scan action and folder watcher now use this order:
 
 1. Python discovers source PDFs and prepares their text/OCR for the chosen AI.

@@ -89,18 +89,23 @@ def test_desktop_selected_button_dispatches_complete_xml_workflow(tmp_path,monke
         def start(self):self.target()
     app=gui.InvoiceApp.__new__(gui.InvoiceApp)
     app.selected=lambda:record;app.busy=False;app.root=tmp_path
+    app.records=[record]
+    class Table:
+        def selection(self):return ['0']
+    app.table=Table()
     app.demo=Value(True);app.auto_units=Value(True);app.summary_accounting=Value(False)
     app.auto=Value(True);app.status=Status();app.events=queue.Queue()
     prompts=[];calls=[]
     monkeypatch.setattr(gui.messagebox,'askyesno',lambda title,body:prompts.append(body) or True)
     monkeypatch.setattr(gui.threading,'Thread',ImmediateThread)
-    def dispatch(root,row,provider,demo,units,summary,**kwargs):
-        calls.append((row,provider,kwargs['stop_event']))
-        return [],[{**row,'output_path':'review-output','errors':[]}],[]
-    monkeypatch.setattr(desktop_ai,'selected_to_xml',dispatch)
+    def dispatch(root,rows,provider,demo,units,summary,**kwargs):
+        calls.append((rows[0],provider,kwargs['stop_event']))
+        return [{**rows[0],'output_path':'review-output','errors':[]}],dict(ai_read_invoices=1,
+            approved_reviews_retained=0,local_or_review_fallbacks=0,xml_prepared=1)
+    monkeypatch.setattr(desktop_ai,'analyse_paths',dispatch)
     app.read_gemini('Groq')
     assert calls[0][0] is record and calls[0][1]=='Groq'
-    assert 'At most one new AI attempt' in prompts[0] and 'fictional test data' in prompts[0]
+    assert 'At most 1 new AI attempts' in prompts[0] and 'fictional test data' in prompts[0]
     assert app.events.get()[0]=='ok'
 
 
