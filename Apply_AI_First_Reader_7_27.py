@@ -22,7 +22,14 @@ def import_method(source):
 
 def main():
     root = Path(__file__).resolve().parent
-    package = root/'Automation' if (root/'Automation/Common_Rules').is_dir() else root
+    # Prefer the app beside this installer: that is the documented launch path.
+    # A full-source ZIP may also leave a second, unrelated Automation checkout.
+    if (root/'Invoice_Desktop.py').is_file() and (root/'Common_Rules').is_dir():
+        package = root
+    elif (root/'Automation/Invoice_Desktop.py').is_file() and (root/'Automation/Common_Rules').is_dir():
+        package = root/'Automation'
+    else:
+        raise SystemExit('Save this installer beside Invoice_Desktop.py and Common_Rules.')
     if not (package/'Common_Rules').is_dir():
         raise SystemExit('Save this installer in the existing invoice reader source folder.')
     protected_names = ('tally_import.py','tally_units.py','unit_catalog.py','unit_inference.py',
@@ -30,6 +37,7 @@ def main():
     protected = {package/'Common_Rules'/name: (package/'Common_Rules'/name).read_bytes()
                  for name in protected_names if (package/'Common_Rules'/name).exists()}
     app = package/'Invoice_Desktop.py'
+    print('Updating desktop source: '+str(app), flush=True)
     if not app.is_file():
         raise SystemExit('Invoice_Desktop.py is missing; nothing changed.')
     locked_method = import_method(app.read_text(encoding='utf-8-sig'))
@@ -58,7 +66,8 @@ def main():
             raise SystemExit('Required reader source missing; nothing changed: '+str(path))
         pending.append((path, original, text.encode()))
     if not pending:
-        print('Desktop Reader 7.27 is already installed.')
+        print('Desktop Reader 7.27 is already installed at: '+str(app))
+        print('Launch this exact file with the reader virtual environment Python.')
         return
     backup = root/'.invoice_app/code_backups'/('ai_first_reader_727_'+datetime.now().strftime('%Y%m%d_%H%M%S_%f'))
     for path, original, raw in pending:
@@ -90,6 +99,7 @@ def main():
     print('Import ALL, UQC, XML writers and financial history unchanged.')
     print('Installation sent no AI requests or Tally imports and did not generate XML.')
     print('Restart the Python reader and check that the title says Reader 7.27.')
+    print('Updated file: '+str(app))
     print('Choose Automatic AI (default Groq), select your client, then use AI read and generate XML.')
     print('If you use an EXE, rebuild it on Windows; this updates Python source only.')
 
