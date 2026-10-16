@@ -93,5 +93,15 @@
       ],
       "existing_tally_data_renamed": false
     }
-  ]
+  ],
+  "freeze_reaffirmed": {
+    "on": "2026-10-16",
+    "source_commit": "6541b8531832b1fc1a3ebec5894e8721be5754cd",
+    "user_instruction": "NOW LOCK IT NO CHANGES SHOULD BE MADE",
+    "scope": "Entire current app, including the authorized plain-name patch, AI processing, manual review, XML, units/UQC, voucher numbering and Import ALL.",
+    "proposed_tally_numbering_check_authorized": false,
+    "proposed_tally_numbering_setting_changes_authorized": false,
+    "runtime_changes_made_for_this_lock": false,
+    "change_requires": "A later explicit user request authorizing a specific change. Earlier completed permissions are not standing permission for further edits."
+  }
 }

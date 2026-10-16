@@ -1,5 +1,22 @@
 # Invoice batch contract
 
+## Final freeze reaffirmed — latest user instruction, 16 October 2026
+
+"NOW LOCK IT NO CHANGES SHOULD BE MADE."
+
+Freeze the entire current implementation at commit
+`6541b8531832b1fc1a3ebec5894e8721be5754cd`, including the completed plain-name
+patch and both already-published desktop variants. Do not make further runtime,
+UI, AI, XML, unit/UQC, voucher-numbering, import, packaging or dependency changes
+without a later explicit request authorizing the specific change. Earlier
+completed change permissions do not authorize continued modifications.
+The proposed app check/automatic configuration of Tally voucher numbering was
+only discussed and is NOT authorized or implemented. Do not change Tally settings.
+Preserve existing lock fingerprints, recorded exceptions and customer data.
+This reaffirmation changes maintenance records only; no runtime update or user
+download is required. Older sections below are historical constraints, not open
+work items or permission to resume previously completed changes.
+
 ## Authorized name-only change — latest user instruction, 16 October 2026
 
 The user explicitly requested removal of generated `[batch ...]` suffixes from
