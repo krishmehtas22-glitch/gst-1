@@ -1,0 +1,275 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>All Masters</REPORTNAME>
+        <STATICVARIABLES />
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Sales" ACTION="Create">
+            <NAME>Sales</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Sales</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <PARENT>Sales Accounts</PARENT>
+            <OPENINGBALANCE>0</OPENINGBALANCE>
+            <AFFECTSSTOCK>Yes</AFFECTSSTOCK>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Invoice differences - review" ACTION="Create">
+            <NAME>Invoice differences - review</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Invoice differences - review</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <PARENT>Indirect Expenses</PARENT>
+            <OPENINGBALANCE>0</OPENINGBALANCE>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Customer 1 [batch deeedd2e]" ACTION="Create">
+            <NAME>Customer 1 [batch deeedd2e]</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Customer 1 [batch deeedd2e]</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <PARENT>Sundry Debtors</PARENT>
+            <OPENINGBALANCE>0</OPENINGBALANCE>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="CGST" ACTION="Create">
+            <NAME>CGST</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>CGST</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <PARENT>Duties &amp; Taxes</PARENT>
+            <OPENINGBALANCE>0</OPENINGBALANCE>
+            <TAXTYPE>GST</TAXTYPE>
+            <GSTDUTYHEAD>Central Tax</GSTDUTYHEAD>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="SGST" ACTION="Create">
+            <NAME>SGST</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>SGST</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <PARENT>Duties &amp; Taxes</PARENT>
+            <OPENINGBALANCE>0</OPENINGBALANCE>
+            <TAXTYPE>GST</TAXTYPE>
+            <GSTDUTYHEAD>State Tax</GSTDUTYHEAD>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Customer 2 [batch deeedd2e]" ACTION="Create">
+            <NAME>Customer 2 [batch deeedd2e]</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Customer 2 [batch deeedd2e]</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <PARENT>Sundry Debtors</PARENT>
+            <OPENINGBALANCE>0</OPENINGBALANCE>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Customer 3 [batch deeedd2e]" ACTION="Create">
+            <NAME>Customer 3 [batch deeedd2e]</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Customer 3 [batch deeedd2e]</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <PARENT>Sundry Debtors</PARENT>
+            <OPENINGBALANCE>0</OPENINGBALANCE>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="Steel storage rack 1 [batch e3f5280c1e]" ACTION="Create">
+            <NAME>Steel storage rack 1 [batch e3f5280c1e]</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Steel storage rack 1 [batch e3f5280c1e]</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <BASEUNITS>Nos</BASEUNITS>
+            <GSTAPPLICABLE>Applicable</GSTAPPLICABLE>
+            <GSTTYPEOFSUPPLY>Goods</GSTTYPEOFSUPPLY>
+            <GSTDETAILS.LIST>
+              <APPLICABLEFROM>20261002</APPLICABLEFROM>
+              <CALCULATIONTYPE>On Value</CALCULATIONTYPE>
+              <HSNCODE>9403</HSNCODE>
+              <TAXABILITY>Taxable</TAXABILITY>
+              <ISREVERSECHARGEAPPLICABLE>No</ISREVERSECHARGEAPPLICABLE>
+              <ISNONGSTGOODS>No</ISNONGSTGOODS>
+              <STATEWISEDETAILS.LIST>
+                <STATENAME>Any</STATENAME>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>Central Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>9</GSTRATE>
+                </RATEDETAILS.LIST>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>State Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>9</GSTRATE>
+                </RATEDETAILS.LIST>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>Integrated Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>0</GSTRATE>
+                </RATEDETAILS.LIST>
+              </STATEWISEDETAILS.LIST>
+            </GSTDETAILS.LIST>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="Office chair 1 [batch e3f5280c1e]" ACTION="Create">
+            <NAME>Office chair 1 [batch e3f5280c1e]</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Office chair 1 [batch e3f5280c1e]</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <BASEUNITS>Nos</BASEUNITS>
+            <GSTAPPLICABLE>Applicable</GSTAPPLICABLE>
+            <GSTTYPEOFSUPPLY>Goods</GSTTYPEOFSUPPLY>
+            <GSTDETAILS.LIST>
+              <APPLICABLEFROM>20261002</APPLICABLEFROM>
+              <CALCULATIONTYPE>On Value</CALCULATIONTYPE>
+              <HSNCODE>9403</HSNCODE>
+              <TAXABILITY>Taxable</TAXABILITY>
+              <ISREVERSECHARGEAPPLICABLE>No</ISREVERSECHARGEAPPLICABLE>
+              <ISNONGSTGOODS>No</ISNONGSTGOODS>
+              <STATEWISEDETAILS.LIST>
+                <STATENAME>Any</STATENAME>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>Central Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>9</GSTRATE>
+                </RATEDETAILS.LIST>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>State Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>9</GSTRATE>
+                </RATEDETAILS.LIST>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>Integrated Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>0</GSTRATE>
+                </RATEDETAILS.LIST>
+              </STATEWISEDETAILS.LIST>
+            </GSTDETAILS.LIST>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="Steel storage rack 2 [batch e3f5280c1e]" ACTION="Create">
+            <NAME>Steel storage rack 2 [batch e3f5280c1e]</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Steel storage rack 2 [batch e3f5280c1e]</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <BASEUNITS>Nos</BASEUNITS>
+            <GSTAPPLICABLE>Applicable</GSTAPPLICABLE>
+            <GSTTYPEOFSUPPLY>Goods</GSTTYPEOFSUPPLY>
+            <GSTDETAILS.LIST>
+              <APPLICABLEFROM>20261002</APPLICABLEFROM>
+              <CALCULATIONTYPE>On Value</CALCULATIONTYPE>
+              <HSNCODE>9403</HSNCODE>
+              <TAXABILITY>Taxable</TAXABILITY>
+              <ISREVERSECHARGEAPPLICABLE>No</ISREVERSECHARGEAPPLICABLE>
+              <ISNONGSTGOODS>No</ISNONGSTGOODS>
+              <STATEWISEDETAILS.LIST>
+                <STATENAME>Any</STATENAME>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>Central Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>9</GSTRATE>
+                </RATEDETAILS.LIST>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>State Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>9</GSTRATE>
+                </RATEDETAILS.LIST>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>Integrated Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>0</GSTRATE>
+                </RATEDETAILS.LIST>
+              </STATEWISEDETAILS.LIST>
+            </GSTDETAILS.LIST>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="Office chair 2 [batch e3f5280c1e]" ACTION="Create">
+            <NAME>Office chair 2 [batch e3f5280c1e]</NAME>
+            <LANGUAGENAME.LIST>
+              <NAME.LIST TYPE="String">
+                <NAME>Office chair 2 [batch e3f5280c1e]</NAME>
+              </NAME.LIST>
+              <LANGUAGEID>1033</LANGUAGEID>
+            </LANGUAGENAME.LIST>
+            <BASEUNITS>Nos</BASEUNITS>
+            <GSTAPPLICABLE>Applicable</GSTAPPLICABLE>
+            <GSTTYPEOFSUPPLY>Goods</GSTTYPEOFSUPPLY>
+            <GSTDETAILS.LIST>
+              <APPLICABLEFROM>20261002</APPLICABLEFROM>
+              <CALCULATIONTYPE>On Value</CALCULATIONTYPE>
+              <HSNCODE>9403</HSNCODE>
+              <TAXABILITY>Taxable</TAXABILITY>
+              <ISREVERSECHARGEAPPLICABLE>No</ISREVERSECHARGEAPPLICABLE>
+              <ISNONGSTGOODS>No</ISNONGSTGOODS>
+              <STATEWISEDETAILS.LIST>
+                <STATENAME>Any</STATENAME>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>Central Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>9</GSTRATE>
+                </RATEDETAILS.LIST>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>State Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>9</GSTRATE>
+                </RATEDETAILS.LIST>
+                <RATEDETAILS.LIST>
+                  <GSTRATEDUTYHEAD>Integrated Tax</GSTRATEDUTYHEAD>
+                  <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+                  <GSTRATE>0</GSTRATE>
+                </RATEDETAILS.LIST>
+              </STATEWISEDETAILS.LIST>
+            </GSTDETAILS.LIST>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

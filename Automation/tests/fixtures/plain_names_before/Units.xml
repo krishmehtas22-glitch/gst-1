@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>All Masters</REPORTNAME>
+        <STATICVARIABLES />
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <UNIT Action="Create">
+            <NAME>Nos</NAME>
+            <ISSIMPLEUNIT>Yes</ISSIMPLEUNIT>
+            <ORIGINALNAME>Number</ORIGINALNAME>
+            <DECIMALPLACES>0</DECIMALPLACES>
+            <GSTREPUOM>NOS-NUMBERS</GSTREPUOM>
+          </UNIT>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

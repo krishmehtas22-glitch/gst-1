@@ -1,0 +1,232 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES />
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER REMOTEID="e02255d2-fd98-5c6e-8b05-94f6aeb46621" VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
+            <DATE>20261002</DATE>
+            <EFFECTIVEDATE>20261002</EFFECTIVEDATE>
+            <GUID>e02255d2-fd98-5c6e-8b05-94f6aeb46621</GUID>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>TEST-1</VOUCHERNUMBER>
+            <REFERENCE>TEST-1</REFERENCE>
+            <PARTYLEDGERNAME>Customer 1 [batch deeedd2e]</PARTYLEDGERNAME>
+            <PARTYNAME>Customer 1</PARTYNAME>
+            <BASICBUYERNAME>Customer 1</BASICBUYERNAME>
+            <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
+            <ISINVOICE>Yes</ISINVOICE>
+            <ISOPTIONAL>No</ISOPTIONAL>
+            <ISCANCELLED>No</ISCANCELLED>
+            <PLACEOFSUPPLY>Maharashtra</PLACEOFSUPPLY>
+            <LEDGERENTRIES.LIST>
+              <LEDGERNAME>Customer 1 [batch deeedd2e]</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
+              <ISLASTDEEMEDPOSITIVE>Yes</ISLASTDEEMEDPOSITIVE>
+              <AMOUNT>-25960.00</AMOUNT>
+              <BILLALLOCATIONS.LIST>
+                <NAME>TEST-1</NAME>
+                <BILLTYPE>New Ref</BILLTYPE>
+                <AMOUNT>-25960.00</AMOUNT>
+              </BILLALLOCATIONS.LIST>
+            </LEDGERENTRIES.LIST>
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Steel storage rack 1 [batch e3f5280c1e]</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <ACTUALQTY>4 Nos</ACTUALQTY>
+              <BILLEDQTY>4 Nos</BILLEDQTY>
+              <AMOUNT>10000.00</AMOUNT>
+              <RATE>2500/Nos</RATE>
+              <BATCHALLOCATIONS.LIST>
+                <GODOWNNAME>Main Location</GODOWNNAME>
+                <BATCHNAME>Primary Batch</BATCHNAME>
+                <DESTINATIONGODOWNNAME>Main Location</DESTINATIONGODOWNNAME>
+                <AMOUNT>10000.00</AMOUNT>
+                <ACTUALQTY>4 Nos</ACTUALQTY>
+                <BILLEDQTY>4 Nos</BILLEDQTY>
+              </BATCHALLOCATIONS.LIST>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Sales</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>10000.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Office chair 1 [batch e3f5280c1e]</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <ACTUALQTY>3 Nos</ACTUALQTY>
+              <BILLEDQTY>3 Nos</BILLEDQTY>
+              <AMOUNT>12000.00</AMOUNT>
+              <RATE>4000/Nos</RATE>
+              <BATCHALLOCATIONS.LIST>
+                <GODOWNNAME>Main Location</GODOWNNAME>
+                <BATCHNAME>Primary Batch</BATCHNAME>
+                <DESTINATIONGODOWNNAME>Main Location</DESTINATIONGODOWNNAME>
+                <AMOUNT>12000.00</AMOUNT>
+                <ACTUALQTY>3 Nos</ACTUALQTY>
+                <BILLEDQTY>3 Nos</BILLEDQTY>
+              </BATCHALLOCATIONS.LIST>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Sales</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>12000.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+            <LEDGERENTRIES.LIST>
+              <LEDGERNAME>CGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>No</ISPARTYLEDGER>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <AMOUNT>1980.00</AMOUNT>
+            </LEDGERENTRIES.LIST>
+            <LEDGERENTRIES.LIST>
+              <LEDGERNAME>SGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>No</ISPARTYLEDGER>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <AMOUNT>1980.00</AMOUNT>
+            </LEDGERENTRIES.LIST>
+            <NARRATION>TEST DATA; Review in Tally; seller Western Trade Supplies; seller GSTIN INVALID; source /invoice-source/sale-1.pdf; Seller GSTIN missing/invalid; retained for Tally review</NARRATION>
+          </VOUCHER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER REMOTEID="e351230f-168c-522b-9b15-603532a23c01" VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
+            <DATE>20261002</DATE>
+            <EFFECTIVEDATE>20261002</EFFECTIVEDATE>
+            <GUID>e351230f-168c-522b-9b15-603532a23c01</GUID>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>TEST-2</VOUCHERNUMBER>
+            <REFERENCE>TEST-2</REFERENCE>
+            <PARTYLEDGERNAME>Customer 2 [batch deeedd2e]</PARTYLEDGERNAME>
+            <PARTYNAME>Customer 2</PARTYNAME>
+            <BASICBUYERNAME>Customer 2</BASICBUYERNAME>
+            <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
+            <ISINVOICE>Yes</ISINVOICE>
+            <ISOPTIONAL>No</ISOPTIONAL>
+            <ISCANCELLED>No</ISCANCELLED>
+            <PLACEOFSUPPLY>Maharashtra</PLACEOFSUPPLY>
+            <LEDGERENTRIES.LIST>
+              <LEDGERNAME>Customer 2 [batch deeedd2e]</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
+              <ISLASTDEEMEDPOSITIVE>Yes</ISLASTDEEMEDPOSITIVE>
+              <AMOUNT>-25960.00</AMOUNT>
+              <BILLALLOCATIONS.LIST>
+                <NAME>TEST-2</NAME>
+                <BILLTYPE>New Ref</BILLTYPE>
+                <AMOUNT>-25960.00</AMOUNT>
+              </BILLALLOCATIONS.LIST>
+            </LEDGERENTRIES.LIST>
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Steel storage rack 2 [batch e3f5280c1e]</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <ACTUALQTY>4 Nos</ACTUALQTY>
+              <BILLEDQTY>4 Nos</BILLEDQTY>
+              <AMOUNT>10000.00</AMOUNT>
+              <RATE>2500/Nos</RATE>
+              <BATCHALLOCATIONS.LIST>
+                <GODOWNNAME>Main Location</GODOWNNAME>
+                <BATCHNAME>Primary Batch</BATCHNAME>
+                <DESTINATIONGODOWNNAME>Main Location</DESTINATIONGODOWNNAME>
+                <AMOUNT>10000.00</AMOUNT>
+                <ACTUALQTY>4 Nos</ACTUALQTY>
+                <BILLEDQTY>4 Nos</BILLEDQTY>
+              </BATCHALLOCATIONS.LIST>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Sales</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>10000.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Office chair 2 [batch e3f5280c1e]</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <ACTUALQTY>3 Nos</ACTUALQTY>
+              <BILLEDQTY>3 Nos</BILLEDQTY>
+              <AMOUNT>12000.00</AMOUNT>
+              <RATE>4000/Nos</RATE>
+              <BATCHALLOCATIONS.LIST>
+                <GODOWNNAME>Main Location</GODOWNNAME>
+                <BATCHNAME>Primary Batch</BATCHNAME>
+                <DESTINATIONGODOWNNAME>Main Location</DESTINATIONGODOWNNAME>
+                <AMOUNT>12000.00</AMOUNT>
+                <ACTUALQTY>3 Nos</ACTUALQTY>
+                <BILLEDQTY>3 Nos</BILLEDQTY>
+              </BATCHALLOCATIONS.LIST>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Sales</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>12000.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+            <LEDGERENTRIES.LIST>
+              <LEDGERNAME>CGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>No</ISPARTYLEDGER>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <AMOUNT>1980.00</AMOUNT>
+            </LEDGERENTRIES.LIST>
+            <LEDGERENTRIES.LIST>
+              <LEDGERNAME>SGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>No</ISPARTYLEDGER>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <AMOUNT>1980.00</AMOUNT>
+            </LEDGERENTRIES.LIST>
+            <NARRATION>TEST DATA; Review in Tally; seller Western Trade Supplies; seller GSTIN INVALID; source /invoice-source/sale-2.pdf; Seller GSTIN missing/invalid; retained for Tally review</NARRATION>
+          </VOUCHER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER REMOTEID="8f116896-32d9-54e5-a7c4-996170f77e8c" VCHTYPE="Sales" ACTION="Create" OBJVIEW="Accounting Voucher View">
+            <DATE>20261002</DATE>
+            <EFFECTIVEDATE>20261002</EFFECTIVEDATE>
+            <GUID>8f116896-32d9-54e5-a7c4-996170f77e8c</GUID>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>TEST-3</VOUCHERNUMBER>
+            <REFERENCE>TEST-3</REFERENCE>
+            <PARTYLEDGERNAME>Customer 3 [batch deeedd2e]</PARTYLEDGERNAME>
+            <PARTYNAME>Customer 3</PARTYNAME>
+            <BASICBUYERNAME>Customer 3</BASICBUYERNAME>
+            <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
+            <ISINVOICE>No</ISINVOICE>
+            <ISOPTIONAL>No</ISOPTIONAL>
+            <ISCANCELLED>No</ISCANCELLED>
+            <PLACEOFSUPPLY>Maharashtra</PLACEOFSUPPLY>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Customer 3 [batch deeedd2e]</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
+              <ISLASTDEEMEDPOSITIVE>Yes</ISLASTDEEMEDPOSITIVE>
+              <AMOUNT>-22000.00</AMOUNT>
+              <BILLALLOCATIONS.LIST>
+                <NAME>TEST-3</NAME>
+                <BILLTYPE>New Ref</BILLTYPE>
+                <AMOUNT>-22000.00</AMOUNT>
+              </BILLALLOCATIONS.LIST>
+            </ALLLEDGERENTRIES.LIST>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Sales</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>No</ISPARTYLEDGER>
+              <ISLASTDEEMEDPOSITIVE>No</ISLASTDEEMEDPOSITIVE>
+              <AMOUNT>22000.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            <NARRATION>TEST DATA; Review in Tally; seller Western Trade Supplies; seller GSTIN INVALID; source /invoice-source/sale-3.pdf; Seller GSTIN missing/invalid; retained for Tally review; Accounting voucher: item inventory not posted; all extracted items retained in manifest</NARRATION>
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

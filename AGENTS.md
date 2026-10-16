@@ -1,5 +1,20 @@
 # Invoice batch contract
 
+## Authorized name-only change — latest user instruction, 16 October 2026
+
+The user explicitly requested removal of generated `[batch ...]` suffixes from
+party/stock names while keeping the correct output otherwise. This narrowly
+allows `tally_review_export.py` name selection and a `plain_master_names.py`
+helper. Update master names and all corresponding voucher/report references
+together. Use printed names for ordinary cases; incompatible same-name GSTIN,
+unit, HSN or tax variants must remain distinct using readable source details,
+never batch hashes. Preserve extracted fields, quantities, rates, amounts, GST,
+dates, voucher GUIDs, actual inventory batch/godown allocations, unit/UQC XML and
+Import ALL transport/button. Do not rename existing Tally masters automatically
+or alter old exports/caches/history. Preserve both desktop versions/UI unchanged.
+Record this exception separately in WORKING_READER_LOCK.json; do not replace the
+original stable fingerprints. All other parts remain frozen.
+
 ## Freeze working reader — latest user instruction, 16 October 2026
 
 The user selected **Lock current version** because the output is correct. The

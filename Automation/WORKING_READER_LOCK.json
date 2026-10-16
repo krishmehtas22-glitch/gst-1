@@ -73,5 +73,25 @@
     "note": "Already-published one-PDF button; backend files match the stable version. Preserve it without forcing an upgrade or rollback."
   },
   "runtime_updates_sent": false,
-  "live_tally_validation_claimed": false
+  "live_tally_validation_claimed": false,
+  "authorized_name_only_updates": [
+    {
+      "authorized_on": "2026-10-16",
+      "user_request": "Remove batch numbers from party and inventory names without changing other output.",
+      "files": {
+        "Automation/Common_Rules/tally_review_export.py": "820913dfe457eeaeb964ce7c5b991c33826faa2b454d186f30b7a9fac80e9943",
+        "Automation/Common_Rules/plain_master_names.py": "14926d2cfa6b1701f678153e86daa22d8cca45fee775bda72f61c90d8d0950ad"
+      },
+      "preserved": [
+        "AI extraction and caches",
+        "quantities, rates, amounts and GST",
+        "dates and voucher GUIDs",
+        "unit/UQC definitions",
+        "inventory batch/godown allocations",
+        "Import ALL and Tally transport",
+        "desktop versions, controls and explicit AI consent"
+      ],
+      "existing_tally_data_renamed": false
+    }
+  ]
 }

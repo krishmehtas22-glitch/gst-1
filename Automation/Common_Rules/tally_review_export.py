@@ -58,6 +58,8 @@ def export_all(root,records,demo):
                 run=Path(staging.name)
                 current=base/'current'
                 sellers=seller_groups(group,client)
+                from .plain_master_names import PlainMasterNames
+                names=PlainMasterNames(group,clean)
                 report=[];documents=[]
                 for index,(seller,seller_gstin,rows) in enumerate(sellers,1):
                     # Import into the company selected in Tally; seller is recorded in
@@ -68,8 +70,12 @@ def export_all(root,records,demo):
                     known={}
                     def ledger(name,parent,**extra):
                         key=('ledger',name)
-                        if key in known:return name
-                        known[key]=True
+                        definition=(parent,{tag:clean(value) for tag,value in extra.items()})
+                        if key in known:
+                            if known[key]!=definition:
+                                raise ValueError('Conflicting party/ledger details for '+name+'; review the names before export. Existing current XML retained.')
+                            return name
+                        known[key]=definition
                         node=ET.SubElement(message(md),'LEDGER',{'NAME':name,'ACTION':'Create'});display_name(node,name)
                         text(node,'PARENT',parent);text(node,'OPENINGBALANCE','0')
                         for tag,value in extra.items():text(node,tag,clean(value))
@@ -88,9 +94,8 @@ def export_all(root,records,demo):
                         if not inv.get('number'):notes.append('Invoice number missing; explicit UNREAD reference used')
                         buyer=clean(inv.get('buyer_name')) or 'Buyer unresolved - '+identity[:10]
                         gstin=clean(inv.get('buyer_gstin'))
-                        # Distinct GST/address variants do not rewrite existing party masters.
-                        party_sig=hashlib.sha256(json.dumps([gstin,inv.get('buyer_state'),inv.get('buyer_address')],sort_keys=True).encode()).hexdigest()[:8]
-                        party=buyer+' [batch '+party_sig+']'
+                        # Master and voucher references use the same printed party name.
+                        party=names.party(buyer,gstin,inv)
                         ledger(party,'Sundry Debtors',ISBILLWISEON='Yes',**({'PARTYGSTIN':gstin} if gstin else {}))
                         row_seller=clean(inv.get('seller_name') or inv.get('seller_name_candidate')) or 'Seller unresolved - '+client
                         row_seller_gstin=clean(inv.get('seller_gstin'))
@@ -142,8 +147,10 @@ def export_all(root,records,demo):
                                 rate=precise(item.get('rate'))
                                 if rate is None:rate=(value/quantity).quantize(Decimal('.000001'));notes.append('Item rate derived from value/quantity')
                                 if cents(rate*quantity)!=value:notes.append('Item quantity/rate/value mismatch retained for Tally review')
-                                sig=hashlib.sha256(json.dumps([unit,item.get('hsn'),*[item.get(t+'_rate') for t in ('cgst','sgst','igst')],inv.get('classification')],sort_keys=True).encode()).hexdigest()[:10]
-                                name=(clean(item.get('name')) or 'Item unresolved')+' [batch '+sig+']'
+                                sig=names.stock_identity(item,inv)
+                                name=names.stock(item,inv)
+                                if ('stock',name) in known and known[('stock',name)]!=sig:
+                                    raise ValueError('Conflicting stock details for '+name+'; review its unit/HSN/GST before export. Existing current XML retained.')
                                 if ('unit',unit) not in known:
                                     definition=UNITS.get(unit,{})
                                     uqc=definition.get('tally_uqc') or UQC.get(definition.get('uqc',unit).upper(),'OTH-OTHERS')
@@ -157,7 +164,7 @@ def export_all(root,records,demo):
                                     decimals=max(int(un.findtext('DECIMALPLACES')),max(0,-quantity.normalize().as_tuple().exponent))
                                     un.find('DECIMALPLACES').text=str(decimals)
                                 if ('stock',name) not in known:
-                                    known[('stock',name)]=True
+                                    known[('stock',name)]=sig
                                     stock=ET.SubElement(message(md),'STOCKITEM',{'NAME':name,'ACTION':'Create'});display_name(stock,name);text(stock,'BASEUNITS',unit)
                                     text(stock,'GSTAPPLICABLE','Applicable');text(stock,'GSTTYPEOFSUPPLY','Goods')
                                     gst_details(stock,{'hsn':clean(item.get('hsn')),'classification':inv['classification'],**{t+'_rate':str(precise(item[t+'_rate'])) for t in ('cgst','sgst','igst')}},date)
