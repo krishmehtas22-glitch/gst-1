@@ -1,0 +1,33 @@
+{
+  "approved_on": "2026-10-16",
+  "user_instruction": "Lock the approved design; verify PDF/JPEG support and fix only if needed without changing current PNG invoice processing.",
+  "reference_image": "UI_Concepts/BillSync_Professional_Upload_Preview.png",
+  "reference_commit": "8a7d33f100eea0e938d7c4c9c56d61d3d5a31249",
+  "reference_sha256": "c1169243db872059a1b94bfee6e36b51e9fe3f62b8d254d9499a3f100d39acf4",
+  "status": "Approved design reference; not yet applied to the running UI.",
+  "approved_layout": [
+    "Large document drag-and-drop area",
+    "Complete matching borders on all four status cards",
+    "Client dropdown with adjacent outlined New client button",
+    "Invoice processing and Tally/XML actions side by side",
+    "Full-width invoice table with no fixed details panel",
+    "Double-click to open invoice details and editing",
+    "Professional restrained colours, spacing and typography"
+  ],
+  "current_runtime": "BillSync UI 1.1 with locked Reader 7.30 processing",
+  "format_audit_baseline": {
+    "Automation/Document_Upload.py": "160d68558971760e74e169caf29de33dbe3b62aef85e5e1a6320efb47665835b",
+    "Automation/Invoice_Desktop.py": "d4fb06abed12ccb734ce291e948d7e83bd038fc79ba7aa31902779e653b5f51d",
+    "Automation/Common_Rules/groq_reader.py": "916a166d756070feb8032dc03172708aa08c4d23fc97c7ed44f643747eaf1576",
+    "Automation/Common_Rules/ocr.py": "10d4d9ad7ced966499fb02772b17470de4bcd95b63ea9c40ab4c9cdbe5a3b78c",
+    "Automation/Common_Rules/extraction.py": "cf7870fdec1a4e6cb0712e70fe0987cfce1a7bcb96a88c84e86fb1d640bdbea8",
+    "Automation/Common_Rules/tally_import.py": "aa0ac53f912f80b9cb14e82457ccc5bf674358d7c8d075bf78a0f1c08900810c"
+  },
+  "constraints": [
+    "Do not change the approved design without a later explicit user request.",
+    "Do not claim the design preview is installed in the current UI.",
+    "Preserve PNG conversion/processing, original image retention and duplicate handling.",
+    "Preserve AI prompts, output generation, units/UQC, master generation and Tally Import ALL.",
+    "Format verification must not send paid AI requests or import into Tally."
+  ]
+}

@@ -1,3 +1,14 @@
+# Approved design lock and document format audit — 16 October 2026
+
+The user approved and locked the latest professional upload design preview
+(reference 8a7d33f, recorded in Automation/APPROVED_UI_DESIGN_LOCK.json). This locks
+the design reference; the preview has not been applied to runtime UI. Do not
+claim otherwise or redesign it without later explicit authorization.
+The user authorizes checking PDF/JPG/JPEG support and necessary format-specific
+fixes only, preserving current PNG processing. Prefer actual upload/OCR/input
+verification. No paid AI requests or live Tally imports for this audit. Existing
+AI prompts, XML/accounting/master/unit handling and Import ALL remain locked.
+
 # Authorized UI refinement and incoming Tally snapshot — 16 October 2026
 
 The latest user explicitly requests smaller fonts, slightly rounded visible action
