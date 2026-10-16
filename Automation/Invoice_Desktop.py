@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.26'
+APP_VERSION='Reader 7.27'
 
 
 def quantity_unit_summary(invoice):
@@ -77,7 +77,7 @@ class InvoiceApp:
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
-        ttk.Button(actions,text='Scan and generate XML',command=self.start).pack(side='left')
+        ttk.Button(actions,text='AI read and generate XML',command=self.start).pack(side='left')
         ttk.Button(actions,text='Review selected invoice',command=self.review).pack(side='left',padx=8)
         ttk.Button(actions,text='Open client XML folder',command=self.open_output).pack(side='left')
         ttk.Button(actions,text='Import to Tally',command=self.import_tally).pack(side='left',padx=8)
@@ -92,6 +92,13 @@ class InvoiceApp:
         ttk.Button(api_buttons,text='Read client batch with Gemini → XML',command=self.read_gemini_batch).pack(side='left')
         ttk.Button(api_buttons,text='Read selected with Groq → XML',command=lambda:self.read_gemini('Groq')).pack(side='left',padx=8)
         ttk.Button(api_buttons,text='Read client batch with Groq → XML',command=lambda:self.read_gemini_batch('Groq')).pack(side='left')
+        from Common_Rules.ai_first import configured_primary
+        from Common_Rules.ai_providers import ACTIVE_PROVIDERS
+        self.ai_primary=tk.StringVar(value=configured_primary(self.root))
+        ttk.Label(api_buttons,text='Automatic AI:').pack(side='left',padx=(15,4))
+        primary_picker=ttk.Combobox(api_buttons,textvariable=self.ai_primary,values=ACTIVE_PROVIDERS,state='readonly',width=14)
+        primary_picker.pack(side='left')
+        primary_picker.bind('<<ComboboxSelected>>',lambda event:self.save_ai_provider())
         github_buttons=ttk.Frame(window,padding=(10,3));github_buttons.pack(fill='x')
         ttk.Button(github_buttons,text='Read selected with GitHub Models',command=lambda:self.read_gemini('GitHub Models')).pack(side='left')
         ttk.Button(github_buttons,text='Read client batch with GitHub Models → XML',command=lambda:self.read_gemini_batch('GitHub Models')).pack(side='left',padx=8)
@@ -192,6 +199,8 @@ class InvoiceApp:
         path = filedialog.askdirectory(initialdir=self.root)
         if path:
             self.root = Path(path)
+            from Common_Rules.ai_first import configured_primary
+            self.ai_primary.set(configured_primary(self.root))
             self.folder_label.config(text=path)
             self.records = []
             self.table.delete(*self.table.get_children())
@@ -199,17 +208,40 @@ class InvoiceApp:
             self.refresh_clients()
             self.reset()
 
+    def save_ai_provider(self):
+        from Common_Rules.ai_first import save_primary
+        try:
+            save_primary(self.root,self.ai_primary.get())
+            self.reset()
+        except (ValueError,OSError) as exc:
+            messagebox.showerror('Automatic AI',str(exc))
+
+    def watch_signature(self):
+        return (self.demo.get(),self.auto_units.get(),self.summary_accounting.get(),self.client_scope.get(),source_signature(self.root),self.ai_primary.get(),
+                tuple((str(p),p.stat().st_mtime_ns) for folder in ('reviews','supplier_layouts','document_settings','unit_estimates')
+                      for p in sorted((self.root/'.invoice_app'/folder).glob('*.json'))),
+                tuple(p.stat().st_mtime_ns for p in (self.root/'.invoice_app').glob('unit_preferences.json')))
+
     def start(self):
         if self.busy:
             return
         self.busy = True
-        self.status.config(text='Reading invoices and validating totals…')
+        try:self.ai_scan_snapshot=self.watch_signature()
+        except OSError:self.ai_scan_snapshot=None
+        self.ai_stop=threading.Event()
+        self.status.config(text='AI will read invoice details first; Python will then validate and prepare XML…')
         root, demo, auto_units, summary_accounting = self.root, self.demo.get(),self.auto_units.get(),self.summary_accounting.get()
         selected=self.client_scope.get()
         clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
+        primary=self.ai_primary.get()
+        stop_event=self.ai_stop
         def worker():
             try:
-                self.events.put(('ok',process_sources(root,demo,clients,auto_units,summary_accounting)))
+                from Common_Rules.ai_first import run_ai_first,summary_text
+                updated,summary=run_ai_first(root,demo,clients,auto_units,summary_accounting,
+                    primary=primary,progress=lambda message:self.events.put(('progress',message)),stop_event=stop_event)
+                self.events.put(('ok',updated))
+                self.events.put(('progress',summary_text(summary)))
             except Exception as exc:
                 self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
@@ -266,17 +298,12 @@ class InvoiceApp:
         stop_event=self.ai_stop
         def worker():
             try:
-                from Common_Rules.gemini_batch import run_batch_to_xml
-                from Common_Rules.tally_review_export import enable
-                enable(root,client)
-                results,updated,warnings=run_batch_to_xml(root,records,primary=provider,
-                    exporter=lambda:process_sources(root,demo,[client],units,summary),
+                from Common_Rules.ai_first import run_ai_first,summary_text
+                updated,report=run_ai_first(root,demo,[client],units,summary,primary=provider,
                     progress=lambda message:self.events.put(('progress',message)),
                     confirm_test=demo,stop_event=stop_event)
-                success=sum(r['status']=='extracted' for r in results)
                 self.events.put(('ok',updated))
-                label='AI stopped; XML prepared' if stop_event.is_set() or warnings else 'Batch complete'
-                self.events.put(('progress',f'{label}: {success}/{len(records)} confirmed AI reads; remaining sources use saved AI/local extraction; {sum(not r.get("errors") and bool(r.get("output_path")) for r in updated)} XML vouchers prepared. Open client XML folder for the latest files and Batch_Report.json. Review in Tally.'))
+                self.events.put(('progress',summary_text(report)))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
@@ -307,6 +334,16 @@ class InvoiceApp:
                     self.table.selection_set(str(selected));self.table.see(str(selected));self.details()
                 # Use the signature from before processing, so PDFs arriving
                 # during a run are noticed at the next stable scan.
+                snapshot=getattr(self,'ai_scan_snapshot',None)
+                if snapshot is not None:
+                    try:
+                        latest=self.watch_signature()
+                        if latest[:6]==snapshot[:6]:
+                            # Own cache/unit-estimate writes must not trigger a
+                            # second AI scan. A new PDF still changes part five.
+                            self.last=self.observed=latest
+                    except OSError:pass
+                    self.ai_scan_snapshot=None
         except queue.Empty:
             pass
         if self.closing and not self.busy:
@@ -315,10 +352,7 @@ class InvoiceApp:
         if self.auto.get() and not self.busy:
             self.refresh_clients()
             try:
-                signature = (self.demo.get(),self.auto_units.get(),self.summary_accounting.get(),self.client_scope.get(),source_signature(self.root),
-                             tuple((str(p),p.stat().st_mtime_ns) for folder in ('reviews','supplier_layouts','document_settings','unit_estimates')
-                                   for p in sorted((self.root/'.invoice_app'/folder).glob('*.json'))),
-                             tuple(p.stat().st_mtime_ns for p in (self.root/'.invoice_app').glob('unit_preferences.json')))
+                signature = self.watch_signature()
                 if signature == self.observed and signature != self.last:
                     self.last = signature
                     self.start()

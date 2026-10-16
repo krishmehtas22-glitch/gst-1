@@ -212,8 +212,16 @@ def save_review(root, record, invoice, resolve_warnings=True):
     remember_units(root,record,edited)
 
 
-def process_sources(root, demo=True, client_names=None, auto_units=True, summary_accounting=False):
+def process_sources(root, demo=True, client_names=None, auto_units=True, summary_accounting=False,
+                    reading_status=None):
     records = inspect_sources(root,client_names,demo,auto_units)
+    if reading_status:
+        for record in records:
+            status=reading_status.get((record['client'],record.get('digest'),record['path']))
+            if status:
+                record['ai_first_status']=status['status']
+                if status['status'] not in ('extracted','approved_review'):
+                    record['errors'].append('AI-first extraction was not completed for this PDF; Python/saved data retained for review. Status: '+status['status'])
     from .tally_review_export import enabled, export_all
     review_records=[r for r in records if enabled(root,r['client'])]
     if review_records:export_all(root,review_records,demo)

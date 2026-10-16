@@ -66,6 +66,14 @@ The user explicitly requires complete XML batches for review in Tally.
 - All future Cerebras, Gemini, Groq, or other AI batch integrations must use the complete
   batch workflow (`read_with_fallback`, then `process_sources` with the saved
   client batch policy). Never let API quota expiry discard successful reads.
+  Later explicit user instruction (16 October 2026): normal desktop Scan and
+  watched-folder processing must be AI first. Python prepares source text/OCR,
+  AI extracts invoice fields, then Python converts them through the existing XML
+  writers. For this desktop flow, complete the AI stage before invoking the XML
+  writer; durable AI caches replace the older starting/in-progress XML checkpoints.
+  Retain approved source reviews without another AI call. Clearly report local
+  fallback when AI cannot finish. This does not authorize changing Import ALL or
+  promoting the separate V3 prototype/teaching pipeline into production.
 - Switch to other configured active providers (GitHub Models, Groq, Gemini, OpenRouter free-only) for remaining sources; use local
   Python/OCR when configured APIs cannot finish. Do not enable billing, add
   paid providers, or request secrets in chat.

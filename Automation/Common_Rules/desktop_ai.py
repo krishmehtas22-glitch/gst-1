@@ -5,13 +5,14 @@ from pathlib import Path
 def selected_to_xml(root, record, provider, demo, auto_units, summary_accounting,
                     progress=lambda message: None, stop_event=None):
     from .source_documents import verify_source
-    from .gemini_batch import run_batch_to_xml
-    from .desktop import process_sources
+    from .ai_first import run_ai_first, token
     root = Path(root)
     verify_source(root, record)
     client = record['client']
     # Only this PDF can consume an AI attempt. Prepare the client's full current
     # XML from saved/local data, preserving other clients and human approvals.
-    return run_batch_to_xml(root, [record], primary=provider,
-        exporter=lambda: process_sources(root, demo, [client], auto_units, summary_accounting),
-        progress=progress, confirm_test=demo, stop_event=stop_event, max_new_requests=1)
+    updated, summary = run_ai_first(root, demo, [client], auto_units, summary_accounting,
+        primary=provider, progress=progress, stop_event=stop_event,
+        selected_source=token(record), confirm_test=demo)
+    selected = [r for r in summary['sources'] if token(r) == token(record)]
+    return selected, updated, summary['warnings']
