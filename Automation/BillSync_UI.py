@@ -140,7 +140,7 @@ class BillSyncApp(InvoiceApp):
         ActionButton(actions,text='View XML',command=self.view_xml).pack(side='left',padx=(0,8))
         ActionButton(actions,text='Open XML folder',command=self.open_output).pack(side='left')
         ttk.Label(tally,text='To Tally: Units → Masters → Sales vouchers     ·     From Tally: ledgers, inventory & units for review',style='Muted.TLabel').pack(anchor='w')
-        workspace=self.card(5);workspace.columnconfigure(0,weight=4);workspace.columnconfigure(1,weight=1)
+        workspace=self.card(5);workspace.columnconfigure(0,weight=4,uniform='workspace');workspace.columnconfigure(1,weight=1,uniform='workspace')
         tools=ttk.Frame(workspace,style='Card.TFrame');tools.grid(row=0,column=0,sticky='ew',pady=(0,8))
         ttk.Label(tools,text='Invoice workspace',style='Heading.TLabel').pack(side='left')
         ActionButton(tools,text='Refresh list',command=self.start).pack(side='right',padx=5)
