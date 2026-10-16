@@ -1,3 +1,14 @@
+# Authorized UI refinement and incoming Tally snapshot — 16 October 2026
+
+The latest user explicitly requests smaller fonts, slightly rounded visible action
+boxes, an improved client section, and Import masters from Tally including units.
+Implement incoming ledgers, stock items and units as a separate, read-only local
+snapshot with explicit source-company selection. Do not feed these snapshots into
+current extraction/master/unit generation yet. Preserve Invoice_Desktop.py and
+all Common_Rules bytes, inherited AI/XML/Import ALL methods, accounting defaults
+and no automatic AI calls. Keep original backup and add a code-only UI backup.
+Build/test the Windows artifact using the existing read-only workflow.
+
 # Invoice batch contract
 
 ## Authorized BillSync presentation / upload / EXE work — 16 October 2026

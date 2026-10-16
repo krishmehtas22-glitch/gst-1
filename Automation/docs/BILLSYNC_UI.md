@@ -22,7 +22,7 @@ contains its matching engine and runs beside the old installation.
 Build_Windows_EXE.bat builds and checks the Windows EXE locally if needed.
 
 UI / UPLOAD
-Choose a client or click +. Upload or drag PDF, PNG, JPG or JPEG invoices.
+Choose a client or click Add client. Upload or drag PDF, PNG, JPG or JPEG invoices.
 PDFs retain their bytes. Images are retained locally and embedded without crop
 into a deterministic one-page PDF for the existing reader. Original images are
 kept under .invoice_app/original_uploads. Matching client PDFs are reused; files
@@ -46,3 +46,17 @@ available through the table, complete invoice editor and activity-history window
 API credentials stay in the existing Windows user environment; none are bundled.
 The build self-test is offline, initializes OCR and tests actual Tk/drag-and-drop
 startup. No live AI extraction or Tally import is used by installation/building.
+
+INCOMING TALLY MASTERS (REVIEW COPY ONLY)
+Import masters from Tally opens a separate read-only window. Open the source
+company in local Tally and enable its HTTP/XML server on port 9000. Click Connect /
+refresh companies, choose the source company, then Import ledgers, items & units.
+All three collections must be read successfully before a snapshot is saved.
+Review Ledgers, Inventory items and Units tabs; select a row for returned details.
+Snapshots are separate JSON files under .invoice_app/tally_master_snapshots,
+grouped by source company. View saved snapshot opens a previous copy locally.
+These snapshots are NOT applied to extraction, master matching, unit mapping,
+XML generation or Import ALL yet. No AI requests or Tally writes are made by this
+feature. No Tally company settings are changed. Connection errors are shown.
+The original Tally import action still works exactly as before.
+Previous_UI_Backup.zip additionally preserves the UI before this refinement.

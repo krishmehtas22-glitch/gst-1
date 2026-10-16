@@ -54,7 +54,15 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         calls=[]
         monkeypatch.setattr(Invoice_Desktop.messagebox,'askyesno',lambda *a,**kw:False)
         monkeypatch.setattr(desktop_ai,'analyse_paths',lambda *a,**kw:calls.append(a))
-        app.analyse_one_pdf();assert not calls
+        from BillSync_Controls import ActionButton
+        def descendants(widget):
+            for child in widget.winfo_children():
+                yield child
+                yield from descendants(child)
+        buttons={widget.text:widget for widget in descendants(root) if isinstance(widget,ActionButton)}
+        assert buttons['Import all to Tally'].command.__func__ is Invoice_Desktop.InvoiceApp.import_tally
+        assert 'Import masters from Tally' in buttons and 'Add client' in buttons
+        buttons['Process this invoice'].invoke();assert not calls
         app.search.set('NO MATCH');root.update()
         assert not app.table.get_children() and not app.table.selection()
         assert len(app.records)==2
