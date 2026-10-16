@@ -15,6 +15,11 @@ The summary separates current `validation_review_required` from the experimental
 workflow's review policy, and reports retained human approvals. These checks do
 not certify full accuracy or authorize automatic import.
 
+V3.2 adds explicit supplier/layout teaching through `Teach_Invoice_Reader.py`.
+See `TEACHING.md` for interactive instructions, rule matching, disabling and
+replacement. Matched instructions guide new AI requests; successful caches and
+approved reviews remain unchanged. This feature is part of the separate workflow.
+
 Run using the existing reader virtual environment:
 
 ```bat

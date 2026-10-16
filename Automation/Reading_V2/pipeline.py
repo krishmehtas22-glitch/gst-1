@@ -113,7 +113,8 @@ def export_review_xml(output, documents):
 
 
 def run(paths, output, providers=(), maximum=0, xml=False, stop=lambda: False,
-        progress=print, transport=None, cache_root=None, structured=True, source_root=None):
+        progress=print, transport=None, cache_root=None, structured=True, source_root=None,
+        guidance_root=None):
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
     budget = Budget(maximum)
@@ -163,6 +164,16 @@ def run(paths, output, providers=(), maximum=0, xml=False, stop=lambda: False,
                                   structured_attachment=embedded['attachment_name'], checks=validate(merged))
                     result['warnings'].extend(embedded['warnings'])
             ai_status = 'not_requested'
+            from .teaching import match_guidance
+            try:
+                result['reading_guidance'] = match_guidance(result, guidance_root)
+            except (ValueError, OSError, KeyError, TypeError):
+                result['reading_guidance'] = {'status': 'invalid_library', 'rules': []}
+            guidance_status = result['reading_guidance']['status']
+            if guidance_status in {'invalid_library', 'ambiguous_rules', 'layout_changed_review'}:
+                result['warnings'].append('Saved reading guidance needs review: '+guidance_status+'. No rule was applied.')
+                result['review_required'] = True
+                result['validation_review_required'] = True
             # Quota/unknown failures stop the current run's AI calls, retaining
             # successful reads and processing later sources locally.
             for provider in providers:
@@ -172,19 +183,32 @@ def run(paths, output, providers=(), maximum=0, xml=False, stop=lambda: False,
                 if result.get('source_kind') == 'embedded_cii' and result['invoice'].get('items'):
                     ai_status = 'structured_invoice_used'
                     break
-                if not result['review_required'] and not result.get('legacy_fallback_fields'):
+                if (not result['review_required'] and not result.get('legacy_fallback_fields')
+                        and guidance_status != 'matched'):
                     ai_status = 'local_review_checks_passed'
                     break
+                attempts_before = budget.used
                 try:
                     response = assist(source, result, cache_root, budget,
                                       provider=provider, stop=stop, transport=transport)
                 except ValueError:
                     ai_status = 'evidence_or_configuration_rejected'
+                    if budget.used > attempts_before:
+                        result['reading_guidance_usage'] = {
+                            'status': 'request_attempted_no_accepted_result',
+                            'rule_ids': [r['id'] for r in result['reading_guidance']['rules']]}
                     continue
                 ai_status = response['status']
                 result = response['result']
+                if budget.used > attempts_before and ai_status not in {'cached', 'extracted'}:
+                    result['reading_guidance_usage'] = {
+                        'status': 'request_attempted_no_accepted_result',
+                        'rule_ids': [r['id'] for r in result['reading_guidance']['rules']]}
                 if ai_status in {'cached', 'extracted'} or budget.stopped:
                     break
+            if 'reading_guidance_usage' not in result:
+                result['reading_guidance_usage'] = {'status': 'not_sent_to_ai', 'rule_ids': [],
+                                                    'reason': ai_status}
             if ai_status not in {'not_requested', 'cached', 'extracted', 'local_review_checks_passed', 'structured_invoice_used', 'approved_review', 'selected_ai_cache'}:
                 result['warnings'].append('AI assistance status: '+ai_status+'; local reading retained.')
                 result['review_required'] = True
@@ -205,6 +229,10 @@ def run(paths, output, providers=(), maximum=0, xml=False, stop=lambda: False,
                    for d in documents),
                'source_verified_unit_metadata': sum(len(d['result'].get('unit_metadata_corrections', []))
                    for d in documents),
+               'matched_reading_guidance': sum(d['result']['reading_guidance']['status'] == 'matched'
+                   for d in documents),
+               'new_ai_reads_with_guidance': sum(d['result']['reading_guidance_usage']['status'] == 'used_for_new_request'
+                   and bool(d['result']['reading_guidance_usage']['rule_ids']) for d in documents),
                'ai_requests': budget.used, 'ai_request_limit': maximum,
                'ai_stopped': budget.stopped, 'active_app_changed': False,
                'ai_disabled_providers': sorted(budget.disabled),
@@ -225,6 +253,7 @@ def main():
     parser.add_argument('--ai-provider', choices=['Groq', 'Gemini'], action='append', default=[])
     parser.add_argument('--max-ai-requests', type=int, default=0)
     parser.add_argument('--text-only', action='store_true', help='Disable embedded CII reading for visual/text benchmark comparison.')
+    parser.add_argument('--guidance-root', type=Path, help='Optional folder containing the shared .invoice_app/reading_guidance.json library.')
     args = parser.parse_args()
     if not 0 <= args.max_ai_requests <= 50:
         parser.error('AI request budget must be between 0 and 50.')
@@ -238,12 +267,13 @@ def main():
     output = args.output or parent/'.invoice_app'/'reading_v3_runs'/datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     try:
         result = run(paths, output, args.ai_provider, args.max_ai_requests, args.xml,
-                     structured=not args.text_only, source_root=source_root)
+                     structured=not args.text_only, source_root=source_root, guidance_root=args.guidance_root)
     except KeyboardInterrupt:
         raise SystemExit('Stopped. Completed reports/caches remain on disk; no Tally import was sent.')
     print('Report: '+str(output.resolve()/'Workflow_Summary.json'))
     print(f'Read {result["read_pdfs"]}/{result["input_pdfs"]} PDFs; AI requests {result["ai_requests"]}. No Tally imports sent.')
     print(f'Current validation issues: {result["validation_review_required"]}; retained human approvals: {result["retained_human_approvals"]}; source-verified unit labels: {result["source_verified_unit_metadata"]}.')
+    print(f'Matched saved reading rules: {result["matched_reading_guidance"]}; new AI reads using them: {result["new_ai_reads_with_guidance"]}.')
     print('Separate experimental XML still requires review before import; financial accuracy is not certified.')
     if result['failed_pdfs']:
         raise SystemExit(1)
