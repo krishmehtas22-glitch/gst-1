@@ -1,5 +1,23 @@
 # Invoice batch contract
 
+## Freeze working reader — latest user instruction, 16 October 2026
+
+The user selected **Lock current version** because the output is correct. The
+confirmed screenshot shows Reader 7.29 (`bb29b1ef057cb14def34fb4377c435bad02d6e7c`).
+Preserve that release, including desktop controls, explicit AI consent, Groq
+prompts/extraction, caches, manual review/save, unit/UQC handling, all XML output,
+client isolation and Tally import. Do not change these for cleanup, new features,
+dependency upgrades or an inferred launch request. Only a later explicit user
+request authorizing the affected change may override this freeze.
+
+`Automation/WORKING_READER_LOCK.json` records the source fingerprints. The already
+published Reader 7.30 one-PDF UI variant is also recorded; its backend matches
+7.29. Preserve the current checkout and both release artifacts without forcing
+the user to upgrade or rolling back code. Do not silently regenerate fingerprints
+to hide changes. The earlier Import ALL lock still applies independently.
+Documentation/lock records may be maintained without changing runtime behavior.
+This is a maintenance contract, not an OS-level lock or a future-accuracy claim.
+
 ## Explicit single-PDF action — user correction, 16 October 2026
 
 Expose Analyse ONE PDF with Groq separately from selected-PDF/client batches.
