@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.29'
+APP_VERSION='Reader 7.30'
 
 
 def quantity_unit_summary(invoice):
@@ -86,6 +86,7 @@ class InvoiceApp:
         self.auto = tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Watch PDFs (list only)',variable=self.auto).pack(side='right')
         api_buttons=ttk.Frame(window,padding=(10,0));api_buttons.pack(fill='x')
+        ttk.Button(api_buttons,text='Analyse ONE PDF with Groq',command=self.analyse_one_pdf).pack(side='left',padx=(0,8))
         ttk.Button(api_buttons,text='Read client batch with Groq → XML',command=lambda:self.read_gemini_batch('Groq')).pack(side='left')
         ttk.Button(api_buttons,text='Stop AI processing',command=self.stop_ai).pack(side='left',padx=8)
         self.ai_primary=tk.StringVar(value='Groq')
@@ -243,17 +244,28 @@ class InvoiceApp:
     def read_gemini(self,provider='Groq'):
         self.analyse_selected(provider)
 
-    def analyse_selected(self,provider=None):
+    def analyse_one_pdf(self):
         if self.busy:return
-        records=[self.records[int(item)] for item in self.table.selection()]
+        selection=self.table.selection()
+        focused=self.table.focus()
+        target=focused if focused in selection else (selection[0] if len(selection)==1 else None)
+        if target is None:
+            messagebox.showinfo('Analyse ONE PDF','Click the single PDF you want to analyse, then use this button. No AI request was sent.')
+            return
+        self.analyse_selected('Groq',records=[self.records[int(target)]])
+
+    def analyse_selected(self,provider=None,records=None):
+        if self.busy:return
+        records=list(records) if records is not None else [self.records[int(item)] for item in self.table.selection()]
         if not records:
             messagebox.showinfo('Analyse PDFs','Select one or more PDFs. Use Ctrl/Shift or Ctrl+A to choose a batch.');return
         from Common_Rules.invoice_queue import source_path
         count=len({source_path(r) for r in records})
         provider=provider or self.ai_primary.get()
         demo=self.demo.get()
+        pdf_note=(' PDF: '+Path(next(iter({source_path(r) for r in records}))).name+'.') if count==1 else ''
         test_note=' Test invoices is enabled: continuing confirms only these selected PDFs as fictional test data.' if demo else ''
-        if not messagebox.askyesno(provider+' — analyse selected PDFs',f'Analyse exactly {count} selected PDFs with {provider}? At most {count} new AI attempts across configured providers; saved reads and approvals are reused. AI requests may use quota or credits. No other PDFs will receive new AI requests. Python then prepares client XML using retained/local data for the other invoices; uncertainties remain for review. No Tally import is sent.'+test_note):
+        if not messagebox.askyesno(provider+' — analyse selected PDFs',f'Analyse exactly {count} selected PDFs with {provider}? At most {count} new AI attempts across configured providers; saved reads and approvals are reused. AI requests may use quota or credits. No other PDFs will receive new AI requests. Python then prepares client XML using retained/local data for the other invoices; uncertainties remain for review. No Tally import is sent.'+pdf_note+test_note):
             return
         self.busy=True
         self.ai_stop=threading.Event()
@@ -267,7 +279,12 @@ class InvoiceApp:
                 updated,report=analyse_paths(root,records,provider,demo,units,summary,
                     progress=lambda message:self.events.put(('progress',message)),stop_event=stop_event)
                 self.events.put(('ok',updated))
-                self.events.put(('progress',summary_text(report)))
+                if count==1:
+                    message=(f'ONE PDF: {Path(next(iter({source_path(r) for r in records}))).name}. '
+                             f'{report.get("new_ai_attempts",0)} new AI attempts (maximum 1); saved reads/approvals are reused. '
+                             f'Other PDFs received no new AI requests. Python prepared {report["xml_prepared"]} client XML vouchers from saved/local data. No Tally import sent.')
+                else:message=summary_text(report)
+                self.events.put(('progress',message))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 

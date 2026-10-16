@@ -1,5 +1,15 @@
 # Invoice batch contract
 
+## Explicit single-PDF action — user correction, 16 October 2026
+
+Expose Analyse ONE PDF with Groq separately from selected-PDF/client batches.
+Use the focused row only when it is selected; otherwise require exactly one
+selected row. Never promote this action to all selected rows or the client.
+Confirm the source filename and a one-attempt cap before dispatch. Preserve the
+existing frozen-path/shared budget and cached/approved result reuse. Status must
+distinguish this action's new requests from complete-client XML voucher counts.
+Do not change Groq prompts/extraction, XML writers, UQC or the locked Import ALL.
+
 ## Desktop review controls — user instruction, 16 October 2026
 
 The desktop exposes Groq actions only. Remove Gemini, OpenRouter and GitHub
