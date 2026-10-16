@@ -1,5 +1,17 @@
 # Invoice batch contract
 
+## Desktop review controls — user instruction, 16 October 2026
+
+The desktop exposes Groq actions only. Remove Gemini, OpenRouter and GitHub
+controls, provider picker, Accept/change units, Recover processing lock and
+Confirm test PDF buttons. Keep their shared/backend code and extraction behavior
+unchanged. Double-click opens the existing invoice editor, including editable
+units/items. Save changes to XML persists the human review and regenerates only
+that client's complete XML locally, with no new AI request; preserve other clients
+and all AI caches. Test-data confirmation for a manual edit lives in this save
+action when Test invoices is enabled, with explicit wording in the editor.
+Keep startup/list-only behavior and the locked Import ALL/UQC/XML writers.
+
 ## Explicit AI control — user correction, 16 October 2026
 
 Startup, folder watching, refresh, choosing folders/clients and changing settings

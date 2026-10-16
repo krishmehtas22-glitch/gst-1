@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.28'
+APP_VERSION='Reader 7.29'
 
 
 def quantity_unit_summary(invoice):
@@ -70,10 +70,6 @@ class InvoiceApp:
         self.client_picker.bind('<<ComboboxSelected>>',lambda event:self.reset())
         ttk.Button(scope,text='Re-read selected PDFs',command=self.reread).pack(side='left')
         ttk.Button(scope,text='Save supplier layout',command=self.supplier_layout).pack(side='left',padx=8)
-        ttk.Button(scope,text='Confirm test PDF',command=self.confirm_test).pack(side='left')
-        ttk.Button(scope,text='Accept / change units',command=self.units).pack(side='left',padx=8)
-        ttk.Button(scope,text='Recover processing lock',command=self.recover_lock).pack(side='left')
-        ttk.Button(scope,text='Read selected with Gemini',command=self.read_gemini).pack(side='left',padx=8)
         self.refresh_clients()
         actions = ttk.Frame(window,padding=10)
         actions.pack(fill='x')
@@ -90,24 +86,10 @@ class InvoiceApp:
         self.auto = tk.BooleanVar(value=True)
         ttk.Checkbutton(actions,text='Watch PDFs (list only)',variable=self.auto).pack(side='right')
         api_buttons=ttk.Frame(window,padding=(10,0));api_buttons.pack(fill='x')
-        ttk.Button(api_buttons,text='Read client batch with Gemini → XML',command=self.read_gemini_batch).pack(side='left')
-        ttk.Button(api_buttons,text='Read selected with Groq → XML',command=lambda:self.read_gemini('Groq')).pack(side='left',padx=8)
         ttk.Button(api_buttons,text='Read client batch with Groq → XML',command=lambda:self.read_gemini_batch('Groq')).pack(side='left')
-        from Common_Rules.ai_first import configured_primary
-        from Common_Rules.ai_providers import ACTIVE_PROVIDERS
-        self.ai_primary=tk.StringVar(value=configured_primary(self.root))
-        ttk.Label(api_buttons,text='AI provider:').pack(side='left',padx=(15,4))
-        primary_picker=ttk.Combobox(api_buttons,textvariable=self.ai_primary,values=ACTIVE_PROVIDERS,state='readonly',width=14)
-        primary_picker.pack(side='left')
-        primary_picker.bind('<<ComboboxSelected>>',lambda event:self.save_ai_provider())
-        github_buttons=ttk.Frame(window,padding=(10,3));github_buttons.pack(fill='x')
-        ttk.Button(github_buttons,text='Read selected with GitHub Models',command=lambda:self.read_gemini('GitHub Models')).pack(side='left')
-        ttk.Button(github_buttons,text='Read client batch with GitHub Models → XML',command=lambda:self.read_gemini_batch('GitHub Models')).pack(side='left',padx=8)
-        ttk.Button(github_buttons,text='Stop AI processing',command=self.stop_ai).pack(side='left')
-        router_buttons=ttk.Frame(window,padding=(10,3));router_buttons.pack(fill='x')
-        ttk.Button(router_buttons,text='Read selected with OpenRouter (free)',command=lambda:self.read_gemini('OpenRouter')).pack(side='left')
-        ttk.Button(router_buttons,text='Read client batch with OpenRouter (free) → XML',command=lambda:self.read_gemini_batch('OpenRouter')).pack(side='left',padx=8)
-        ttk.Label(window,text='Units marked estimated can be changed in Check / change units. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
+        ttk.Button(api_buttons,text='Stop AI processing',command=self.stop_ai).pack(side='left',padx=8)
+        self.ai_primary=tk.StringVar(value='Groq')
+        ttk.Label(window,text='Double-click an invoice to edit its fields/items/units, then Save changes to XML. For real invoices, untick Test invoices.').pack(anchor='w',padx=10)
         ttk.Label(window,text='Complete batch import order: 1 Units.xml → 2 Masters.xml → 3 Sales_Vouchers.xml, in the SAME Tally company.').pack(anchor='w',padx=10)
         self.status = ttk.Label(window,text='PDF listing only. AI runs only after you select files or a client batch and confirm.',padding=10,wraplength=1250)
         self.status.pack(fill='x')
@@ -201,8 +183,7 @@ class InvoiceApp:
         path = filedialog.askdirectory(initialdir=self.root)
         if path:
             self.root = Path(path)
-            from Common_Rules.ai_first import configured_primary
-            self.ai_primary.set(configured_primary(self.root))
+            self.ai_primary.set('Groq')
             self.folder_label.config(text=path)
             self.records = []
             self.table.delete(*self.table.get_children())
@@ -240,16 +221,17 @@ class InvoiceApp:
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
-    def revalidate(self):
+    def revalidate(self, client_names=None):
         """Explicit manual corrections may revalidate locally, without AI."""
         if self.busy:return
         self.busy=True
         root, demo, auto_units, summary_accounting = self.root, self.demo.get(),self.auto_units.get(),self.summary_accounting.get()
         selected=self.client_scope.get()
-        clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
+        clients=client_names if client_names is not None else (None if selected=='All clients' else [selected.removeprefix('Folder: ')])
+        retained=[r for r in self.records if client_names is not None and r['client'] not in client_names]
         def worker():
             try:
-                self.events.put(('ok',process_sources(root,demo,clients,auto_units,summary_accounting)))
+                self.events.put(('ok',retained+process_sources(root,demo,clients,auto_units,summary_accounting)))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
@@ -258,7 +240,7 @@ class InvoiceApp:
             self.ai_stop.set()
             self.status.config(text='Stopping AI: an active request may finish; completed reads are retained and XML will be prepared. No further provider will start.')
 
-    def read_gemini(self,provider='Gemini'):
+    def read_gemini(self,provider='Groq'):
         self.analyse_selected(provider)
 
     def analyse_selected(self,provider=None):
@@ -289,7 +271,7 @@ class InvoiceApp:
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
-    def read_gemini_batch(self,provider='Gemini'):
+    def read_gemini_batch(self,provider='Groq'):
         if self.busy:return
         selected=self.client_scope.get()
         if selected=='All clients':
@@ -568,19 +550,55 @@ class InvoiceApp:
         except OSError as exc:
             messagebox.showerror('PDF',str(exc))
 
+    def save_manual_edits(self, record, edited):
+        """Save the human review and regenerate this client's XML locally."""
+        save_review(self.root,record,edited)
+        if self.demo.get():
+            confirm_test_document(self.root,record)
+        from Common_Rules.tally_review_export import enable
+        enable(self.root,record['client'])
+        self.reset()
+        self.revalidate(client_names=[record['client']])
+
+    def prepare_manual_review(self, record):
+        """An explicit double-click may load saved/local fields, never call AI."""
+        if not record.get('listing_only'):
+            return record
+        from Common_Rules.desktop import inspect_sources
+        from Common_Rules.invoice_queue import source_path
+        matching=[r for r in inspect_sources(self.root,[record['client']],self.demo.get(),self.auto_units.get())
+                  if source_path(r)==source_path(record)]
+        if not matching:
+            raise ValueError('This PDF changed or disappeared. Refresh the invoice list.')
+        for row in matching:
+            row['listing_signature']=record.get('listing_signature')
+        if len(matching)==1:
+            return matching[0]
+        # Independent invoice pages must keep their own source identity/review.
+        retained=[r for r in self.records if source_path(r)!=source_path(record)]
+        self.events.put(('ok',retained+matching))
+        messagebox.showinfo('Review','This PDF contains multiple invoices. Double-click the invoice/page you want to edit. No AI request was sent.')
+        return None
+
     def review(self):
         record = self.selected()
         if self.busy or not record:
             return
-        if record.get('listing_only'):
-            messagebox.showinfo('Review','This PDF is waiting. Choose an AI action first; listing does not analyse it.')
-            return
+        try:
+            record=self.prepare_manual_review(record)
+        except (ValueError,OSError) as exc:
+            messagebox.showerror('Review',str(exc));return
+        if record is None:return
         if not record.get('digest'):
             messagebox.showerror('Review','The PDF could not be read. Replace it with a readable copy.')
             return
-        self.auto.set(False)
+        watching=self.auto.get();self.auto.set(False)
         top = tk.Toplevel(self.window)
         top.title('Review invoice against the original PDF')
+        def close_review():
+            self.auto.set(watching)
+            top.destroy()
+        top.protocol('WM_DELETE_WINDOW',close_review)
         top.geometry('1100x750')
         canvas = tk.Canvas(top)
         scroll = ttk.Scrollbar(top,orient='vertical',command=canvas.yview)
@@ -638,15 +656,15 @@ class InvoiceApp:
             edited.update({field:var.get().strip() for field,var in values.items()})
             edited['items'] = [{**old,**{field:var.get().strip() for field,var in variables.items()}} for old,variables,_ in item_values]
             try:
-                save_review(self.root,record,edited)
+                self.save_manual_edits(record,edited)
             except (ValueError,OSError) as exc:
                 messagebox.showerror('Review',str(exc),parent=top)
                 return
             top.destroy()
-            self.reset()
-            self.auto.set(True)
-            self.revalidate()
-        ttk.Button(buttons,text='Approve corrections and revalidate',command=approve).pack(side='left')
+            self.auto.set(watching)
+        if self.demo.get():
+            ttk.Label(form,text='Test invoices is enabled: saving confirms this PDF contains fictional test data.').grid(row=base+2,column=0,columnspan=4,sticky='w')
+        ttk.Button(buttons,text='Save changes to XML',command=approve).pack(side='left')
 
     def supplier_layout(self):
         record=self.selected()
