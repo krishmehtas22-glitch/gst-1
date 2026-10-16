@@ -145,6 +145,7 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                 except Exception as exc:
                     record['errors'].append(f'PDF extraction failed: {exc}')
                 from .api_selection import candidate
+                local_invoice = deepcopy(record['invoice'])
                 api_candidate=candidate(root,record)
                 if api_candidate is not None:
                     from .invoice_identity import recover_missing_identity
@@ -174,6 +175,8 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                 if declared_test:
                     record['invoice']={**record['invoice'],'dummy_document':True,'test_data_confirmed':True}
                 normalize_basic_fields(record['invoice'],record['invoice'].setdefault('extraction_warnings',[]))
+                from .printed_unit_evidence import verify_printed_units
+                verify_printed_units(record, local_invoice)
                 resolver.apply(record)
                 from .invoice_dates import recover_date
                 recover_date(root,record)

@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.25'
+APP_VERSION='Reader 7.26'
 
 
 def quantity_unit_summary(invoice):
@@ -90,7 +90,7 @@ class InvoiceApp:
         ttk.Checkbutton(actions,text='Watch for new PDFs',variable=self.auto).pack(side='right')
         api_buttons=ttk.Frame(window,padding=(10,0));api_buttons.pack(fill='x')
         ttk.Button(api_buttons,text='Read client batch with Gemini → XML',command=self.read_gemini_batch).pack(side='left')
-        ttk.Button(api_buttons,text='Read selected with Groq',command=lambda:self.read_gemini('Groq')).pack(side='left',padx=8)
+        ttk.Button(api_buttons,text='Read selected with Groq → XML',command=lambda:self.read_gemini('Groq')).pack(side='left',padx=8)
         ttk.Button(api_buttons,text='Read client batch with Groq → XML',command=lambda:self.read_gemini_batch('Groq')).pack(side='left')
         github_buttons=ttk.Frame(window,padding=(10,3));github_buttons.pack(fill='x')
         ttk.Button(github_buttons,text='Read selected with GitHub Models',command=lambda:self.read_gemini('GitHub Models')).pack(side='left')
@@ -225,18 +225,24 @@ class InvoiceApp:
         if not record.get('digest'):
             messagebox.showerror(provider,'Replace the unreadable PDF before requesting API extraction.');return
         upload='PDF text (local OCR for scans) to '+provider
-        if not messagebox.askyesno(provider+' extraction',f'Send this selected {upload}? API quota and data-use terms apply. The result will need verification in Review. Cached results are reused.'):
+        demo=self.demo.get()
+        test_note=' Test invoices is enabled: continuing confirms this selected PDF is fictional test data.' if demo else ''
+        if not messagebox.askyesno(provider+' extraction → XML',f'Read this selected {upload} and prepare complete XML for its client? At most one new AI attempt across configured providers; successful saved reads and human approvals are reused. Other client invoices use saved/local data. Units, masters and sales vouchers are prepared with unresolved details retained for review in Tally. This does not import into Tally or approve invoice values. API quota and data-use terms apply.'+test_note):
             return
         self.auto.set(False);self.busy=True
         self.ai_stop=threading.Event()
-        self.status.config(text='Reading selected PDF with '+provider+'…')
+        self.status.config(text='Reading selected PDF with '+provider+' and preparing complete client XML…')
         root=self.root;demo=self.demo.get();units=self.auto_units.get();summary=self.summary_accounting.get()
-        selected=self.client_scope.get();clients=None if selected=='All clients' else [selected.removeprefix('Folder: ')]
+        stop_event=self.ai_stop
         def worker():
             try:
-                from Common_Rules.ai_providers import reader
-                reader(provider).extract_selected(root,record)
-                self.events.put(('ok',process_sources(root,demo,clients,units,summary)))
+                from Common_Rules.desktop_ai import selected_to_xml
+                results,updated,warnings=selected_to_xml(root,record,provider,demo,units,summary,
+                    progress=lambda message:self.events.put(('progress',message)),stop_event=stop_event)
+                self.events.put(('ok',updated))
+                count=sum(bool(r.get('output_path')) and not r.get('errors') for r in updated)
+                self.events.put(('progress',f'{count} client XML vouchers prepared using saved AI/local data. Review warnings in Batch_Report.json. No Tally import sent.'+
+                    (' Some AI/checkpoint steps need attention; saved results were retained.' if warnings else '')))
             except Exception as exc:self.events.put(('error',str(exc)))
         threading.Thread(target=worker,daemon=True).start()
 
