@@ -19,7 +19,19 @@ def self_test(destination):
                           'EngineConfig.onnxruntime.inter_op_num_threads':1,
                           'Global.log_level':'error'})
     for provider in ACTIVE_PROVIDERS:reader(provider)
-    result={'version':Invoice_Desktop.APP_VERSION,'frozen':bool(getattr(sys,'frozen',False)),
+    import tempfile
+    from tkinterdnd2 import TkinterDnD
+    from BillSync_UI import BillSyncApp,UI_VERSION
+    callbacks=[]
+    window=TkinterDnD.Tk();window.withdraw()
+    window.report_callback_exception=lambda *args:callbacks.append(str(args[1]))
+    with tempfile.TemporaryDirectory() as directory:
+        app=BillSyncApp(window,data_root=Path(directory))
+        window.update()
+        ui_initialized=app.drop_supported
+        window.destroy()
+    if callbacks or not ui_initialized:raise RuntimeError('BillSync UI self-test failed: '+str(callbacks))
+    result={'ui_version':UI_VERSION,'ui_initialized':ui_initialized,'drag_drop_available':app.drop_supported,'version':Invoice_Desktop.APP_VERSION,'frozen':bool(getattr(sys,'frozen',False)),
             'data_root':str(default_data_root(Invoice_Desktop.__file__)),
             'parser_revision':PARSER_REVISION,'ocr_initialized':engine is not None,
             'providers':list(ACTIVE_PROVIDERS)}
@@ -29,9 +41,12 @@ def self_test(destination):
 def main():
     if len(sys.argv)==3 and sys.argv[1]=='--self-test':
         self_test(sys.argv[2]);return
-    import tkinter as tk
-    from Invoice_Desktop import InvoiceApp
-    window=tk.Tk();InvoiceApp(window);window.mainloop()
+    from BillSync_UI import launch
+    data_root=None
+    if len(sys.argv)==3 and sys.argv[1]=='--data-root':
+        data_root=Path(sys.argv[2]).resolve()
+        if not data_root.is_dir():raise ValueError('Invoice storage folder does not exist')
+    launch(data_root=data_root)
 
 
 if __name__=='__main__':

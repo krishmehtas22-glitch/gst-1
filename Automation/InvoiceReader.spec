@@ -6,7 +6,7 @@ root=Path(SPECPATH)
 datas=[(str(p),'Common_Rules') for p in sorted((root/'Common_Rules').glob('*.py'))]
 binaries=[]
 hiddenimports=collect_submodules('Common_Rules')
-for package in ('rapidocr','onnxruntime','pypdfium2','pypdfium2_raw'):
+for package in ('rapidocr','onnxruntime','pypdfium2','pypdfium2_raw','tkinterdnd2'):
     package_data,package_binaries,package_imports=collect_all(package)
     datas+=package_data;binaries+=package_binaries;hiddenimports+=package_imports
 

@@ -103,5 +103,14 @@
     "proposed_tally_numbering_setting_changes_authorized": false,
     "runtime_changes_made_for_this_lock": false,
     "change_requires": "A later explicit user request authorizing a specific change. Earlier completed permissions are not standing permission for further edits."
+  },
+  "authorized_ui_update": {
+    "authorized_on": "2026-10-16",
+    "scope": "Separate BillSync presentation, local document upload and Windows EXE packaging with original backup",
+    "original_reader_unchanged": true,
+    "all_common_rules_unchanged": true,
+    "backup": "Backups/Reader_Before_BillSync_UI.zip",
+    "accounting_default_changed": false,
+    "workflow_permission_expansion_authorized": false
   }
 }

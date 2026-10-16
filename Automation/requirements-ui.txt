@@ -1,0 +1,4 @@
+# Presentation and local image-to-PDF intake only; engine dependencies unchanged.
+tkinterdnd2==0.4.3
+Pillow==12.3.0
+reportlab==4.4.4

@@ -18,7 +18,7 @@ if not exist "dist\InvoiceReader\Build_Check.json" goto failed
 echo.
 echo Ready: "%CD%\dist\InvoiceReader\InvoiceReader.exe"
 echo Keep the whole InvoiceReader folder, including _internal.
-echo Double-click InvoiceReader.exe, then Choose invoice parent folder to use your existing invoices.
+echo Double-click InvoiceReader.exe, and upload invoices for the selected client. Existing storage can be selected in Settings.
 echo Python is not needed to run the finished app. API keys stay in Windows user environment variables.
 explorer "%CD%\dist\InvoiceReader"
 pause

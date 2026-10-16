@@ -1,5 +1,22 @@
 # Invoice batch contract
 
+## Authorized BillSync presentation / upload / EXE work — 16 October 2026
+
+The user explicitly approved the supplied UI concepts and requested an EXE with
+only those changes, unchanged processing/output and a backup. Add a separate
+BillSync_UI subclass over the original InvoiceApp and a local Document_Upload
+adapter for PDF/PNG/JPEG. Preserve Invoice_Desktop.py and every Common_Rules file
+byte-for-byte, including the complete Import ALL method/dispatch and source
+revision. Inherit AI/review/XML/import actions without replacements. Uploads and
+listing send no AI/XML/Tally requests. Preserve PDF bytes, original images,
+duplicate detection, client isolation, caches/history and all financial values.
+Hide Summary GST accounting without forcing a new default/mode. Keep technical
+storage under Settings, no Advanced button. Keep the original source launcher,
+provide a code backup and build the EXE on Windows with an offline frozen smoke
+check. Packaging/new UI dependencies and the existing read-only artifact workflow
+may change; do not expand workflow permissions or publish releases without
+specific authorization. Earlier freezes remain for all processing behavior.
+
 ## Final freeze reaffirmed — latest user instruction, 16 October 2026
 
 "NOW LOCK IT NO CHANGES SHOULD BE MADE."
