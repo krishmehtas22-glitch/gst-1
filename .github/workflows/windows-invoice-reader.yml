@@ -11,6 +11,7 @@ on:
       - 'Automation/Invoice_Desktop.py'
       - 'Automation/BillSync_UI.py'
       - 'Automation/Document_Upload.py'
+      - 'Automation/Run_Windows_Checks.py'
       - 'Automation/requirements-ui.txt'
       - '.github/workflows/windows-invoice-reader.yml'
 permissions:
@@ -31,24 +32,7 @@ jobs:
       - name: Install build and verification dependencies
         run: python -m pip install -r Automation/requirements-build.txt -r Automation/requirements-dev.txt
       - name: Verify unchanged output and executable paths
-        shell: pwsh
-        run: |
-          python -m pytest Automation/tests/test_windows_packaging.py Automation/tests/test_document_upload.py Automation/tests/test_billsync_ui.py Automation/tests/test_complete_batch_output.py Automation/tests/test_tally_direct_import.py Automation/tests/test_large_ai_batch.py Automation/tests/test_openrouter_reader.py Automation/tests/test_shared_groq_reading.py Automation/tests/test_ai_identity_fallback.py Automation/tests/test_tally_unit_reuse.py -q --junitxml=Windows_Tests.xml
-          $result = $LASTEXITCODE
-          if ($result -ne 0 -and (Test-Path Windows_Tests.xml)) {
-            '## Windows regression diagnostics' | Out-File $env:GITHUB_STEP_SUMMARY -Append
-            [xml]$tests = Get-Content Windows_Tests.xml -Raw
-            foreach ($case in $tests.testsuites.testsuite.testcase) {
-              if ($case.failure) {
-                ('### ' + $case.name) | Out-File $env:GITHUB_STEP_SUMMARY -Append
-                '```text' | Out-File $env:GITHUB_STEP_SUMMARY -Append
-                $detail = $case.failure.InnerText
-                $detail.Substring(0, [Math]::Min(6000, $detail.Length)) | Out-File $env:GITHUB_STEP_SUMMARY -Append
-                '```' | Out-File $env:GITHUB_STEP_SUMMARY -Append
-              }
-            }
-          }
-          exit $result
+        run: python Automation/Run_Windows_Checks.py Automation/tests/test_windows_packaging.py Automation/tests/test_document_upload.py Automation/tests/test_billsync_ui.py Automation/tests/test_complete_batch_output.py Automation/tests/test_tally_direct_import.py Automation/tests/test_large_ai_batch.py Automation/tests/test_openrouter_reader.py Automation/tests/test_shared_groq_reading.py Automation/tests/test_ai_identity_fallback.py Automation/tests/test_tally_unit_reuse.py -q
       - name: Build Windows executable
         working-directory: Automation
         run: python -m PyInstaller --noconfirm --clean InvoiceReader.spec
