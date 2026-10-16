@@ -67,4 +67,7 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         assert not app.table.get_children() and not app.table.selection()
         assert len(app.records)==2
         assert not list(tmp_path.rglob('*.xml'))
+        from test_tally_master_snapshot import exercise_snapshot_dialog_in_existing_app
+        exercise_snapshot_dialog_in_existing_app(root,tmp_path,monkeypatch)
+        assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

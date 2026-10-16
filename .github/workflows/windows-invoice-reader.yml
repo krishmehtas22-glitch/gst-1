@@ -16,6 +16,7 @@ on:
       - 'Automation/Tally_Master_Snapshot.py'
       - 'Automation/Run_Windows_Checks.py'
       - 'Automation/requirements-ui.txt'
+      - 'Automation/tests/**'
       - '.github/workflows/windows-invoice-reader.yml'
 permissions:
   contents: read

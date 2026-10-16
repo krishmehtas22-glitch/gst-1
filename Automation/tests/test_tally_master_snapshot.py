@@ -1,6 +1,5 @@
 """Incoming Tally reads must include units without changing the working reader."""
 import json
-import os
 from pathlib import Path
 import time
 import xml.etree.ElementTree as ET
@@ -86,11 +85,10 @@ def test_partial_read_failure_does_not_produce_a_snapshot(tmp_path):
     assert not list(tmp_path.rglob('*.json'))
 
 
-@pytest.mark.skipif(not os.environ.get('DISPLAY') and os.name!='nt',reason='Requires a desktop display')
-def test_dialog_explicit_connect_all_categories_and_local_review(tmp_path,monkeypatch):
-    import tkinter as tk
+def exercise_snapshot_dialog_in_existing_app(root,tmp_path,monkeypatch):
+    # Tally is a Toplevel of the running app, not a second Tk interpreter.
+    # Recreating Tk after tkdnd teardown is unreliable on the Windows runner.
     import Tally_Master_Dialog as dialog_module
-    root=tk.Tk();root.withdraw();errors=[];root.report_callback_exception=lambda *args:errors.append(str(args[1]))
     calls=[];saved=[]
     def transport(payload):calls.append(payload);return tally_transport(payload)
     monkeypatch.setattr(dialog_module,'loaded_companies',lambda:__import__('Common_Rules.tally_import',fromlist=['loaded_companies']).loaded_companies(transport))
@@ -111,5 +109,6 @@ def test_dialog_explicit_connect_all_categories_and_local_review(tmp_path,monkey
         assert all(len(table.get_children())==1 for table in dialog.tables.values())
         dialog.tables['units'].selection_set('0');root.update()
         assert 'MTR-METERS' in dialog.detail.get('1.0','end')
-        assert not errors
-    finally:root.destroy()
+    finally:
+        dialog.after_cancel(dialog._poll_id)
+        dialog.destroy()
