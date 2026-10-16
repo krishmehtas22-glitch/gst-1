@@ -5,6 +5,16 @@ and existing financial XML writers are unchanged. This workflow is experimental
 and produces separate review files. It never contacts Tally or modifies current
 client exports, financial history or saved source approvals.
 
+The V3.1 retained-reading audit rechecks the final retained values against source
+evidence instead of carrying warnings from the superseded local parse forward.
+Old diagnostics remain in `local_reading_audit`. Approved invoice data stays
+exactly unchanged. Saved AI unit metadata becomes printed only when the complete
+positioned table agrees on each row's name, HSN, quantity, unit, rate and value,
+with explicit unit token evidence. Symbols and numeric values never change.
+The summary separates current `validation_review_required` from the experimental
+workflow's review policy, and reports retained human approvals. These checks do
+not certify full accuracy or authorize automatic import.
+
 Run using the existing reader virtual environment:
 
 ```bat

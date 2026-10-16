@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 from .reader import read_invoice, validate, decimal, date_value
 from .evaluate import discover_pdfs
 from .ai_assist import assist, Budget
+from .retained_audit import audit_retained
 
 
 def retained_input(root, source, result):
@@ -137,9 +138,7 @@ def run(paths, output, providers=(), maximum=0, xml=False, stop=lambda: False,
                 result['source_kind'] = 'retained_reading_error'
             if retained:
                 kind, invoice = retained
-                result.update(invoice=invoice, source_kind=kind, review_required=True,
-                              checks=validate(invoice))
-                result['warnings'].append('Existing source approval/selected AI read retained without another API request.')
+                result = audit_retained(result, kind, invoice)
             if structured and not result.get('source_kind'):
                 from .structured import read_embedded, agrees_with_visible_source
                 try:
@@ -200,6 +199,12 @@ def run(paths, output, providers=(), maximum=0, xml=False, stop=lambda: False,
     summary = {'mode': 'isolated_review_workflow', 'input_pdfs': len(paths),
                'read_pdfs': len(documents), 'failed_pdfs': len(failed),
                'review_required': sum(d['result']['review_required'] for d in documents),
+               'validation_review_required': sum(d['result'].get('validation_review_required',
+                   d['result']['review_required']) for d in documents),
+               'retained_human_approvals': sum(d['result'].get('approval_status') == 'retained_human_approval'
+                   for d in documents),
+               'source_verified_unit_metadata': sum(len(d['result'].get('unit_metadata_corrections', []))
+                   for d in documents),
                'ai_requests': budget.used, 'ai_request_limit': maximum,
                'ai_stopped': budget.stopped, 'active_app_changed': False,
                'ai_disabled_providers': sorted(budget.disabled),
@@ -238,6 +243,8 @@ def main():
         raise SystemExit('Stopped. Completed reports/caches remain on disk; no Tally import was sent.')
     print('Report: '+str(output.resolve()/'Workflow_Summary.json'))
     print(f'Read {result["read_pdfs"]}/{result["input_pdfs"]} PDFs; AI requests {result["ai_requests"]}. No Tally imports sent.')
+    print(f'Current validation issues: {result["validation_review_required"]}; retained human approvals: {result["retained_human_approvals"]}; source-verified unit labels: {result["source_verified_unit_metadata"]}.')
+    print('Separate experimental XML still requires review before import; financial accuracy is not certified.')
     if result['failed_pdfs']:
         raise SystemExit(1)
 
