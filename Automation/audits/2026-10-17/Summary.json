@@ -1,0 +1,719 @@
+{
+  "audited_at": "2026-10-17T10:22:53.940257+05:30",
+  "audited_revision": "79dcfc4a5bcde30c9ece54194e47bfe7e0d2430e",
+  "application": "BillSync UI 2.2 / Reader 7.30",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "python": "3.13.5",
+  "dependencies": {
+    "pytest": "8.4.2",
+    "rapidocr": "3.10.0",
+    "pypdf": "6.1.3",
+    "pypdfium2": "5.14.0",
+    "Pillow": "12.3.0",
+    "reportlab": "4.4.4",
+    "tkinterdnd2": "0.4.3"
+  },
+  "runtime_changed": false,
+  "live_ai_requests": 0,
+  "live_tally_imports": 0,
+  "live_ai_accuracy_measured": false,
+  "live_tally_acceptance_verified": false,
+  "regression": {
+    "passed": 884,
+    "failed": 0,
+    "skipped": 0
+  },
+  "acceptance": {
+    "passed": 25,
+    "failed": 27,
+    "skipped": 0,
+    "cases": [
+      {
+        "name": "test_decimal_oracle_100_invoices_per_tax_treatment[INTRA]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.164,
+        "properties": {
+          "controlled_invoice_cases": "100"
+        }
+      },
+      {
+        "name": "test_decimal_oracle_100_invoices_per_tax_treatment[INTER]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.173,
+        "properties": {
+          "controlled_invoice_cases": "100"
+        }
+      },
+      {
+        "name": "test_decimal_oracle_100_invoices_per_tax_treatment[EXEMPT]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.151,
+        "properties": {
+          "controlled_invoice_cases": "100"
+        }
+      },
+      {
+        "name": "test_decimal_oracle_100_invoices_per_tax_treatment[EXPORT_LUT]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.144,
+        "properties": {
+          "controlled_invoice_cases": "100"
+        }
+      },
+      {
+        "name": "test_decimal_oracle_100_invoices_per_tax_treatment[EXPORT_IGST]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.121,
+        "properties": {
+          "controlled_invoice_cases": "100"
+        }
+      },
+      {
+        "name": "test_matched_buyer_cannot_take_a_system_ledger_name[Sales]",
+        "status": "failed",
+        "message": "AssertionError: Buyer reused the reserved Sales ledger, so party/sales/tax roles collide.\nassert 'Sales' != 'Sales'\n +  where 'Sales' = <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe641e77470>('PARTYLEDGERNAME')\n +    where <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe641e77470> = <Element 'VOUCHER' at 0x7fe641e77470>.findtext",
+        "seconds": 0.007,
+        "properties": {}
+      },
+      {
+        "name": "test_matched_buyer_cannot_take_a_system_ledger_name[CGST]",
+        "status": "failed",
+        "message": "AssertionError: Buyer reused the reserved CGST ledger, so party/sales/tax roles collide.\nassert 'CGST' != 'CGST'\n +  where 'CGST' = <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe641c5b7e0>('PARTYLEDGERNAME')\n +    where <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe641c5b7e0> = <Element 'VOUCHER' at 0x7fe641c5b7e0>.findtext",
+        "seconds": 0.005,
+        "properties": {}
+      },
+      {
+        "name": "test_matched_buyer_cannot_take_a_system_ledger_name[SGST]",
+        "status": "failed",
+        "message": "AssertionError: Buyer reused the reserved SGST ledger, so party/sales/tax roles collide.\nassert 'SGST' != 'SGST'\n +  where 'SGST' = <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe641c5ce50>('PARTYLEDGERNAME')\n +    where <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe641c5ce50> = <Element 'VOUCHER' at 0x7fe641c5ce50>.findtext",
+        "seconds": 0.005,
+        "properties": {}
+      },
+      {
+        "name": "test_matched_buyer_cannot_take_a_system_ledger_name[IGST]",
+        "status": "failed",
+        "message": "AssertionError: Buyer reused the reserved IGST ledger, so party/sales/tax roles collide.\nassert 'IGST' != 'IGST'\n +  where 'IGST' = <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe642104e50>('PARTYLEDGERNAME')\n +    where <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe642104e50> = <Element 'VOUCHER' at 0x7fe642104e50>.findtext",
+        "seconds": 0.007,
+        "properties": {}
+      },
+      {
+        "name": "test_matched_buyer_cannot_take_a_system_ledger_name[Round Off]",
+        "status": "failed",
+        "message": "AssertionError: Buyer reused the reserved Round Off ledger, so party/sales/tax roles collide.\nassert 'Round Off' != 'Round Off'\n +  where 'Round Off' = <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe64210cef0>('PARTYLEDGERNAME')\n +    where <built-in method findtext of xml.etree.ElementTree.Element object at 0x7fe64210cef0> = <Element 'VOUCHER' at 0x7fe64210cef0>.findtext",
+        "seconds": 0.005,
+        "properties": {}
+      },
+      {
+        "name": "test_equal_total_gst_does_not_hide_conflicting_components[rates0]",
+        "status": "failed",
+        "message": "AssertionError: Invoice requires CGST 9 + SGST 9; imported components are ('8', '10', '18')\nassert {'address': '', 'base_unit': 'Pcs', 'country': '', 'decimals': '', ...} is None",
+        "seconds": 0.002,
+        "properties": {}
+      },
+      {
+        "name": "test_equal_total_gst_does_not_hide_conflicting_components[rates1]",
+        "status": "failed",
+        "message": "AssertionError: Invoice requires CGST 9 + SGST 9; imported components are ('10', '8', '18')\nassert {'address': '', 'base_unit': 'Pcs', 'country': '', 'decimals': '', ...} is None",
+        "seconds": 0.002,
+        "properties": {}
+      },
+      {
+        "name": "test_equal_total_gst_does_not_hide_conflicting_components[rates2]",
+        "status": "failed",
+        "message": "AssertionError: Invoice requires CGST 9 + SGST 9; imported components are ('0', '18', '18')\nassert {'address': '', 'base_unit': 'Pcs', 'country': '', 'decimals': '', ...} is None",
+        "seconds": 0.002,
+        "properties": {}
+      },
+      {
+        "name": "test_external_unit_precision_covers_every_item_not_only_the_ai_matched_item",
+        "status": "failed",
+        "message": "AssertionError: Shared external unit KG supports 0 decimals, but 5.5 needs 1\nassert 0 >= 1",
+        "seconds": 0.007,
+        "properties": {}
+      },
+      {
+        "name": "test_duplicate_business_invoice_with_different_source_bytes_requires_review",
+        "status": "failed",
+        "message": "AssertionError: Same seller/date/invoice number produced two distinct GUIDs without duplicate review.\nassert (2 == 1 or 'duplicate' in '')\n +  where 2 = len([<Element 'VOUCHER' at 0x7fe641d7a7a0>, <Element 'VOUCHER' at 0x7fe641e75c10>])",
+        "seconds": 0.004,
+        "properties": {}
+      },
+      {
+        "name": "test_refund_estimate_is_not_labelled_inr_for_unconverted_foreign_currency[USD]",
+        "status": "failed",
+        "message": "AssertionError: Foreign-currency IGST was shown as an INR refund reference without conversion evidence.\nassert '18.00' is None",
+        "seconds": 0.001,
+        "properties": {}
+      },
+      {
+        "name": "test_refund_estimate_is_not_labelled_inr_for_unconverted_foreign_currency[AED]",
+        "status": "failed",
+        "message": "AssertionError: Foreign-currency IGST was shown as an INR refund reference without conversion evidence.\nassert '18.00' is None",
+        "seconds": 0.001,
+        "properties": {}
+      },
+      {
+        "name": "test_refund_estimate_is_not_labelled_inr_for_unconverted_foreign_currency[EUR]",
+        "status": "failed",
+        "message": "AssertionError: Foreign-currency IGST was shown as an INR refund reference without conversion evidence.\nassert '18.00' is None",
+        "seconds": 0.001,
+        "properties": {}
+      },
+      {
+        "name": "test_source_installer_rolls_back_if_a_write_fails_mid_install",
+        "status": "failed",
+        "message": "AssertionError: Installer left a mixture of new and old code after a failed write; backup exists but automatic rollback did not occur.\nassert {'BillSync_UI...t.\\')\\n', ...} == {'BillSync_UI...t.\\')\\n', ...}\n  \n  Omitting 54 identical items, use -vv to show\n  Differing items:\n  {'BillSync_UI.py': b'\"\"\"Presentation layer over the locked Reader. Engine and import methods are inherited.\"\"\"\\nfrom d...ndow=tk.Tk()\\n    BillSyncApp(window,data_root=data_root);window.mainloop()\\n\\n\\nif __name__==\\'__main__\\':launch()\\n'} != {'BillSync_UI.py': b'\"\"\"Presentation layer over the locked Reader. Engine and import methods are inherited.\"\"\"\\nfrom d...ndow=tk.Tk()\\n    BillSyncApp(window,data_root=data_root);window.mainloop()\\n\\n\\nif __name__==\\'__main__\\':launch()\\n'}\n  Use -v to get more diff",
+        "seconds": 0.014,
+        "properties": {}
+      },
+      {
+        "name": "test_bad_pdf_header_is_not_sufficient_proof_of_a_valid_upload",
+        "status": "failed",
+        "message": "AssertionError: A corrupt PDF with a signature was accepted as an uploaded document.\nassert ([])",
+        "seconds": 0.001,
+        "properties": {}
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[pdf-stacked]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.069,
+        "properties": {
+          "ocr_exact_missing_tokens": "[]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[pdf-paired]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.025,
+        "properties": {
+          "ocr_exact_missing_tokens": "[]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[pdf-reordered]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.028,
+        "properties": {
+          "ocr_exact_missing_tokens": "[]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[png-stacked]",
+        "status": "passed",
+        "message": "",
+        "seconds": 4.593,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[png-paired]",
+        "status": "passed",
+        "message": "",
+        "seconds": 3.881,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[png-reordered]",
+        "status": "passed",
+        "message": "",
+        "seconds": 3.506,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[jpg-stacked]",
+        "status": "passed",
+        "message": "",
+        "seconds": 3.502,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[jpg-paired]",
+        "status": "passed",
+        "message": "",
+        "seconds": 3.516,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[jpg-reordered]",
+        "status": "passed",
+        "message": "",
+        "seconds": 3.634,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[jpeg-stacked]",
+        "status": "passed",
+        "message": "",
+        "seconds": 3.46,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[jpeg-paired]",
+        "status": "passed",
+        "message": "",
+        "seconds": 3.772,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end[jpeg-reordered]",
+        "status": "passed",
+        "message": "",
+        "seconds": 3.753,
+        "properties": {
+          "ocr_exact_missing_tokens": "[\"Pencil\"]"
+        }
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[png-stacked]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.816,
+        "properties": {}
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[png-paired]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.899,
+        "properties": {}
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[png-reordered]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.944,
+        "properties": {}
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[jpg-stacked]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.785,
+        "properties": {}
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[jpg-paired]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.824,
+        "properties": {}
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[jpg-reordered]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.823,
+        "properties": {}
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[jpeg-stacked]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.871,
+        "properties": {}
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[jpeg-paired]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.923,
+        "properties": {}
+      },
+      {
+        "name": "test_raster_input_exact_text_fidelity_before_ai[jpeg-reordered]",
+        "status": "failed",
+        "message": "AssertionError: OCR exact-text loss before any AI response: ['Pencil']\nassert not ['Pencil']",
+        "seconds": 1.852,
+        "properties": {}
+      },
+      {
+        "name": "test_connection_loss_at_each_import_stage_never_retries_or_rewrites_xml[Units.xml]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.005,
+        "properties": {}
+      },
+      {
+        "name": "test_connection_loss_at_each_import_stage_never_retries_or_rewrites_xml[Masters.xml]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.004,
+        "properties": {}
+      },
+      {
+        "name": "test_connection_loss_at_each_import_stage_never_retries_or_rewrites_xml[Sales_Vouchers.xml]",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.005,
+        "properties": {}
+      },
+      {
+        "name": "test_failed_export_publication_restores_previous_current_xml",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.005,
+        "properties": {}
+      },
+      {
+        "name": "test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency[USD]",
+        "status": "failed",
+        "message": "AssertionError: Non-INR invoice values posted as unqualified numeric amounts with no conversion evidence or currency warning.\nassert False\n +  where False = any(<generator object test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency.<locals>.<genexpr> at 0x7fe6045001e0>)",
+        "seconds": 0.002,
+        "properties": {}
+      },
+      {
+        "name": "test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency[AED]",
+        "status": "failed",
+        "message": "AssertionError: Non-INR invoice values posted as unqualified numeric amounts with no conversion evidence or currency warning.\nassert False\n +  where False = any(<generator object test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency.<locals>.<genexpr> at 0x7fe604501080>)",
+        "seconds": 0.003,
+        "properties": {}
+      },
+      {
+        "name": "test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency[EUR]",
+        "status": "failed",
+        "message": "AssertionError: Non-INR invoice values posted as unqualified numeric amounts with no conversion evidence or currency warning.\nassert False\n +  where False = any(<generator object test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency.<locals>.<genexpr> at 0x7fe604502f60>)",
+        "seconds": 0.002,
+        "properties": {}
+      },
+      {
+        "name": "test_oversized_input_is_rejected_before_reading_payload",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.001,
+        "properties": {}
+      },
+      {
+        "name": "test_multi_frame_png_is_rejected_without_losing_other_valid_file",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.002,
+        "properties": {}
+      },
+      {
+        "name": "test_linked_upload_directory_cannot_write_outside_app_storage",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.002,
+        "properties": {}
+      },
+      {
+        "name": "test_xml_escapes_special_characters_without_changing_financial_values",
+        "status": "passed",
+        "message": "",
+        "seconds": 0.003,
+        "properties": {}
+      }
+    ]
+  },
+  "desktop": {
+    "passed": true,
+    "checks": [
+      "startup lists only",
+      "new client and selection",
+      "real PDF intake",
+      "Dashboard",
+      "Clients",
+      "Settings",
+      "Activity history and selected invoice details",
+      "view XML before generation is explanatory",
+      "view assignments before matching is explanatory",
+      "search and status filters",
+      "renders at 1100x650",
+      "renders at 1366x768",
+      "renders at 1600x1000",
+      "no callbacks failed and no XML generated during navigation"
+    ],
+    "callback_errors": [],
+    "live_ai_requests": 0,
+    "tally_imports": 0
+  },
+  "controlled_financial_invoices": 500,
+  "controlled_financial_line_items": 1000,
+  "real_input_formats": [
+    "PDF",
+    "PNG",
+    "JPG",
+    "JPEG"
+  ],
+  "layout_families": [
+    "stacked parties",
+    "paired parties",
+    "reordered item columns"
+  ],
+  "controlled_correct_ai_transfer_cases": 12,
+  "ocr_exact_fidelity_failed_cases": 9,
+  "issues": [
+    {
+      "id": "A01",
+      "severity": "High",
+      "title": "Duplicate business identities produce separate vouchers",
+      "failed_checks": [
+        "test_duplicate_business_invoice_with_different_source_bytes_requires_review"
+      ]
+    },
+    {
+      "id": "A02",
+      "severity": "High",
+      "title": "Buyer master can collide with system ledger roles",
+      "failed_checks": [
+        "test_matched_buyer_cannot_take_a_system_ledger_name[Sales]",
+        "test_matched_buyer_cannot_take_a_system_ledger_name[CGST]",
+        "test_matched_buyer_cannot_take_a_system_ledger_name[SGST]",
+        "test_matched_buyer_cannot_take_a_system_ledger_name[IGST]",
+        "test_matched_buyer_cannot_take_a_system_ledger_name[Round Off]"
+      ]
+    },
+    {
+      "id": "A03",
+      "severity": "High",
+      "title": "Equal total GST hides incompatible tax components",
+      "failed_checks": [
+        "test_equal_total_gst_does_not_hide_conflicting_components[rates0]",
+        "test_equal_total_gst_does_not_hide_conflicting_components[rates1]",
+        "test_equal_total_gst_does_not_hide_conflicting_components[rates2]"
+      ]
+    },
+    {
+      "id": "A04",
+      "severity": "High",
+      "title": "External-unit precision is not checked across all references",
+      "failed_checks": [
+        "test_external_unit_precision_covers_every_item_not_only_the_ai_matched_item"
+      ]
+    },
+    {
+      "id": "A05",
+      "severity": "High",
+      "title": "Unconverted foreign values and refund currency are not guarded",
+      "failed_checks": [
+        "test_refund_estimate_is_not_labelled_inr_for_unconverted_foreign_currency[USD]",
+        "test_refund_estimate_is_not_labelled_inr_for_unconverted_foreign_currency[AED]",
+        "test_refund_estimate_is_not_labelled_inr_for_unconverted_foreign_currency[EUR]",
+        "test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency[USD]",
+        "test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency[AED]",
+        "test_unconverted_foreign_invoice_does_not_silently_post_as_base_currency[EUR]"
+      ]
+    },
+    {
+      "id": "A06",
+      "severity": "Medium",
+      "title": "Installer lacks automatic rollback after a failed write",
+      "failed_checks": [
+        "test_source_installer_rolls_back_if_a_write_fails_mid_install"
+      ]
+    },
+    {
+      "id": "A07",
+      "severity": "Medium",
+      "title": "PDF upload checks signature rather than document structure",
+      "failed_checks": [
+        "test_bad_pdf_header_is_not_sufficient_proof_of_a_valid_upload"
+      ]
+    },
+    {
+      "id": "A08",
+      "severity": "Medium",
+      "title": "Raster OCR loses exact item-name characters on tested font",
+      "failed_checks": [
+        "test_raster_input_exact_text_fidelity_before_ai[png-stacked]",
+        "test_raster_input_exact_text_fidelity_before_ai[png-paired]",
+        "test_raster_input_exact_text_fidelity_before_ai[png-reordered]",
+        "test_raster_input_exact_text_fidelity_before_ai[jpg-stacked]",
+        "test_raster_input_exact_text_fidelity_before_ai[jpg-paired]",
+        "test_raster_input_exact_text_fidelity_before_ai[jpg-reordered]",
+        "test_raster_input_exact_text_fidelity_before_ai[jpeg-stacked]",
+        "test_raster_input_exact_text_fidelity_before_ai[jpeg-paired]",
+        "test_raster_input_exact_text_fidelity_before_ai[jpeg-reordered]"
+      ]
+    }
+  ],
+  "release_recommendation": "Not ready for unattended real-client use until high-priority findings are resolved and live Tally/AI checks are completed.",
+  "windows_build": {
+    "run": "https://github.com/krishmehtas22-glitch/gst-1/actions/runs/39001998961",
+    "status": "success",
+    "includes_new_adversarial_acceptance_suite": false
+  },
+  "runtime_sha256": {
+    "Automation/BillSync_Controls.py": "68bbdea8f4dfafdc21e323b27c28eb6cd788c1fb9a288f132c8fb0ed6c760774",
+    "Automation/BillSync_UI.py": "993856dfe711e643ad33c63379aa3526e7336ad7acdbb1c2a2e0c6cc88e93702",
+    "Automation/Cerebras_Diagnostic.py": "b004e681a3f53144a60c3e0e3526787d3eb722e1e94cf91bb3ed9b03e0c4e458",
+    "Automation/Common_Rules/__init__.py": "71b9c2d5339116de7fb2588b5ec10342e9cd4a6ff88763c3698f66b6f1f9a7af",
+    "Automation/Common_Rules/accounting.py": "f1d7c21c429fe6dc048695d3a507782f73d79ff9718a676a3348a07f894db96a",
+    "Automation/Common_Rules/ai_first.py": "9240da8437eacc880385a6b96c17517dbb69092a939fe0dd9e75a466cfe78b92",
+    "Automation/Common_Rules/ai_invoice_rules.py": "9bd67214d59e7bebbc886b2a669b1c675ff56fe4d5ae91fd742925bd76922d93",
+    "Automation/Common_Rules/ai_providers.py": "ffa6e2fa0f45a06d15a0b0b3edfd95873b0a16c5d1d3f66d477147c98e2d3906",
+    "Automation/Common_Rules/api_selection.py": "2ade8e045306f83e03f0f4bb09398fb3f1da25bcb19824d48ecf76f0b8a0069d",
+    "Automation/Common_Rules/cerebras_reader.py": "e501b286e9b65801e2dbf4cecfde0cf971bca0dcf391747f732a95a19ab434c9",
+    "Automation/Common_Rules/client_xml_output.py": "f166f6dce5e19b2cc33eb4ac71483989f882a770cba503ce5bf889a0013d49b1",
+    "Automation/Common_Rules/country_catalog.py": "07db6add28da84c141ebd95dd56f3e6b9a0b60fa645737f39e18a7bbc7529c0f",
+    "Automation/Common_Rules/demo.py": "ea016ed064b3ac8d02b23a3c040163382dd310f7ee211af924b736f552b1912a",
+    "Automation/Common_Rules/desktop.py": "ad51c3e9b8a45364b347d284c694d75906552dca588733aa6dd22780c0f42bb1",
+    "Automation/Common_Rules/desktop_ai.py": "4e9136ec4f8305a18b9b29d90cadfb337c1e1865f3bf7b4544dd1e6e7d4225df",
+    "Automation/Common_Rules/document_structure.py": "b0decb576626a2bf923c76ec58d6ec722bc2c1545f11f934cda851f530a71425",
+    "Automation/Common_Rules/engine.py": "ea72c16111d85bb9ec8343e9ddd8da20dcd461a1d5370d72480580e3892e2819",
+    "Automation/Common_Rules/export_metadata.py": "8bd271ad40385ce67c40a72a9348d34ff14771350b195b2216d6c84fa405d550",
+    "Automation/Common_Rules/extraction.py": "cf7870fdec1a4e6cb0712e70fe0987cfce1a7bcb96a88c84e86fb1d640bdbea8",
+    "Automation/Common_Rules/flat_layout.py": "b9edeaa59b3d275581381724331108506ebb9651e8220c9d47bb2f32609f8a76",
+    "Automation/Common_Rules/gemini_batch.py": "24b43b3f2c81d2e7ab64d4637a11043e9ceed863f8a3b4983947d210ecd8b5a0",
+    "Automation/Common_Rules/gemini_reader.py": "00dcdd005b5faea418036baad9418f62d8a6a1048b92ab7955d274ec72fc0785",
+    "Automation/Common_Rules/github_models_reader.py": "6515921c4c7166073a6a3662ac109bfd25a2d4ba2c69600bb0ab9295a721f57d",
+    "Automation/Common_Rules/goods_layout.py": "1de73da41a34f15603fd555d33939fc21f50c43fbd3263a5a615f1fafdfe53eb",
+    "Automation/Common_Rules/groq_reader.py": "e2f2581f06863a91d18e3e0ba34ce23aba709b610c27eaadcdc1951f18df8247",
+    "Automation/Common_Rules/history.py": "2b921d5a1b9338b578ec438f953f4a587d1e9cb36957521ecacccc2424f4103f",
+    "Automation/Common_Rules/inspection_export.py": "b5b58e204be1083466c62bd953e89d9173ce0138605774d1b7c9dffc9df47717",
+    "Automation/Common_Rules/invoice_dates.py": "249aeb69243919c1b76830f99a4ec570d0d79bd2b46f81033751a4c5199a1374",
+    "Automation/Common_Rules/invoice_identity.py": "01f1d653012524ba23a30fb2faddd1d0531485dca7d2b62deb1ee4463d97952d",
+    "Automation/Common_Rules/invoice_queue.py": "824e1189de31d0bb03acaaa1fc1980199b9f0f526d36a679bab800fd9d128ee3",
+    "Automation/Common_Rules/masters.py": "5e5220b5e4c1e418ecd640ff1c47df837e11b3df257039235e706d30d6700ff1",
+    "Automation/Common_Rules/ocr.py": "10d4d9ad7ced966499fb02772b17470de4bcd95b63ea9c40ab4c9cdbe5a3b78c",
+    "Automation/Common_Rules/openrouter_reader.py": "380304c2cd96bf4ed402a07752460fddcc5332c39ce1a0d9eefcf627a968b4d3",
+    "Automation/Common_Rules/paired_layout.py": "c17709cfbcd2242ca22a4b50dca56942692f3d1d1a77cc6ea788d6bf1648ee41",
+    "Automation/Common_Rules/party_evidence.py": "ea7218b77802afd6907ca2659d99904e01b8130f85bda1e76da4e8440ce0d5b4",
+    "Automation/Common_Rules/plain_master_names.py": "14926d2cfa6b1701f678153e86daa22d8cca45fee775bda72f61c90d8d0950ad",
+    "Automation/Common_Rules/printed_unit_evidence.py": "98764b572b0fdb113b64c59483930b83c5b70c5fed7f5dbb30fc79039f15095b",
+    "Automation/Common_Rules/processing_lock.py": "c36fa7cc5490f2433cb4c9989753ec119d16a40039e6218a54334b8a492639a2",
+    "Automation/Common_Rules/runtime_paths.py": "060afe06b3877ffcd2407a686da080c659338ffe1ad7d5c27a8f3450832d0730",
+    "Automation/Common_Rules/section_layout.py": "7c423087d4cc5ea9ce3b901a11564e82a43f3aaf94fbb83fbfc88a5a22872d47",
+    "Automation/Common_Rules/source_documents.py": "20d1476a915616557f7abef2a7e9e0ed63cbabd849c726f6a50e0c4b0921da39",
+    "Automation/Common_Rules/supplier_editor.py": "c05e911f0c13bac9def375719366497fd0594816c00bb29b3dcc7d2c35a50f34",
+    "Automation/Common_Rules/supplier_identity.py": "3ed3612dfb97946ae5ef5c1815572b7e88eb0f321cc67156f69c16d46508ede2",
+    "Automation/Common_Rules/supplier_layouts.py": "fd866103ea79ba3a792be2bbc316ff1074a618a2963668164ea539878df8d36f",
+    "Automation/Common_Rules/tabular_layout.py": "3837431c7e8c4c89bdf1f7cc19c2cf51ec7487cfe6af07c8884ed021c3d27513",
+    "Automation/Common_Rules/tally_import.py": "9bdd653f0e79380f9d21504265c877a9b94045e0e621301ba768d1b444e8e854",
+    "Automation/Common_Rules/tally_master_matching.py": "9ffea561757b4a9a9b73b3e75bf238ddb3d027a772815dc80bd3fb5f74c6ab79",
+    "Automation/Common_Rules/tally_master_xml.py": "6cad8fdc2b18d194302daf7b0be60df57d4b8acba29b5f88afd27f8addcc06e4",
+    "Automation/Common_Rules/tally_review_export.py": "f39ec7d795edb8d3929664648902e23a4d9ea90d61a746fc1cdeaa6cc6e02324",
+    "Automation/Common_Rules/tally_units.py": "1fc16af22c7a314d6c2fa2de34b316cd2b084fb25325523ebefc9d7f4b74f65a",
+    "Automation/Common_Rules/tally_xml.py": "44a24aff8613b035e5ec5e4de02015d5737efd309fa7bc1765b1bfc3b915b81b",
+    "Automation/Common_Rules/tax_treatment.py": "2f44a9d2a3a8ee574b0f57867bb589409acf0e3d43241dca23a2406c5c7b4b66",
+    "Automation/Common_Rules/templates.py": "99bb47858a7fab4ab39604fcb4354451795c992a1ecfe426ebfcd9f31a82fb04",
+    "Automation/Common_Rules/unit_catalog.py": "35256f883b53a168acc8a557a81e92c0ba765883b218ff6d7baff0631f24112c",
+    "Automation/Common_Rules/unit_choices.py": "ac028941cb7bb416774f3d666ce990aeeb433d76f249f6471debc9e0ab7ef952",
+    "Automation/Common_Rules/unit_inference.py": "7f485bc91f03bc79ec0f7aebe210b0b424e26c46b692ab56a98994ce494d69dd",
+    "Automation/Common_Rules/watcher.py": "cc71770315897d0edbf257ec9b233901888f6816524d0fbcbd117db2de56dfe8",
+    "Automation/Common_Rules/workflow_status.py": "65a4c03d62c551832a1fe18d5e234d71f7ced42d97023324212851c9693fd0ea",
+    "Automation/Document_Upload.py": "160d68558971760e74e169caf29de33dbe3b62aef85e5e1a6320efb47665835b",
+    "Automation/Export_Refund_Dialog.py": "b58e189676b5783e93c9a098d84cfe83f094ee2bc10325cad710626aceebee4a",
+    "Automation/Export_Refund_Review.py": "7de28c7571bf849cce5f89281d16de226954182413d30eee05270330847e8ca9",
+    "Automation/Gemini_Diagnostic.py": "e21335f9a77cf9d2bf9396e7c473bd2acef198b541fb61ec85f93bfb2f978862",
+    "Automation/GitHub_Models_Diagnostic.py": "25e5bebd8c3b472acfabda9efa53dac14844ec088fc488da3d79286e0fec4a17",
+    "Automation/Groq_Diagnostic.py": "fb3a2bc388cf0275c95581c8c55ca94c2744af8e3164cb7352d3fae40e564f58",
+    "Automation/Invoice_Desktop.py": "d4fb06abed12ccb734ce291e948d7e83bd038fc79ba7aa31902779e653b5f51d",
+    "Automation/OpenRouter_Diagnostic.py": "69208bbe852c6b156a6ef192640df790c797567b9138f5717be4aadbed4d0aa0",
+    "Automation/Process_All_Demo_Clients.py": "b1325b4ce1a7656b6bcb8ecd0b832195d5861987f20700b23157b0d01f497203",
+    "Automation/Read_Invoice_V2.py": "5ecb3cd5ef55969ed7811aebcd1bd951d0fc5caf0f226595288b6c21d0616ff9",
+    "Automation/Read_Invoice_V3.py": "1de2d33cb74739f38bd64385d69d7fa18a2f5655b590245615605f4cde4a8dd0",
+    "Automation/Reading_V2/__init__.py": "c46d962b203406b7407fd50c6f290c0414218ff75222c6edefdc5398fcfd1a1b",
+    "Automation/Reading_V2/ai_assist.py": "5ff8c841cda5c7d43c117ea465b21d5bcd1a47308643e87c4cec6ea80471a5d6",
+    "Automation/Reading_V2/document.py": "22158be702720680d5da68d18f06e09fdd20ef64e4c2ea4cd2af969876db1ba4",
+    "Automation/Reading_V2/evaluate.py": "5633d0f5a36e1701be47ebff44fea272fafcc1c6060e703364ef1e01114beb82",
+    "Automation/Reading_V2/pipeline.py": "4cb196228a257a7a6502d64a4a6a2a0b8456330708d49f80e84941de7ce2fc5f",
+    "Automation/Reading_V2/reader.py": "6d4bd7d2dc803119c4f82ea98a158f6ee7dd8df5be8f81ca07172a68cef244d0",
+    "Automation/Reading_V2/retained_audit.py": "8a710136290453e149f477797c6e4bbb005ef3b290eb05d0bb3f317037bd6c87",
+    "Automation/Reading_V2/structured.py": "f8805a42b32ffb3770f4ba4b015286ab0196d37212d8f5ca7a9ebefd9bf0ca63",
+    "Automation/Reading_V2/teaching.py": "908665ffd91622bc4a034d832b18a91d207e966a0ffed83e65e34d2cf27427f1",
+    "Automation/Run_Windows_Checks.py": "c77852003123a391fc34f97595ffce49fd40e58bb8adb5012d511edc02fdf679",
+    "Automation/Tally_Master_Dialog.py": "31ab87a886d01d62ce46ebc2379d154d03b0e5b59d55ab4f6c75cf3f1701e40e",
+    "Automation/Tally_Master_Snapshot.py": "b33664282a442521519bf3678261ed0aa230154807f02b61dedbd5bbf05f5a35",
+    "Automation/Teach_Invoice_Reader.py": "f04f3c9ed1bcca01156d4af1d1dcce4efb611ed87b15cfda27138366ab118ed2",
+    "Automation/Windows_Entry.py": "aeaf5e952a3626a209039ce1c01c39c26f4247356b766f05dfcbc58e9cf6ebef",
+    "Automation/main.py": "31a0e0ae5ed04f7292ea9073d7b6bf6e3742c2c88a40f4ee30739c9890f98c86",
+    "Automation/tests/conftest.py": "8659c4f6af34a32f61ecc29774fd873cf628e7e0828ce9ff04773418357a6cc6",
+    "Automation/tests/helpers.py": "09a9287427a6767614dbe2de8de51cf9d59c65dffcc57fd121764f262a0a1ad4",
+    "Automation/tests/test_accounting.py": "7e5748e3f52b7a64703bc9b0e802e17f170bf5e762dfd21da3e1835ec1228444",
+    "Automation/tests/test_ai_first_flow.py": "7434536f566beead0d8107cd58bb9081109bc7f8fdd16cc841200932f6d8ae60",
+    "Automation/tests/test_ai_first_installer_location.py": "3125b09d191ae49ea26a3a6df61476d85480a043c9b33e7e701ab61db45f6609",
+    "Automation/tests/test_ai_identity_fallback.py": "7fce0db4693d78901bf565d0c5bee4dcb8a4d0ab1750b3300003a47aa0ee81bc",
+    "Automation/tests/test_ai_partial_batch.py": "cc7f7a5c97b58c632c4463faaf8e798834de5b1cb6062b3394ec61fb7ec9a578",
+    "Automation/tests/test_ai_unit_reasoning.py": "52b8ab21cc731957068149675dfc7d22fe1ef378f99aef4160650f7d179d0fdd",
+    "Automation/tests/test_batch_retention_stop.py": "01bcd3c7ddacba0dd91aca245396af052fb308a91b6a5e7a6871e9a879227b99",
+    "Automation/tests/test_billsync_ui.py": "8f197471eea367563d424d7f6d14481de813966254426fb190223c2cd224035e",
+    "Automation/tests/test_cerebras_reader.py": "67382f25eccacd88adc3bda25e1fc9246164c6a789284319c7d0df7809fa8dae",
+    "Automation/tests/test_client12.py": "47f91c10fd839e3fe54163e61ed7d8ef38fbf13ed00f898f4f788fe14034aff9",
+    "Automation/tests/test_client20.py": "914528171b36a862d9736328cd553ef8e021242ab60f1d5b8f1e3a54e03271f0",
+    "Automation/tests/test_client8.py": "b025447a08322664834f3f3a2dd178a8f0583c3c33cc7bab7827514c32c1900c",
+    "Automation/tests/test_client_export_scopes.py": "e4eb3e6bf7be8cc9dc9d4b9e352302aa36f8097a957763a98cbc50d43fc73c47",
+    "Automation/tests/test_client_xml_output.py": "28516cb7a0132445bb1060ad0f6dfba229d0755ccc233938fb4b1a8679ea0873",
+    "Automation/tests/test_column_forms.py": "96ed9751a485a6be85a0dfe965b466af6aee110342e473f2e12248bd026e837d",
+    "Automation/tests/test_complete_batch_output.py": "2b68439adce7cea57d46f8fee2b0e2d92560d4217c699df65d3e7dd7aee4918b",
+    "Automation/tests/test_continued_gst_rows.py": "9ec7981624ff6b15cd283845fd83f747ca5e3ab1c48d5fb4e6da57685bbcc8f4",
+    "Automation/tests/test_demo.py": "ea5c5a26017b63a2b0b65ce4d7ec4bd1417cc6086a50aebe49cb8ebf86de2d75",
+    "Automation/tests/test_desktop.py": "3ce812c3b297a59d7ac5d6687e395c7b345a5454bbf67bd479784c832af0df9e",
+    "Automation/tests/test_desktop_selected_xml.py": "139e15b062afff82b065992d8dd7857877ab6edb91fcab4875410e82307c6b5c",
+    "Automation/tests/test_document_format_reading.py": "8469faba1d8990efb3b14ee36299a9a11f14ad41320cac56a3e28eb5c7ee3046",
+    "Automation/tests/test_document_upload.py": "8dff699e815ff06c0496497adacb1dd5fac11e7494b7f9c5875f4fc05fde4add",
+    "Automation/tests/test_engine.py": "64169e4afce6d2002e444ce119c539748d404c35d15afe1ad3c690282ead5a4e",
+    "Automation/tests/test_export_accounting.py": "fca242cc7bd2ca76dca858583a93de8d4ab728937241128744efb63a78ea1bbc",
+    "Automation/tests/test_export_country_refund.py": "db979ecda27a169502f4811a6b50ec00f253414e83fb0432a897b6ffbc6ce441",
+    "Automation/tests/test_flat_documents.py": "1dda109266578f7f43c616b02f531142a573ed88f76923ee031ed11c58f508fc",
+    "Automation/tests/test_flexible_extraction.py": "fd3ecb78485303f9a7d7d064075286fc309c61512f015baa157978e96e58836f",
+    "Automation/tests/test_four_layouts.py": "27e1eeb5196e0a645e8a5df1badfc58cf574cff4ca4d48a3031e182de25b5130",
+    "Automation/tests/test_gemini_batch.py": "c506ace0afce0a847b165973755aa948a2daaeba344de4755dc4196dbe242662",
+    "Automation/tests/test_gemini_diagnostic.py": "67203c6d0f1ca4536272a6ab5d36a6db36f98edcf047bc0ecba56a89ec093599",
+    "Automation/tests/test_gemini_reader.py": "0251a658962d8286a779e4a197df6c974006a76ac4b9fda8efa5fa861b33322a",
+    "Automation/tests/test_generic_treatments.py": "ee88f1684645bcf9164ff10668ac180d02e2fce6525ae90a5be8ca66c55d3f35",
+    "Automation/tests/test_github_models_reader.py": "58b1845cadbcd3ef166fedd7064145a3967f3a047bed2002a07d0be313c6f799",
+    "Automation/tests/test_github_response_decoding.py": "120991fa352e85a6ae0797f7a5652ff5e004e160713152d96881c12098c4188d",
+    "Automation/tests/test_goods_layout.py": "ec53c087bddcf437777d993fd806c52c05f8a56cc4a9ae41884c05dfe160e8b0",
+    "Automation/tests/test_groq_reader.py": "a4ac4593091a8ca222e60d7664eeb43a83b7fb3831e9bb334f2f5cccb1f2881b",
+    "Automation/tests/test_invoice_date_recovery.py": "9cdc2a830ca573d88ce62ecc25ca1cb6bb85492662c8b1e20d4d484aa22fc805",
+    "Automation/tests/test_large_ai_batch.py": "a1a94bab03227d50a565d0a64268c36324bd0cc6e1583e9a0a4c83e19090b85a",
+    "Automation/tests/test_manual_ai_queue.py": "82f40c8ce9db6b5ae4989251ce382338ec458ccb565d9407fe294c410bd9f7cd",
+    "Automation/tests/test_manual_review_xml.py": "165bba98c867ee0b42e6cfd150cf86afd6f12a517ea16d4a8172ebb178033a47",
+    "Automation/tests/test_missing_quantity_zero_gst.py": "701b490045165e35cf7f1d59f5293252499ce974301b103c80ec9a516a1b03fe",
+    "Automation/tests/test_openrouter_reader.py": "9ca36ce94d8f8dedeef5e925a1c6d2f41d3f03345b09244d9b14faf679bbbfad",
+    "Automation/tests/test_paired_layout.py": "aea0083fc0e23b2410ce6ffe88a8586af1e8de886934c87ebfbf9c063aad965c",
+    "Automation/tests/test_plain_master_names.py": "6e8eb1fbbca3b4aa1dbeceb7500437c0f98210899e903afa0fc30db1ca557966",
+    "Automation/tests/test_positioned_ai_workflow.py": "5c684afbe12f43942fc2bfe0ea19ca0c249d63b2f1ec10864ed36f4579fc9405",
+    "Automation/tests/test_processing_recovery.py": "f3e54fd80266e29575138c7cb49f2dadca5e02e909afdf4a3d95aa4523d1f8b6",
+    "Automation/tests/test_reader_audit.py": "5420e1d04007234615664ccd8242a6825440d33fcffce4315c31c4cec61e9706",
+    "Automation/tests/test_reading_teaching.py": "2f1d6cca6cb8dd4738d1da2286bf4287776fe329ae26c24a7ddffdef65b18661",
+    "Automation/tests/test_reading_v2.py": "8be65533dcd02ec3883eb364decdf3633a66c01d82c72e3b6e14b146f0316d9a",
+    "Automation/tests/test_retained_reading_audit.py": "331a171d6cf354df5304a75874562ae5c3742d31a72dd03b59021f765511bc2d",
+    "Automation/tests/test_review_refresh.py": "b790ee79e63e149bee046c451ff822b1092464a19a2227d91002f4927421738f",
+    "Automation/tests/test_review_voucher_structure.py": "4100f9f9fa4aaaf3d1195ca3d2e6f1b12799d15a97b66671a3671da4b7aee1d9",
+    "Automation/tests/test_section_layout.py": "cd2f624a0d3b52b945897bedb9b5638e3515adafb9fef53d98667f9642fccf65",
+    "Automation/tests/test_shared_groq_reading.py": "e8f44a93ea0e627b1c550bd501edde5c48a5fb1e5fe72e1db23bfdaf50f6cb7e",
+    "Automation/tests/test_single_pdf_action.py": "a506dc23cb095e6bca3b7b739413a6414d4e68ddb6324a317fa5c3aea9848360",
+    "Automation/tests/test_structural_documents.py": "3a09adda72b6e46c6a2582fd64ad1563954efa0e028f754686c683a7b26f457a",
+    "Automation/tests/test_structured_invoice.py": "ef73a4040690b0ac67a8bbb58c0e42a42d33c0f55b1a545b1ae8dbe8c7ead401",
+    "Automation/tests/test_supplier_banner.py": "1e711abff912c4ff925f4dc58a83d89c169d6b80f8c477414688ba633933aa27",
+    "Automation/tests/test_supplier_layouts.py": "0e6cf7837b3d525b4d1fa34db819f417e57c4a54538baa46a5f6fa594ee9e016",
+    "Automation/tests/test_tally_direct_import.py": "10b5fa48d9cabf620bc53d35160a53f4e32b905543c6b1954f70bad34841bdfb",
+    "Automation/tests/test_tally_master_matching.py": "c51affad845738463bdbe4b1b8cd5f081da00b10ff6bceff68de74966f86de22",
+    "Automation/tests/test_tally_master_snapshot.py": "83babf3427cdf0f37cdb8aaf4d74c92f34b796af319846eb522de54d01968232",
+    "Automation/tests/test_tally_unit_reuse.py": "606a14833bf82db70e748d1f307826438af16f82bddbb2058083adf6d8b86737",
+    "Automation/tests/test_tally_uqc_dropdown.py": "d96256ccdbdca5786406044600133f817cdbc55f7b55389178f9824627a21da1",
+    "Automation/tests/test_tally_xml.py": "dbfbee70bd771b540e381a475d24ab96489d6fdfca897be43fac4ca74b6d4f72",
+    "Automation/tests/test_unit_acceptance_and_upgrade.py": "4be865ffed971a54341907eae44d2ed90c119e879b4d949921072f0e9d9e0e7b",
+    "Automation/tests/test_unit_formal_uqc_separation.py": "992e94d50fba9b6a82eedf2de70551149f2ef7ab372c056749e0d2e832d85f79",
+    "Automation/tests/test_unit_inference.py": "6fb718304ee8c745614ba56c952144b1eb4f2c80dcd22110917d12aec298dfee",
+    "Automation/tests/test_unit_master_dependencies.py": "9c5345558e7f89fd78dfb63b2efb2edd455f4f33e1104b5f679a365c7f514bc3",
+    "Automation/tests/test_watcher.py": "66376aad8b645429f61ab1373449f4ec68e9a3d05ea5f517c7a714518dff53e8",
+    "Automation/tests/test_windows_packaging.py": "bd990c294f66b0d76af3268e3f65d23337832cf35befd67612793a905da36406",
+    "Install_BillSync_Source.py": "4079d3352ab927b14a7975b8eea4afb7cf7dd0c75aa83ebbc3829656c50d5a2d"
+  }
+}

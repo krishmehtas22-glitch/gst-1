@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "checks": [
+    "startup lists only",
+    "new client and selection",
+    "real PDF intake",
+    "Dashboard",
+    "Clients",
+    "Settings",
+    "Activity history and selected invoice details",
+    "view XML before generation is explanatory",
+    "view assignments before matching is explanatory",
+    "search and status filters",
+    "renders at 1100x650",
+    "renders at 1366x768",
+    "renders at 1600x1000",
+    "no callbacks failed and no XML generated during navigation"
+  ],
+  "callback_errors": [],
+  "live_ai_requests": 0,
+  "tally_imports": 0
+}

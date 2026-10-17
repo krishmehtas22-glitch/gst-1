@@ -1,0 +1,2 @@
+Synthetic Courier-font PNG sample; actual OCR input before AI:
+Penci1 | 960910 | 5 | PCS | 20.00 | 100.00 | 18
