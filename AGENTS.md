@@ -1,3 +1,16 @@
+# Implement approved BillSync design — latest request, 16 October 2026
+
+The user now explicitly says to make the planned app. Implement the locked
+professional upload design in the presentation layer: larger drop zone, complete
+status cards, adjacent New client control, side-by-side processing/Tally toolbar,
+full-width table and on-demand inherited review editor. Preserve all controls
+through toolbar/menu/Settings and truthful status. Back up current UI. Preserve
+Document_Upload.py, Tally snapshot modules, Invoice_Desktop.py and Common_Rules
+byte-for-byte. No changes to AI costs/consent, input processing, PDF/JPEG/PNG,
+XML, units, masters, import logic or hidden accounting default. Provide updated
+source-only installer (prior EXE download was blocked) and tested Windows build.
+Record implementation separately without replacing original design fingerprints.
+
 # Approved design lock and document format audit — 16 October 2026
 
 The user approved and locked the latest professional upload design preview

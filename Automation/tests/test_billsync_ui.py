@@ -60,9 +60,26 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
                 yield child
                 yield from descendants(child)
         buttons={widget.text:widget for widget in descendants(root) if isinstance(widget,ActionButton)}
-        assert buttons['Import all to Tally'].command.__func__ is Invoice_Desktop.InvoiceApp.import_tally
-        assert 'Import masters from Tally' in buttons and 'Add client' in buttons
+        assert buttons['Import to Tally'].command.__func__ is Invoice_Desktop.InvoiceApp.import_tally
+        assert 'Read Tally masters' in buttons and 'New client' in buttons
         buttons['Process this invoice'].invoke();assert not calls
+        root.deiconify();root.geometry('1366x900');root.update()
+        assert not hasattr(app,'selected_panel')
+        assert app.processing_group.winfo_rooty()==app.tally_group.winfo_rooty()
+        assert app.table.winfo_width()>app.drop.winfo_width()
+        assert app.drop.winfo_height()>=170
+        for label in app.count_labels:
+            panel=label.master.master;card=panel.master
+            assert panel.winfo_y()+panel.winfo_height()<card.winfo_height()-2
+            assert panel.winfo_x()>2
+        app.process_menu.invoke(1);assert not calls
+        assert app.table.cget('displaycolumns')==('invoice','client','seller','quantity_unit','total','status')
+        assert [app.process_menu.entrycget(i,'label') for i in range(3)]==['Process selected invoices','Process all client invoices','Process this invoice']
+        assert app.process_menu.entrycget(1,'command')
+        app.table.focus_force();root.update()
+        review=[];monkeypatch.setattr(app,'review',lambda:review.append('opened'))
+        app.table.event_generate('<Return>');root.update()
+        assert review==['opened']
         app.search.set('NO MATCH');root.update()
         assert not app.table.get_children() and not app.table.selection()
         assert len(app.records)==2

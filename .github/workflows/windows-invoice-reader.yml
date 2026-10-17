@@ -54,6 +54,7 @@ jobs:
           Copy-Item Automation/docs/BILLSYNC_UI.md Automation/dist/InvoiceReader/README.txt
           Copy-Item Backups/Reader_Before_BillSync_UI.zip Automation/dist/InvoiceReader/Original_Reader_Backup.zip
           Copy-Item Backups/BillSync_UI_Before_Tally_Masters.zip Automation/dist/InvoiceReader/Previous_UI_Backup.zip
+          Copy-Item Backups/BillSync_Before_Approved_Design.zip Automation/dist/InvoiceReader/Before_Approved_Design_Backup.zip
           Copy-Item Automation/Open_BillSync_EXE.bat Automation/dist/InvoiceReader/Open_BillSync.bat
       - uses: actions/upload-artifact@v4
         with:

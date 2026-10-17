@@ -1,62 +1,73 @@
-BillSync desktop UI — original Reader engine preserved
+BillSync UI 2.0 — approved invoice workspace, locked Reader 7.30 engine
+
+SOURCE-ONLY UPDATE (NO EXE DOWNLOAD)
+Close the app. Save Install_BillSync_Source.py in the existing reader source
+folder containing Invoice_Desktop.py and run it with Python. The installer
+checks the matching Reader 7.30 engine, backs up existing UI files under
+.invoice_app/code_backups/billsync_source_*, then replaces only UI/upload/
+snapshot presentation files and requirements-ui.txt. It never changes the
+reader or Common_Rules. No AI, XML generation or Tally import is sent.
+Run the commands printed by the installer to check/install UI dependencies
+with the existing .venv and start BillSync_UI.py. The title shows UI 2.0.
 
 WINDOWS EXE
-Download the InvoiceReader-Windows artifact from the successful Windows build.
-Extract the WHOLE ZIP into a NEW folder (for example BillSync-Windows) beside
-F:\Downloads\dummy sales invoice\Invoice_Desktop.py. Keep _internal intact.
-Double-click Open_BillSync.bat. If the original reader is in the parent folder,
-its invoice storage is selected automatically. Otherwise select the existing
-storage once in Settings. You can also use a new client and Upload invoices.
+Download InvoiceReader-Windows from the successful Windows build. Extract the
+whole ZIP into a NEW folder beside the existing reader source folder's
+Invoice_Desktop.py. Keep _internal beside InvoiceReader.exe. Run Open_BillSync.bat.
+The existing storage is detected in the parent source folder; otherwise choose
+Use existing invoice storage in Settings. Original source launchers still work.
+The program ZIP contains no customer documents, caches, reviews, API keys or
+import history. Keep browser protection enabled; the source-only update above
+is an alternative when a browser blocks the EXE ZIP.
 
-The original source reader and Open_Invoice_App.bat remain unchanged.
-Original_Reader_Backup.zip contains the pre-UI source and fingerprint manifest.
-Existing invoices, source reviews, AI caches, XML and import history are not
-included in the program ZIP, modified by installation, or sent to GitHub.
-To revert, close BillSync and run the existing Open_Invoice_App.bat.
+THE APPROVED WORKSPACE
+Large drag-and-drop area; Client dropdown and outlined New client control;
+complete status cards; invoice processing and Tally/XML actions side by side.
+The full-width table has no fixed details panel. Double-click or Enter opens
+the original editor. Right-click offers editor, source PDF and XML actions.
+All rows stay accessible using scrollbars and search/status filtering. There
+is no pagination that changes the existing selected-invoice behavior.
+Process selected and Process this invoice call the exact inherited actions.
+The adjacent dropdown also offers Process all client invoices. AI starts only
+after the original confirmation and shared fresh-request budget. Caches and
+approved reads are reused. Stop behavior is unchanged. No startup/upload/
+refresh/watch operation triggers AI automatically.
+Auto-fill units, test mode, list-only watching, supplier layout and storage
+controls are in Settings. Accounting defaults remain unchanged. View history
+retains full status/error details; the activity strip previews long messages.
+XML ready is the original XML-prepared count, not proof of a Tally import.
 
-SOURCE INSTALLATION
-The new UI source targets the locked Reader 7.30 engine in this checkout.
-Use Open_BillSync_App.bat for the new UI; Open_Invoice_App.bat remains original.
-Do not overlay new UI files onto older custom reader sources. The Windows ZIP
-contains its matching engine and runs beside the old installation.
-Build_Windows_EXE.bat builds and checks the Windows EXE locally if needed.
+DOCUMENTS AND EDITING
+Upload or drag PDF, PNG, JPG or JPEG files after choosing a client. PDF bytes
+are preserved. Images are retained under .invoice_app/original_uploads and
+converted without cropping into deterministic PDFs for the unchanged reader.
+Existing matching files are reused; same-named different files are retained.
+Text/scanned/multipage PDF, JPG/JPEG (EXIF rotation, CMYK, grayscale) and PNG
+were checked through actual local OCR and unchanged Groq-input preparation.
+This does not guarantee live AI accuracy on arbitrary unreadable photographs.
+The complete original editor keeps all buyer/seller, item/unit and financial
+fields. Save changes to XML persists the review and regenerates client XML
+locally without a new AI request. View XML is read-only. Folder icon opens the
+original output location.
 
-UI / UPLOAD
-Choose a client or click Add client. Upload or drag PDF, PNG, JPG or JPEG invoices.
-PDFs retain their bytes. Images are retained locally and embedded without crop
-into a deterministic one-page PDF for the existing reader. Original images are
-kept under .invoice_app/original_uploads. Matching client PDFs are reused; files
-with the same name but different bytes are preserved separately.
-Uploads, refresh, startup and watching never start AI or generate XML.
-Process this invoice / selected invoices / all client invoices still require the
-existing confirmation and shared fresh-request budget. Stop behavior is unchanged.
-Double-click opens the complete original editor. Manual save updates XML locally.
-View XML is read-only; Open XML folder uses the original reader action.
-Import all to Tally opens the exact existing import dialog with company selection
-and the original Units -> Masters -> Sales vouchers order and actual results.
+TALLY DIRECTIONS
+Import to Tally opens the unchanged Import ALL/company-selection dialog.
+Its order remains Units -> Masters -> Sales vouchers, with actual receipts.
+Read Tally masters opens a separate local, read-only connection window.
+Open the source company in Tally and enable its HTTP/XML server on port 9000.
+Click Connect / refresh companies, select the source company, then Import
+ledgers, items & units. All three reads must succeed before a snapshot is saved.
+Ledgers, Inventory items and Units tabs show the returned data. Snapshots are
+JSON under .invoice_app/tally_master_snapshots, grouped by source company.
+View saved snapshot reopens a local copy. These copies are for review ONLY;
+they are not applied to extraction, master matching, unit mapping, current XML
+or Import ALL. No Tally company settings are changed.
 
-The Summary GST checkbox is hidden; its original default is preserved. This UI
-update does not force a different accounting mode, infer taxes or change output.
-The original Invoice_Desktop.py and every Common_Rules file are byte-identical
-to the backup. Naming policy, quantities, rates, taxes, UQC, voucher GUIDs and
-Tally transport are unchanged. No imported-success status is inferred from XML.
-The desktop is scrollable at smaller resolutions; all fields/details remain
-available through the table, complete invoice editor and activity-history window.
-
-API credentials stay in the existing Windows user environment; none are bundled.
-The build self-test is offline, initializes OCR and tests actual Tk/drag-and-drop
-startup. No live AI extraction or Tally import is used by installation/building.
-
-INCOMING TALLY MASTERS (REVIEW COPY ONLY)
-Import masters from Tally opens a separate read-only window. Open the source
-company in local Tally and enable its HTTP/XML server on port 9000. Click Connect /
-refresh companies, choose the source company, then Import ledgers, items & units.
-All three collections must be read successfully before a snapshot is saved.
-Review Ledgers, Inventory items and Units tabs; select a row for returned details.
-Snapshots are separate JSON files under .invoice_app/tally_master_snapshots,
-grouped by source company. View saved snapshot opens a previous copy locally.
-These snapshots are NOT applied to extraction, master matching, unit mapping,
-XML generation or Import ALL yet. No AI requests or Tally writes are made by this
-feature. No Tally company settings are changed. Connection errors are shown.
-The original Tally import action still works exactly as before.
-Previous_UI_Backup.zip additionally preserves the UI before this refinement.
+BACKUPS AND VERIFICATION
+Original_Reader_Backup.zip preserves the original engine and launchers.
+Previous_UI_Backup.zip preserves the UI before incoming Tally snapshots.
+Before_Approved_Design_Backup.zip preserves the UI before this approved design.
+Each code-only backup has a checksum manifest. Original engine/PNG/upload/
+AI/XML/unit/UQC/master/import code fingerprints remain unchanged. The offline
+build smoke check initializes bundled CPU OCR, the UI and drag-and-drop.
+No live AI requests or Tally imports are used by installation or build checks.

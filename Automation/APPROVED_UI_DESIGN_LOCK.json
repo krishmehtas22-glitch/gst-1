@@ -4,7 +4,7 @@
   "reference_image": "UI_Concepts/BillSync_Professional_Upload_Preview.png",
   "reference_commit": "8a7d33f100eea0e938d7c4c9c56d61d3d5a31249",
   "reference_sha256": "c1169243db872059a1b94bfee6e36b51e9fe3f62b8d254d9499a3f100d39acf4",
-  "status": "Approved design reference; not yet applied to the running UI.",
+  "status": "Approved design implemented in BillSync UI 2.0; original reference and audit fingerprints retained.",
   "approved_layout": [
     "Large document drag-and-drop area",
     "Complete matching borders on all four status cards",
@@ -14,7 +14,7 @@
     "Double-click to open invoice details and editing",
     "Professional restrained colours, spacing and typography"
   ],
-  "current_runtime": "BillSync UI 1.1 with locked Reader 7.30 processing",
+  "current_runtime": "BillSync UI 2.0 with locked Reader 7.30 processing",
   "format_audit_baseline": {
     "Automation/Document_Upload.py": "160d68558971760e74e169caf29de33dbe3b62aef85e5e1a6320efb47665835b",
     "Automation/Invoice_Desktop.py": "d4fb06abed12ccb734ce291e948d7e83bd038fc79ba7aa31902779e653b5f51d",
@@ -29,5 +29,6 @@
     "Preserve PNG conversion/processing, original image retention and duplicate handling.",
     "Preserve AI prompts, output generation, units/UQC, master generation and Tally Import ALL.",
     "Format verification must not send paid AI requests or import into Tally."
-  ]
+  ],
+  "implementation_authorization": "User: Ignore the shared link; let us make the app we planned."
 }
