@@ -1,3 +1,12 @@
+# Unified main page and all inner windows — latest request, 17 October 2026
+
+Authorize a consistent navy/royal-blue/amber visual refinement of the main page,
+all single/double-click destinations and tabs. Keep every control, field, original
+bound variable and handler. Preserve all processing source bytes, startup/list-only
+behavior, AI consent/cost limits, manual save, XML and Tally dispatch. Use shared
+presentation styles, clear section cards and headers. Back up UI 3.1 and record
+a separate visual exception. No live AI/Tally writes during tests.
+
 # Boxed layout and colour revision — latest request, 17 October 2026
 
 The user selected navy and royal blue with amber accents, and requests more

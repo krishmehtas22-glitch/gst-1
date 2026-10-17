@@ -1,0 +1,27 @@
+{
+  "baseline_commit": "30f26e9ba7cfd6f13e779924f15ece23645c5f07",
+  "backup": "Backups/Before_Unified_UI.zip",
+  "policy": "Unify main page and all app-owned single/double-click windows with navy, blue, amber headers and section cards. Preserve all processing bytes, fields, original bound variables and handlers.",
+  "files": {
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "d46c6193c0cbdcfd4dc8c469d605cfcd42380d5c6380ee55ae3711761074cb82",
+      "authorized_sha256": "944d5fa6b270ac6cb4e30405b9e6cd5b555ee4a08309eee0f76fc0a0f143ea68"
+    },
+    "Automation/BillSync_Theme.py": {
+      "baseline_sha256": "4f36dbd73325e6a6e2a9f3af8692fa1c9a0877cc310c5e6f2910c64f7b2954e3",
+      "authorized_sha256": "fea7fc0295fc0e4336490f387d4b9dff20aad83b45c3242d864e914f0780a274"
+    },
+    "Automation/BillSync_Controls.py": {
+      "baseline_sha256": "ea75a05ce1801744ae0a76e2f88d7ecd9f3012fb87778e8b11dec53986cbf2cb",
+      "authorized_sha256": "ea75a05ce1801744ae0a76e2f88d7ecd9f3012fb87778e8b11dec53986cbf2cb"
+    },
+    "Automation/BillSync_Workspace_Views.py": {
+      "baseline_sha256": "460ae1018d5abc1e76c4ae52e475bedbbcb0c41acefcba708052c6e68417ba98",
+      "authorized_sha256": "f5b7a842ad3e6843144ab8e563e339689e413811b381f436f2a2f82ab336e20a"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "33c4958cef4e0ae5623ab8e8e3792a189245994d397e9d31e8ea561c572664c3",
+      "authorized_sha256": "c31ec5e57c313bef7fb757ae535c8e38c8be98e0f42a9204a92653df9d51c602"
+    }
+  }
+}

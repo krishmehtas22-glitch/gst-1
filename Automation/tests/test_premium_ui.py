@@ -5,11 +5,12 @@ import hashlib,json,runpy,zipfile
 
 
 def after_boxed_ui(root,name,expected):
-    change=json.loads((root/'Automation/BOXED_UI_CHANGE.json').read_text())
-    if name in change['files']:
-        entry=change['files'][name];assert entry['baseline_sha256']==expected
-        with zipfile.ZipFile(root/change['backup']) as backup:assert hashlib.sha256(backup.read(name)).hexdigest()==expected
-        expected=entry['authorized_sha256']
+    for filename in ('BOXED_UI_CHANGE.json','UNIFIED_UI_CHANGE.json'):
+        change=json.loads((root/'Automation'/filename).read_text())
+        if name in change['files']:
+            entry=change['files'][name];assert entry['baseline_sha256']==expected
+            with zipfile.ZipFile(root/change['backup']) as backup:assert hashlib.sha256(backup.read(name)).hexdigest()==expected
+            expected=entry['authorized_sha256']
     assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
 
 
@@ -53,9 +54,35 @@ def exercise_premium_ui(root,app,tmp_path,monkeypatch):
     checks=[w for w in descendants(settings) if isinstance(w,ttk.Checkbutton)]
     assert {str(w.cget('variable')) for w in checks}=={str(app.demo),str(app.auto_units),str(app.auto)}
     assert (app.demo.get(),app.auto_units.get(),app.auto.get())==preferences
+    settings_tabs=next(w for w in descendants(settings) if isinstance(w,ttk.Notebook))
+    for index in range(2):settings_tabs.select(index);root.update()
     settings.destroy()
     row=inspect_sources(tmp_path,['Visual'],True)[0];baseline=deepcopy(row['invoice'])
     app.records=[row];app.table.delete(*app.table.get_children());app.table.insert('','end',iid='0',values=('Visual',baseline.get('number')));app.table.selection_set('0');app.table.focus('0')
+    # Single-click destinations share the visual treatment and remain read-only.
+    def popup(title):
+        root.update()
+        top=next(w for w in root.winfo_children() if isinstance(w,tk.Toplevel) and w.title()==title)
+        assert any(isinstance(w,ttk.Frame) and w.cget('style')=='Header.TFrame' for w in descendants(top))
+        return top
+    app.show_dashboard();popup('Workspace overview').destroy()
+    app.activity_history();history=popup('Activity history and selected invoice details')
+    assert all(w.cget('state')=='disabled' for w in descendants(history) if isinstance(w,tk.Text));history.destroy()
+    row['tally_master_matching']={'company':'Offline UI test','party':None,'items':[{'index':0,'stock':None,'unit':None}]}
+    app.view_master_matches();popup('Tally master assignments').destroy();row.pop('tally_master_matching')
+    import tempfile
+    with tempfile.TemporaryDirectory() as directory:
+        folder_xml=Path(directory);contents={name:'<ENVELOPE>'+name+'</ENVELOPE>' for name in ('Units.xml','Masters.xml','Sales_Vouchers.xml')}
+        for name,body in contents.items():(folder_xml/name).write_text(body)
+        row['output_path']=str(folder_xml);app.view_xml();xml=popup('Prepared XML — read only')
+        tabs=next(w for w in descendants(xml) if isinstance(w,ttk.Notebook))
+        for i,(name,body) in enumerate(contents.items()):
+            tabs.select(i);root.update();assert tabs.tab(i,'text')==name
+            pane=xml.nametowidget(tabs.tabs()[i]);text=next(w for w in descendants(pane) if isinstance(w,tk.Text))
+            assert text.cget('state')=='disabled' and text.get('1.0','end').strip()==body
+        xml.destroy();row.pop('output_path')
+    app.supplier_layout();supplier=popup('Save supplier layout')
+    supplier.tk.call(supplier.protocol('WM_DELETE_WINDOW'));root.update()
     monkeypatch.setattr(app,'review',Invoice_Desktop.InvoiceApp.review.__get__(app))
     captures=[];monkeypatch.setattr(app,'save_manual_edits',lambda record,edited:captures.append((record,edited)))
     monkeypatch.setattr(root,'winfo_screenheight',lambda:768)

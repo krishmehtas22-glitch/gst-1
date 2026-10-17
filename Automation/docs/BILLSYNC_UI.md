@@ -1,4 +1,17 @@
-BillSync UI 3.1 — navy, royal blue and amber with boxed sections
+BillSync UI 3.2 — unified workspace and all inner windows
+
+UNIFIED WORKSPACE AND INNER WINDOWS
+The main page has a navy workspace header, file-format badges, a larger upload
+surface and separate bordered Processing and Tally/XML action areas. The invoice
+list remains full width; single selection does not add a details sidebar.
+
+Clients, Dashboard, Settings, invoice review, master assignment, buyer/currency/
+refund/OCR review, supplier layout, XML and activity views share the navy header,
+blue active tabs, amber accents and rounded controls. Existing forms gain bordered
+sections where appropriate. Settings preferences are individually boxed. XML and
+activity remain read-only. All original variables, source data, actions and engine
+files are retained, including explicit AI consent and no analysis on upload/list.
+Backup: Backups/Before_Unified_UI.zip; exception: UNIFIED_UI_CHANGE.json.
 
 BOXED INVOICE REVIEW
 The user-selected navy/royal blue/amber palette applies across the workspace and

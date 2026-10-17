@@ -75,7 +75,8 @@ def settings_view(app):
     tabs=ttk.Notebook(panel);tabs.pack(fill='both',expand=True)
     preferences=ttk.Frame(tabs,style='Dialog.TFrame',padding=(4,20));tabs.add(preferences,text='Preferences')
     for title,note,var in [('Test invoices (fictional data)','Keep enabled for sample documents; turn off for real invoices.',app.demo),('Auto-fill units','Retain the existing unit inference and review workflow.',app.auto_units),('Watch for new PDFs (list only)','New files appear in the list. AI runs only when you choose Process.',app.auto)]:
-        row=ttk.Frame(preferences,style='Dialog.TFrame',padding=(12,10));row.pack(fill='x',pady=3)
+        card=RoundedCard(preferences,fill='white',border='#cbd7ed');card.pack(fill='x',pady=5)
+        row=card.panel
         ttk.Checkbutton(row,text=title,variable=var,command=app.reset).pack(anchor='w')
         ttk.Label(row,text=note,style='Dialog.TLabel',foreground=MUTED,wraplength=640).pack(anchor='w',padx=25)
     tools=ttk.Frame(tabs,style='Dialog.TFrame',padding=(16,24));tabs.add(tools,text='Tools & storage')

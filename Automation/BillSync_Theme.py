@@ -73,16 +73,21 @@ def install_theme(window):
     off,on=toggle(False),toggle(True)
     style.element_create('BillSyncToggle.indicator','image',off,('selected',on),width=46,sticky='w')
     style.layout('TCheckbutton',substitute(style.layout('TCheckbutton'),'Checkbutton.indicator','BillSyncToggle.indicator'))
+    style.configure('Header.TFrame',background=NAV)
+    panel_image=pill('white',LINE)
+    style.element_create('BillSyncPanel.border','image',panel_image,border=7,sticky='nsew')
+    style.layout('Inset.TFrame',[('BillSyncPanel.border',{'sticky':'nswe'})])
+    style.configure('Inset.TFrame',background='white',padding=8)
     window._theme_images=images
     return style
 
 
 def header(parent,title,subtitle='',before=None):
-    bar=ttk.Frame(parent,style='Dialog.TFrame',padding=(24,20,24,16))
+    bar=ttk.Frame(parent,style='Header.TFrame',padding=(24,20,24,18))
     bar.pack(fill='x',**({'before':before} if before else {}))
-    ttk.Label(bar,text='BILLSYNC  /  WORKSPACE',style='Dialog.TLabel',foreground=PRIMARY,font=('Segoe UI',9,'bold')).pack(anchor='w')
-    ttk.Label(bar,text=title,style='Dialog.TLabel',font=('Segoe UI',21,'bold')).pack(anchor='w',pady=(7,4))
-    if subtitle:ttk.Label(bar,text=subtitle,style='Dialog.TLabel',foreground=MUTED,wraplength=850).pack(anchor='w')
+    ttk.Label(bar,text='BILLSYNC  /  WORKSPACE',style='Dialog.TLabel',background=NAV,foreground='#ffc974',font=('Segoe UI',9,'bold')).pack(anchor='w')
+    ttk.Label(bar,text=title,style='Dialog.TLabel',background=NAV,foreground='white',font=('Segoe UI',21,'bold')).pack(anchor='w',pady=(7,4))
+    if subtitle:ttk.Label(bar,text=subtitle,style='Dialog.TLabel',background=NAV,foreground='#b9c9e9',wraplength=520).pack(anchor='w')
     return bar
 
 
@@ -119,9 +124,14 @@ class DialogPresentation:
                 top.geometry(str(min(max(top.winfo_width(),650),self.root.winfo_screenwidth()-70))+'x'+str(min(top.winfo_height()+110,self.root.winfo_screenheight()-95)))
         for widget in descendants(top):
             try:
-                if isinstance(widget,ttk.Frame):widget.configure(style='Dialog.TFrame')
-                elif isinstance(widget,ttk.Label):widget.configure(style='Dialog.TLabel')
-                elif isinstance(widget,tk.Text):widget.configure(bg='#f7f9ff',fg=INK,insertbackground=PRIMARY,relief='flat',borderwidth=0,padx=16,pady=14,selectbackground='#dfe8ff')
+                if isinstance(widget,ttk.Frame):
+                    if widget.cget('style')!='Header.TFrame':
+                        boxed=any(isinstance(w,(ttk.Entry,ttk.Combobox)) for w in widget.winfo_children())
+                        widget.configure(style='Inset.TFrame' if boxed else 'Dialog.TFrame')
+                elif isinstance(widget,ttk.Label):
+                    if isinstance(widget.master,ttk.Frame) and widget.master.cget('style')=='Header.TFrame':continue
+                    widget.configure(style='Dialog.TLabel')
+                elif isinstance(widget,tk.Text):widget.configure(bg='#f7f9ff',fg=INK,insertbackground=PRIMARY,relief='flat',borderwidth=0,padx=16,pady=14,selectbackground='#dfe8ff',highlightthickness=1,highlightbackground=LINE,highlightcolor=PRIMARY)
                 elif isinstance(widget,ttk.Button):
                     text=str(widget.cget('text')).lower()
                     if any(word in text for word in ('save','import all','use snapshot','connect /')):widget.configure(style='Primary.TButton')
@@ -163,10 +173,10 @@ class DialogPresentation:
             if isinstance(scroll,ttk.Scrollbar):scroll.pack_forget()
         canvas.configure(bg='white',highlightthickness=0);form.configure(style='Dialog.TFrame',padding=0)
         form.columnconfigure(0,weight=1);form.rowconfigure(2,weight=1)
-        title=ttk.Frame(form,style='Dialog.TFrame',padding=(24,18));title.grid(row=0,column=0,sticky='ew')
-        ttk.Label(title,text='INVOICE REVIEW',style='Dialog.TLabel',foreground=PRIMARY,font=('Segoe UI',9,'bold')).pack(anchor='w')
-        ttk.Label(title,text='Review & refine your invoice',style='Dialog.TLabel',font=('Segoe UI',23,'bold')).pack(anchor='w',pady=(5,0))
-        summary=ttk.Frame(title,style='Dialog.TFrame');summary.pack(fill='x',pady=(14,0))
+        title=ttk.Frame(form,style='Header.TFrame',padding=(24,18));title.grid(row=0,column=0,sticky='ew')
+        ttk.Label(title,text='INVOICE REVIEW',style='Dialog.TLabel',background=NAV,foreground='#ffc974',font=('Segoe UI',9,'bold')).pack(anchor='w')
+        ttk.Label(title,text='Review & refine your invoice',style='Dialog.TLabel',background=NAV,foreground='white',font=('Segoe UI',23,'bold')).pack(anchor='w',pady=(5,0))
+        summary=ttk.Frame(title,style='Header.TFrame');summary.pack(fill='x',pady=(14,0))
         top.review_summary_cards=[]
         for col,(caption,field,tint,edge) in enumerate([('INVOICE NUMBER','number','#edf3ff','#c2d3f5'),('BUYER','buyer_name','#eef1f8','#c2ccdf'),('INVOICE TOTAL','total','#fff6e7','#ecd5ac')]):
             summary.columnconfigure(col,weight=1,uniform='summary')
