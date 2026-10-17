@@ -45,7 +45,7 @@ def draw_icon(canvas,name,x,y,size,color):
 class RoundedCard(tk.Canvas):
     """Measure inner content so DPI/font changes cannot cover or clip the border."""
     def __init__(self,parent,fill='white',border='#dce5f0',minheight=0):
-        background=ttk.Style(parent).lookup('TFrame','background') or '#f4f5f1'
+        background=(ttk.Style(parent).lookup(parent.cget('style') or 'TFrame','background') if isinstance(parent,ttk.Frame) else parent.cget('bg')) or '#f2f5fb'
         super().__init__(parent,width=1,height=max(1,minheight),bg=background,highlightthickness=0)
         self.fill=fill;self.border=border;self.minheight=minheight
         self.panel=tk.Frame(self,bg=fill)
@@ -65,14 +65,14 @@ class ActionButton(tk.Canvas):
     """Bordered rounded button with mouse, Tab, Return and Space activation."""
     def __init__(self,parent,text,command,style='TButton',width=None,icon=None,**kwargs):
         primary=style in ('Primary.TButton','Upload.TButton');nav=style in ('Nav.TButton','NavActive.TButton')
-        self.fill='#216d59' if primary else '#fff4f4' if style=='Stop.TButton' else '#f1f6ee' if style=='Soft.TButton' else '#112b27' if nav else '#ffffff'
-        if style=='NavActive.TButton':self.fill='#2a4b3d'
-        self.ink='#ffffff' if primary or nav else '#b43345' if style=='Stop.TButton' else '#216d59' if style in ('Soft.TButton','Text.TButton') else '#1d302b'
-        self.border=self.fill if primary or nav or style=='Text.TButton' else '#ead2d7' if style=='Stop.TButton' else '#d2e2ce' if style=='Soft.TButton' else '#dfe6dc'
-        self.hover='#18523f' if primary else '#21483b' if nav else '#edf4ec'
+        self.fill='#315ee7' if primary else '#fff4f4' if style=='Stop.TButton' else '#edf2ff' if style=='Soft.TButton' else '#111d35' if nav else '#ffffff'
+        if style=='NavActive.TButton':self.fill='#263c69'
+        self.ink='#ffffff' if primary or nav else '#b43345' if style=='Stop.TButton' else '#315ee7' if style in ('Soft.TButton','Text.TButton') else '#182641'
+        self.border=self.fill if primary or nav or style=='Text.TButton' else '#ead2d7' if style=='Stop.TButton' else '#c5d3f5' if style=='Soft.TButton' else '#bac9e4'
+        self.hover='#2448ad' if primary else '#23375e' if nav else '#edf2ff'
         self.text=text;self.command=command;self.icon=icon;self.nav=nav;self.over=False;self.pressed=False
         self.text_font=tkfont.Font(family='Segoe UI',size=11 if style=='Upload.TButton' else 10)
-        if isinstance(parent,ttk.Frame):background=ttk.Style(parent).lookup(parent.cget('style') or 'TFrame','background') or '#f4f5f1'
+        if isinstance(parent,ttk.Frame):background=ttk.Style(parent).lookup(parent.cget('style') or 'TFrame','background') or '#f2f5fb'
         else:background=parent.cget('bg')
         super().__init__(parent,width=width or self.text_font.measure(text)+28+(24 if icon else 0),height=48 if style=='Upload.TButton' else 43 if nav else 36,bg=background,highlightthickness=0,takefocus=True,cursor='hand2',**kwargs)
         self.bind('<Configure>',self.draw);self.bind('<Enter>',lambda e:self.hovered(True));self.bind('<Leave>',lambda e:self.hovered(False))
@@ -83,7 +83,7 @@ class ActionButton(tk.Canvas):
     def draw(self,event=None):
         self.delete('all');w=self.winfo_width()-2;h=self.winfo_height()-2
         focused=self.focus_get() is self
-        rounded_box(self,2,2,w-1,h-1,r=14,fill=self.hover if self.over else self.fill,outline='#7ba88a' if focused else self.border,width=2 if focused else 1)
+        rounded_box(self,2,2,w-1,h-1,r=14,fill=self.hover if self.over else self.fill,outline='#7195f5' if focused else self.border,width=2 if focused else 1)
         total=self.text_font.measure(self.text)+(24 if self.icon and self.text else 0)
         left=16 if self.nav else (w-total)/2
         if self.icon:

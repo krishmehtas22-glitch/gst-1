@@ -4,6 +4,15 @@ from copy import deepcopy
 import hashlib,json,runpy,zipfile
 
 
+def after_boxed_ui(root,name,expected):
+    change=json.loads((root/'Automation/BOXED_UI_CHANGE.json').read_text())
+    if name in change['files']:
+        entry=change['files'][name];assert entry['baseline_sha256']==expected
+        with zipfile.ZipFile(root/change['backup']) as backup:assert hashlib.sha256(backup.read(name)).hexdigest()==expected
+        expected=entry['authorized_sha256']
+    assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
+
+
 def test_entire_processing_engine_is_identical_to_pre_redesign_baseline():
     root=Path(__file__).parents[2];change=json.loads((root/'Automation/PREMIUM_UI_CHANGE.json').read_text())
     for name,expected in change['processing_sha256'].items():assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected,name
@@ -14,10 +23,10 @@ def test_presentation_backup_and_installer_include_exact_new_files():
     with zipfile.ZipFile(root/change['backup']) as backup:
         for name,entry in change['files'].items():
             assert hashlib.sha256(backup.read(name)).hexdigest()==entry['baseline_sha256']
-            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==entry['authorized_sha256']
+            after_boxed_ui(root,name,entry['authorized_sha256'])
     package=runpy.run_path(str(root/'Install_BillSync_Source.py'))
     for name,expected in change['new_files'].items():
-        assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
+        after_boxed_ui(root,name,expected)
         assert package['FILES'][name.removeprefix('Automation/')].encode()==(root/name).read_bytes()
 
 
@@ -54,6 +63,7 @@ def exercise_premium_ui(root,app,tmp_path,monkeypatch):
     review=next(w for w in root.winfo_children() if isinstance(w,tk.Toplevel) and w.title()=='Review invoice against the original PDF')
     save_button=next(w for w in descendants(review) if isinstance(w,ttk.Button) and w.cget('text')=='Save changes to XML')
     assert save_button.winfo_rooty()+save_button.winfo_height()<=review.winfo_rooty()+review.winfo_height()
+    assert len(review.review_summary_cards)==3
     assert set(review.review_fields)==set(Invoice_Desktop.FIELDS)
     assert len(review.review_tabs.tabs())==4 and review.review_fields['number'].winfo_viewable()
     assert not review.review_fields['seller_name'].winfo_viewable()
@@ -61,6 +71,7 @@ def exercise_premium_ui(root,app,tmp_path,monkeypatch):
     review.review_tabs.select(1);root.update()
     assert review.review_fields['seller_name'].winfo_viewable() and not number.winfo_viewable()
     buyer=review.review_fields['buyer_name'];buyer.delete(0,'end');buyer.insert(0,'Reviewed buyer')
+    assert root.getvar(next(w for w in descendants(review.review_summary_cards[1]) if isinstance(w,tk.Label) and w.cget('textvariable')).cget('textvariable'))=='Reviewed buyer'
     review.review_tabs.select(2);root.update()
     widgets=list(descendants(review));item_frames=[w for w in widgets if isinstance(w,ttk.LabelFrame) and getattr(w,'_presentation_copy',False)]
     count=len(item_frames);assert count==len(baseline['items'])

@@ -1,7 +1,16 @@
-BillSync UI 3.0 — complete workspace and dialog redesign
+BillSync UI 3.1 — navy, royal blue and amber with boxed sections
+
+BOXED INVOICE REVIEW
+The user-selected navy/royal blue/amber palette applies across the workspace and
+app dialogs. The editor has three bordered summary cards for invoice number,
+buyer and total, plus separate rounded section cards with coloured heading bands.
+Summary values use the editor’s existing bound variables, so edits are reflected
+without AI calls or financial recalculation. Input borders are more distinct.
+All original fields, save callbacks and processing remain intact.
+Backup: Backups/Before_Boxed_UI.zip; exception: BOXED_UI_CHANGE.json.
 
 PREMIUM PRESENTATION
-Deep green navigation, warm neutral backgrounds, rounded controls, consistent
+Navy navigation, blue and amber accents, cool neutral backgrounds, rounded controls, consistent
 Segoe UI typography, calmer status cards and a full-width invoice list. Client
 management now has a searchable table and Open workspace action; New client has
 a dedicated modal form. Settings groups Preferences and Tools & storage.

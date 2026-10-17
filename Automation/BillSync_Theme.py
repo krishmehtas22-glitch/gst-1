@@ -2,8 +2,9 @@
 import tkinter as tk
 from tkinter import ttk,messagebox
 from PIL import Image,ImageDraw,ImageTk
+from BillSync_Controls import RoundedCard
 
-BG='#f4f5f1';NAV='#112b27';PRIMARY='#216d59';INK='#1d302b';MUTED='#73817c';LINE='#e1e7e1'
+BG='#f2f5fb';NAV='#111d35';PRIMARY='#315ee7';INK='#182641';MUTED='#687a96';LINE='#bfcde2'
 
 
 def descendants(parent):
@@ -15,7 +16,7 @@ def descendants(parent):
 def install_theme(window):
     style=ttk.Style(window);style.theme_use('clam')
     window.option_add('*Font',('Segoe UI',10));window.option_add('*TCombobox*Listbox.font',('Segoe UI',10))
-    window.option_add('*TCombobox*Listbox.background','white');window.option_add('*TCombobox*Listbox.selectBackground','#e1eee7')
+    window.option_add('*TCombobox*Listbox.background','white');window.option_add('*TCombobox*Listbox.selectBackground','#e3ebff')
     style.configure('.',font=('Segoe UI',10),background=BG,foreground=INK)
     for name in ('TFrame','Card.TFrame','Dialog.TFrame'):style.configure(name,background='white' if name!='TFrame' else BG)
     style.configure('TLabel',background=BG,foreground=INK)
@@ -24,49 +25,49 @@ def install_theme(window):
     style.configure('Muted.TLabel',foreground=MUTED,background='white')
     style.configure('Section.TLabel',font=('Segoe UI',9,'bold'),foreground=MUTED,background='white')
     style.configure('TButton',padding=(12,5),background='white',foreground=INK,borderwidth=0,focusthickness=0)
-    style.map('TButton',foreground=[('disabled','#a2aaa5')])
+    style.map('TButton',foreground=[('disabled','#9aa5b9')])
     style.configure('Primary.TButton',background='white',foreground='white')
-    style.map('Primary.TButton',foreground=[('disabled','#c6d9d1'),('!disabled','white')])
-    style.configure('TEntry',padding=(9,6),fieldbackground='#fafbf9',bordercolor=LINE,lightcolor=LINE,darkcolor=LINE,insertcolor=INK)
-    style.configure('TCombobox',padding=(10,8),fieldbackground='#fafbf9',background='#fafbf9',bordercolor=LINE,arrowsize=14)
-    style.map('TCombobox',fieldbackground=[('readonly','#fafbf9')],selectbackground=[('readonly','#fafbf9')],selectforeground=[('readonly',INK)])
+    style.map('Primary.TButton',foreground=[('disabled','#c7d5ff'),('!disabled','white')])
+    style.configure('TEntry',padding=(9,6),fieldbackground='#ffffff',bordercolor=LINE,lightcolor=LINE,darkcolor=LINE,insertcolor=INK)
+    style.configure('TCombobox',padding=(10,8),fieldbackground='#ffffff',background='#ffffff',bordercolor=LINE,arrowsize=14)
+    style.map('TCombobox',fieldbackground=[('readonly','#ffffff')],selectbackground=[('readonly','#ffffff')],selectforeground=[('readonly',INK)])
     style.configure('Client.TCombobox',padding=(12,10),font=('Segoe UI',10))
     style.configure('Treeview',background='white',fieldbackground='white',font=('Segoe UI',10),rowheight=38,borderwidth=0)
-    style.configure('Treeview.Heading',font=('Segoe UI',9,'bold'),foreground=MUTED,background='#f4f7f3',padding=(12,12),relief='flat',borderwidth=0)
-    style.map('Treeview',background=[('selected','#e5f1e9')],foreground=[('selected',INK)])
+    style.configure('Treeview.Heading',font=('Segoe UI',9,'bold'),foreground=MUTED,background='#edf2fb',padding=(12,12),relief='flat',borderwidth=0)
+    style.map('Treeview',background=[('selected','#e7edff')],foreground=[('selected',INK)])
     style.configure('TNotebook',background='white',bordercolor=LINE,lightcolor='white',darkcolor='white',borderwidth=0,tabmargins=(0,4,0,8))
-    style.configure('TNotebook.Tab',padding=(20,12),background='#f2f5f0',foreground=MUTED,borderwidth=0)
+    style.configure('TNotebook.Tab',padding=(20,12),background='#eef2fb',foreground=MUTED,borderwidth=0)
     style.map('TNotebook.Tab',background=[('selected','white'),('active','white')],foreground=[('selected','white')])
     style.configure('TLabelframe',background='white',bordercolor=LINE,relief='solid',borderwidth=1)
     style.configure('TLabelframe.Label',background='white',foreground=INK,font=('Segoe UI',11,'bold'))
     style.configure('TCheckbutton',background='white',padding=(2,8));style.map('TCheckbutton',background=[('active','white')])
-    style.configure('Vertical.TScrollbar',background='#d2ddd4',troughcolor='#f5f7f3',borderwidth=0,arrowsize=12)
-    style.configure('Horizontal.TScrollbar',background='#d2ddd4',troughcolor='#f5f7f3',borderwidth=0,arrowsize=12)
+    style.configure('Vertical.TScrollbar',background='#c1cde2',troughcolor='#f2f5fb',borderwidth=0,arrowsize=12)
+    style.configure('Horizontal.TScrollbar',background='#c1cde2',troughcolor='#f2f5fb',borderwidth=0,arrowsize=12)
     style.configure('TSeparator',background=LINE)
     images=[]
     def pill(fill,outline):
         image=Image.new('RGBA',(144,120));draw=ImageDraw.Draw(image)
         draw.rounded_rectangle((2,2,141,117),radius=15,fill=fill,outline=outline,width=3)
         result=ImageTk.PhotoImage(image.resize((48,40),Image.Resampling.LANCZOS),master=window);images.append(result);return result
-    for name,fill,hover,edge in [('Soft','white','#f1f6f0',LINE),('Primary',PRIMARY,'#195943',PRIMARY)]:
-        normal=pill(fill,edge);active=pill(hover,edge);disabled=pill('#edf1ec',LINE)
+    for name,fill,hover,edge in [('Soft','white','#edf3ff',LINE),('Primary',PRIMARY,'#2248b5',PRIMARY)]:
+        normal=pill(fill,edge);active=pill(hover,edge);disabled=pill('#edf0f7',LINE)
         element='BillSync'+name+'.border'
         style.element_create(element,'image',normal,('disabled',disabled),('pressed',active),('active',active),border=7,sticky='nsew')
         style.layout('Primary.TButton' if name=='Primary' else 'TButton',[(element,{'sticky':'nswe','children':[('Button.padding',{'sticky':'nswe','children':[('Button.label',{'sticky':'nswe'})]})]})])
-    normal=pill('#fafbf9',LINE);focus=pill('white','#8ab19a')
+    normal=pill('#ffffff',LINE);focus=pill('white','#7195f5')
     style.element_create('BillSyncEntry.field','image',normal,('focus',focus),border=5,sticky='nsew')
     def substitute(nodes,old,new):
         return [(new if name==old else name,{key:substitute(value,old,new) if key=='children' else value for key,value in options.items()}) for name,options in nodes]
     style.layout('TEntry',substitute(style.layout('TEntry'),'Entry.field','BillSyncEntry.field'))
     style.layout('TCombobox',substitute(style.layout('TCombobox'),'Combobox.field','BillSyncEntry.field'))
     style.layout('Treeview',[('Treeview.treearea',{'sticky':'nswe'})])
-    inactive=pill('#f2f5f0','#f2f5f0');selected=pill(PRIMARY,PRIMARY)
+    inactive=pill('#eef2fb','#eef2fb');selected=pill(PRIMARY,PRIMARY)
     style.element_create('BillSyncTab.border','image',inactive,('selected',selected),border=6,sticky='nsew')
     style.layout('TNotebook.Tab',[('BillSyncTab.border',{'sticky':'nswe','children':[('Notebook.padding',{'sticky':'nswe','children':[('Notebook.label',{'sticky':'nswe'})]})]})])
     style.configure('TNotebook.Tab',padding=(14,6));style.map('TNotebook.Tab',expand=[('selected',(0,0,0,0))])
     def toggle(selected):
         source=Image.new('RGBA',(120,66));draw=ImageDraw.Draw(source)
-        draw.rounded_rectangle((1,1,118,64),radius=31,fill=PRIMARY if selected else '#dce4db')
+        draw.rounded_rectangle((1,1,118,64),radius=31,fill=PRIMARY if selected else '#dbe2f1')
         left=61 if selected else 7;draw.ellipse((left,7,left+50,57),fill='white')
         result=ImageTk.PhotoImage(source.resize((40,22),Image.Resampling.LANCZOS),master=window);images.append(result);return result
     off,on=toggle(False),toggle(True)
@@ -89,7 +90,7 @@ class DialogPresentation:
     def __init__(self,app):
         self.app=app;self.root=app.window
         self.root.option_add('*Menu.font',('Segoe UI',10))
-        self.root.option_add('*Menu.background','white');self.root.option_add('*Menu.activeBackground','#e5f1e9')
+        self.root.option_add('*Menu.background','white');self.root.option_add('*Menu.activeBackground','#e7edff')
         self.root.bind_all('<Map>',self.mapped,add='+')
         # Keep native messagebox return semantics while using the app's design.
         self.native_show=messagebox._show
@@ -120,7 +121,7 @@ class DialogPresentation:
             try:
                 if isinstance(widget,ttk.Frame):widget.configure(style='Dialog.TFrame')
                 elif isinstance(widget,ttk.Label):widget.configure(style='Dialog.TLabel')
-                elif isinstance(widget,tk.Text):widget.configure(bg='#f8faf7',fg=INK,insertbackground=PRIMARY,relief='flat',borderwidth=0,padx=16,pady=14,selectbackground='#d8eade')
+                elif isinstance(widget,tk.Text):widget.configure(bg='#f7f9ff',fg=INK,insertbackground=PRIMARY,relief='flat',borderwidth=0,padx=16,pady=14,selectbackground='#dfe8ff')
                 elif isinstance(widget,ttk.Button):
                     text=str(widget.cget('text')).lower()
                     if any(word in text for word in ('save','import all','use snapshot','connect /')):widget.configure(style='Primary.TButton')
@@ -165,6 +166,13 @@ class DialogPresentation:
         title=ttk.Frame(form,style='Dialog.TFrame',padding=(24,18));title.grid(row=0,column=0,sticky='ew')
         ttk.Label(title,text='INVOICE REVIEW',style='Dialog.TLabel',foreground=PRIMARY,font=('Segoe UI',9,'bold')).pack(anchor='w')
         ttk.Label(title,text='Review & refine your invoice',style='Dialog.TLabel',font=('Segoe UI',23,'bold')).pack(anchor='w',pady=(5,0))
+        summary=ttk.Frame(title,style='Dialog.TFrame');summary.pack(fill='x',pady=(14,0))
+        top.review_summary_cards=[]
+        for col,(caption,field,tint,edge) in enumerate([('INVOICE NUMBER','number','#edf3ff','#c2d3f5'),('BUYER','buyer_name','#eef1f8','#c2ccdf'),('INVOICE TOTAL','total','#fff6e7','#ecd5ac')]):
+            summary.columnconfigure(col,weight=1,uniform='summary')
+            card=RoundedCard(summary,fill=tint,border=edge,minheight=66);card.grid(row=0,column=col,sticky='nsew',padx=(0,10 if col<2 else 0));top.review_summary_cards.append(card)
+            tk.Label(card.panel,text=caption,font=('Segoe UI',8,'bold'),fg=MUTED,bg=tint).pack(anchor='w')
+            tk.Label(card.panel,textvariable=pairs[field][1].cget('textvariable'),font=('Segoe UI',12),fg=INK,bg=tint,wraplength=290,justify='left').pack(anchor='w',pady=(4,0))
         notice=ttk.Frame(form,style='Dialog.TFrame',padding=(24,0,24,10));notice.grid(row=1,column=0,sticky='ew')
         # Original notices remain intact, including test-data confirmation.
         for label in notices:
@@ -220,7 +228,11 @@ class DialogPresentation:
             content.bind('<Configure>',lambda e,c=viewport:c.configure(scrollregion=c.bbox('all')))
             for col,(label,fields) in enumerate(groups):
                 content.columnconfigure(col,weight=1,uniform='review')
-                group=ttk.LabelFrame(content,text=label,padding=16);group.grid(row=0,column=col,sticky='new',padx=(0 if col==0 else 10,10 if col==0 else 0));group.columnconfigure(0,weight=1)
+                card=RoundedCard(content,fill='white',border='#bfcde2');card.grid(row=0,column=col,sticky='new',padx=(0 if col==0 else 9,9 if col==0 else 0))
+                group=card.panel;group.columnconfigure(0,weight=1)
+                tint,accent=('#edf3ff','#315dc5') if col==0 else ('#fff5e5','#a96918')
+                band=tk.Frame(group,bg=tint);band.grid(row=0,column=0,sticky='ew',pady=(0,10))
+                tk.Label(band,text='  '+label,font=('Segoe UI',12,'bold'),fg=accent,bg=tint,pady=11,anchor='w').pack(fill='x')
                 for row,field in enumerate(fields):
                     original_label,original_entry=pairs[field]
                     label_widget=ttk.Label(group,text=original_label.cget('text'),style='Dialog.TLabel',foreground=MUTED)
@@ -228,8 +240,8 @@ class DialogPresentation:
                     if isinstance(original_entry,ttk.Combobox):options.update(values=original_entry.cget('values'),state=original_entry.cget('state'))
                     entry=type(original_entry)(group,**options)
                     top.review_fields[field]=entry
-                    label_widget.grid(row=row*2,column=0,sticky='w',pady=(3,2))
-                    entry.grid(row=row*2+1,column=0,sticky='ew',pady=(0,3))
+                    label_widget.grid(row=row*2+1,column=0,sticky='w',pady=(1,1))
+                    entry.grid(row=row*2+2,column=0,sticky='ew',pady=(0,3))
                     if not isinstance(entry,ttk.Combobox):entry.bind('<MouseWheel>',lambda e,c=viewport:c.yview_scroll(-1 if e.delta>0 else 1,'units'),add='+')
         buttons.grid(row=3,column=0,sticky='ew',padx=24,pady=18)
         for child in buttons.winfo_children():

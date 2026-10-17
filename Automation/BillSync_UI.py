@@ -18,8 +18,8 @@ from BillSync_Theme import install_theme,DialogPresentation,header
 from Export_Refund_Review import summary as refund_summary,load_review as load_refund_review,review_key,amount as refund_amount
 from Export_Refund_Dialog import open_refund_review
 
-BG='#f4f5f1';NAV='#112b27';BLUE='#216d59';INK='#1d302b';MUTED='#73817c';BORDER='#e1e7e1'
-UI_VERSION='BillSync UI 3.0'
+BG='#f2f5fb';NAV='#111d35';BLUE='#315ee7';INK='#182641';MUTED='#687a96';BORDER='#bfcde2'
+UI_VERSION='BillSync UI 3.1'
 
 
 class ActivityLabel(ttk.Label):
@@ -65,11 +65,11 @@ class BillSyncApp(InvoiceApp):
         self.sidebar=tk.Frame(window,bg=NAV,width=198);self.sidebar.pack(side='left',fill='y');self.sidebar.pack_propagate(False)
         brand=tk.Frame(self.sidebar,bg=NAV);brand.pack(anchor='w',padx=20,pady=(27,8))
         tk.Label(brand,text='Bill',font=('Segoe UI',21,'bold'),fg='white',bg=NAV).pack(side='left')
-        tk.Label(brand,text='Sync',font=('Segoe UI',21,'bold'),fg='#9cd7b7',bg=NAV).pack(side='left')
-        tk.Label(self.sidebar,text='YOUR INVOICE OPERATIONS',font=('Segoe UI',8),fg='#9fb9ad',bg=NAV).pack(anchor='w',padx=22,pady=(0,24))
+        tk.Label(brand,text='Sync',font=('Segoe UI',21,'bold'),fg='#92b4ff',bg=NAV).pack(side='left')
+        tk.Label(self.sidebar,text='YOUR INVOICE OPERATIONS',font=('Segoe UI',8),fg='#a5b6d5',bg=NAV).pack(anchor='w',padx=22,pady=(0,24))
         for label,command,icon in [('Invoices',self.show_invoices,'document'),('Dashboard',self.show_dashboard,'bars'),('Review',self.review,'check'),('Tally',self.import_tally,'transfer'),('Clients',self.manage_clients,'person'),('Settings',self.settings,'settings')]:
             ActionButton(self.sidebar,text=label,command=command,icon=icon,style='NavActive.TButton' if label=='Invoices' else 'Nav.TButton').pack(fill='x',padx=10,pady=4)
-        tk.Label(self.sidebar,text='Connected by your workflow.\nProcessed on your terms.',font=('Segoe UI',8),fg='#9fb9ad',bg=NAV,wraplength=145,justify='left').pack(side='bottom',anchor='w',padx=20,pady=20)
+        tk.Label(self.sidebar,text='Connected by your workflow.\nProcessed on your terms.',font=('Segoe UI',8),fg='#a5b6d5',bg=NAV,wraplength=145,justify='left').pack(side='bottom',anchor='w',padx=20,pady=20)
         # Scrollable presentation: the inherited table/controller retains its IDs and values.
         outer=ttk.Frame(window);outer.pack(side='left',fill='both',expand=True)
         self.canvas=tk.Canvas(outer,bg=BG,highlightthickness=0)
@@ -106,9 +106,9 @@ class BillSyncApp(InvoiceApp):
             self.drop.drop_target_register(DND_FILES);self.drop.dnd_bind('<<Drop>>',self.drop_files);self.drop_supported=True
         except (ImportError,AttributeError,tk.TclError):pass
         stats=ttk.Frame(self.content);stats.grid(row=2,column=0,sticky='ew',pady=(0,9));self.count_labels=[]
-        for i,(label,tint,accent,icon) in enumerate([('Uploaded invoices','#edf3ed',BLUE,'document'),('Awaiting processing','#faf2e2','#a27730','clock'),('Needs review','#f8eeee','#b56868','alert'),('XML ready','#eaf4ef','#32826b','check')]):
+        for i,(label,tint,accent,icon) in enumerate([('Uploaded invoices','#eaf1ff',BLUE,'document'),('Awaiting processing','#fff4dd','#a27730','clock'),('Needs review','#fff0f2','#b56868','alert'),('XML ready','#edf6ff','#386fc1','check')]):
             stats.columnconfigure(i,weight=1,uniform='stats')
-            card=RoundedCard(stats,fill=tint,border={'document':'#d6e4d6','clock':'#eaddc4','alert':'#ead6d6','check':'#d0e4d9'}[icon],minheight=72)
+            card=RoundedCard(stats,fill=tint,border={'document':'#bfcef3','clock':'#ebd09a','alert':'#efc7ce','check':'#c5daf0'}[icon],minheight=72)
             card.grid(row=0,column=i,sticky='ew',padx=(0,10 if i<3 else 0))
             glyph=tk.Canvas(card.panel,width=36,height=38,bg=tint,highlightthickness=0);glyph.pack(side='left',padx=(0,9))
             draw_icon(glyph,icon,8,9,21,accent)
@@ -157,7 +157,7 @@ class BillSyncApp(InvoiceApp):
         self.table.bind('<<TreeviewSelect>>',self.details);self.table.bind('<Control-a>',self.select_all)
         self.table.bind('<Double-1>',lambda event:self.review());self.table.bind('<Return>',lambda event:self.review())
         self.table.bind('<Button-3>',self.invoice_menu)
-        self.table.tag_configure('even',background='#ffffff');self.table.tag_configure('odd',background='#f9fbf7')
+        self.table.tag_configure('even',background='#ffffff');self.table.tag_configure('odd',background='#f7f9ff')
         lower=ttk.Frame(workspace,style='Card.TFrame');lower.grid(row=2,column=0,sticky='ew',pady=(8,0))
         ttk.Label(lower,text='Double-click an invoice to view or edit details',style='Muted.TLabel').pack(side='left')
         ActionButton(lower,text='Refund review',command=self.export_refund_review,style='Text.TButton').pack(side='left',padx=14)
@@ -190,8 +190,8 @@ class BillSyncApp(InvoiceApp):
 
     def draw_drop(self,event=None):
         self.drop.delete('all');width=self.drop.winfo_width();height=self.drop.winfo_height()
-        rounded_box(self.drop,2,2,width-3,height-3,r=18,fill='#f2f6ef',outline='#d4e3d2')
-        rounded_box(self.drop,11,11,width-12,height-12,r=16,fill='#f2f6ef',outline='#a9c8ac',dash=(4,4))
+        rounded_box(self.drop,2,2,width-3,height-3,r=18,fill='#eff4ff',outline='#c3d2f2')
+        rounded_box(self.drop,11,11,width-12,height-12,r=16,fill='#eff4ff',outline='#8ca9e8',dash=(4,4))
         draw_icon(self.drop,'upload',width/2-17,height/2-58,34,BLUE)
         self.drop.create_text(width/2,height/2-5,text='Drag invoices here',font=('Segoe UI',15,'bold'),fill=INK)
         self.drop.create_text(width/2,height/2+23,text='or click to browse files',font=('Segoe UI',10),fill=MUTED)

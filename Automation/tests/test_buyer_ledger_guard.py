@@ -33,7 +33,8 @@ def assert_after_guard(repo,name,expected):
         entry=premium['files'][name];assert entry['baseline_sha256']==expected
         with zipfile.ZipFile(repo/premium['backup']) as z:assert hashlib.sha256(z.read(name)).hexdigest()==expected
         expected=entry['authorized_sha256']
-    assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==expected
+    from test_premium_ui import after_boxed_ui
+    after_boxed_ui(repo,name,expected)
 
 
 @pytest.mark.parametrize('name',['Sales','CGST','SGST','IGST','Cess','Round Off','Round-Off','ROUND_OFF','Invoice differences - review','CGST @9%'])

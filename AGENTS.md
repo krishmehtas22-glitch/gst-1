@@ -1,3 +1,11 @@
+# Boxed layout and colour revision — latest request, 17 October 2026
+
+The user selected navy and royal blue with amber accents, and requests more
+prominent boxes in the invoice editor. Authorize presentation-only palette and bordered/rounded card
+changes, with retained fields, existing bound variables, save callbacks, AI
+consent and all prior processing behavior. Keep backups and prior manifests;
+record this visual revision separately. No Common_Rules or Invoice_Desktop changes.
+
 # Complete premium UI redesign — latest user request, 17 October 2026
 
 The user explicitly authorizes changing the workspace layout and every app-owned

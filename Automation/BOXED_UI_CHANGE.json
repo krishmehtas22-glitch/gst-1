@@ -1,0 +1,27 @@
+{
+  "baseline_commit": "7e15052e95d3bf533cfbf4a5ab250580b4f26c41",
+  "backup": "Backups/Before_Boxed_UI.zip",
+  "policy": "Presentation only. User selected navy and royal blue with amber accents. Prominent summary and section cards preserve existing bound variables and commands.",
+  "files": {
+    "Automation/BillSync_Theme.py": {
+      "baseline_sha256": "904eed69a1f6ec35d2e0d6ba8fbe048a81adb0153f592e4f66534752b7341e72",
+      "authorized_sha256": "4f36dbd73325e6a6e2a9f3af8692fa1c9a0877cc310c5e6f2910c64f7b2954e3"
+    },
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "566cf8263fe54ead1da268efa342e6e649f9e5d69e2f114a74ded1f8240dd47b",
+      "authorized_sha256": "d46c6193c0cbdcfd4dc8c469d605cfcd42380d5c6380ee55ae3711761074cb82"
+    },
+    "Automation/BillSync_Controls.py": {
+      "baseline_sha256": "45d1ef71158bc59715dcf7fd1ad11fc4831da9a2362822a9cf0b8ad6f62cb046",
+      "authorized_sha256": "ea75a05ce1801744ae0a76e2f88d7ecd9f3012fb87778e8b11dec53986cbf2cb"
+    },
+    "Automation/BillSync_Workspace_Views.py": {
+      "baseline_sha256": "9880825029eab4993cc68ce9392674fc7582c139e2b2235d4c89987bab7a6a25",
+      "authorized_sha256": "460ae1018d5abc1e76c4ae52e475bedbbcb0c41acefcba708052c6e68417ba98"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "737ba96635f447ba13e088e37d911729c2db82f90df36d21f4c194b03b5c9b2f",
+      "authorized_sha256": "33c4958cef4e0ae5623ab8e8e3792a189245994d397e9d31e8ea561c572664c3"
+    }
+  }
+}

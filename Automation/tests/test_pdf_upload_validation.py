@@ -145,7 +145,8 @@ def test_backup_and_new_adapter_hash_are_recorded_without_replacing_original():
                 replacement=premium['files'][name];assert replacement['baseline_sha256']==expected
                 with zipfile.ZipFile(repo/premium['backup']) as later:assert hashlib.sha256(later.read(name)).hexdigest()==expected
                 expected=replacement['authorized_sha256']
-            assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==expected
+            from test_premium_ui import after_boxed_ui
+            after_boxed_ui(repo,name,expected)
     original=json.loads((repo/'Automation/APPROVED_UI_DESIGN_LOCK.json').read_text())
     # The old design manifest remains historical; the PDF-only exception is separate.
     assert change['files']['Automation/Document_Upload.py']['baseline_sha256']=='160d68558971760e74e169caf29de33dbe3b62aef85e5e1a6320efb47665835b'

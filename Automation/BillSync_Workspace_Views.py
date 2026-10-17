@@ -61,11 +61,11 @@ def clients_view(app):
 def dashboard_view(app):
     top=shell(app,'Workspace overview','A clear view of your invoice workflow.',840,520)
     panel=ttk.Frame(top,padding=(24,4,24,24),style='Dialog.TFrame');panel.pack(fill='both',expand=True)
-    for i,(label,value,color) in enumerate(zip(('Uploaded invoices','Awaiting processing','Needs review','XML ready'),app.count_labels,('#216d59','#a27730','#b56868','#32826b'))):
+    for i,(label,value,color) in enumerate(zip(('Uploaded invoices','Awaiting processing','Needs review','XML ready'),app.count_labels,('#315ee7','#a27730','#b56868','#386fc1'))):
         panel.columnconfigure(i%2,weight=1)
-        card=RoundedCard(panel,fill='#f5f8f2',border='#e1e8dc',minheight=120);card.grid(row=i//2,column=i%2,sticky='ew',padx=(0,12),pady=(0,12))
-        tk.Label(card.panel,text=label,font=('Segoe UI',11),bg='#f5f8f2',fg=MUTED).pack(anchor='w',pady=5)
-        tk.Label(card.panel,text=value.cget('text'),font=('Segoe UI',29),bg='#f5f8f2',fg=color).pack(anchor='w')
+        card=RoundedCard(panel,fill='#f2f5fc',border='#c7d3e9',minheight=120);card.grid(row=i//2,column=i%2,sticky='ew',padx=(0,12),pady=(0,12))
+        tk.Label(card.panel,text=label,font=('Segoe UI',11),bg='#f2f5fc',fg=MUTED).pack(anchor='w',pady=5)
+        tk.Label(card.panel,text=value.cget('text'),font=('Segoe UI',29),bg='#f2f5fc',fg=color).pack(anchor='w')
     ttk.Label(panel,text='Counts reflect the current list. Prepared XML is ready for review; import results come from Tally.',style='Dialog.TLabel',foreground=MUTED,wraplength=740).grid(row=2,column=0,columnspan=2,sticky='w',pady=12)
 
 
