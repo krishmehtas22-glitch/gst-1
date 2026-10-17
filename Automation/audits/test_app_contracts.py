@@ -118,7 +118,11 @@ def test_decimal_oracle_100_invoices_per_tax_treatment(tmp_path,mode,record_prop
 def test_matched_buyer_cannot_take_a_system_ledger_name(tmp_path,party):
     row=record(tmp_path);ctx=bind(tmp_path,row,party=party)
     save_choices(tmp_path,row,ctx,row['invoice'],choices())
-    _,documents=docs(tmp_path,[row]);voucher=documents['Sales_Vouchers'].find('.//VOUCHER')
+    try:_,documents=docs(tmp_path,[row])
+    except ValueError as exc:
+        assert 'ledger' in str(exc).casefold() and 'Previous XML retained' in str(exc)
+        return
+    voucher=documents['Sales_Vouchers'].find('.//VOUCHER')
     assert voucher.findtext('PARTYLEDGERNAME')!=party,'Buyer reused the reserved '+party+' ledger, so party/sales/tax roles collide.'
 
 

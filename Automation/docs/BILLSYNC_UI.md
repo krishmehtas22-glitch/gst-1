@@ -1,5 +1,22 @@
 BillSync UI 2.3 — invoice workspace, foreign currency and refund review
 
+BUYER LEDGER ROLE CHECK
+Python validates AI buyer-ledger choices using the imported name and Under group,
+even when the buyer GSTIN matches. Sales, CGST, SGST, IGST, Cess, Round Off and
+the review-difference account cannot become buyer ledgers. Non-party groups and
+unknown custom subgroup ancestry require review. Direct Sundry Debtors/Creditors
+groups still need the original buyer GSTIN/name/address/country checks.
+Wrong roles hold new XML and retain the previous output. If an existing system
+ledger such as Sales is Under Sundry Debtors, correct it in Tally and read masters
+again; the app does not rename or alter that ledger automatically.
+Right-click an invoice -> Review buyer ledger. The dialog shows the selected
+name/group and explains conflicts. Select a verified party ledger, or explicitly
+use the current invoice-buyer creation method, then Save buyer & prepare XML.
+The action is local, preserves stock/unit choices and invoice facts, and sends no
+AI request or Tally write. Existing XML can still be viewed as retained previous
+output; prepare the corrected client XML before importing the affected invoice.
+Backup: Backups/Before_Buyer_Ledger_Guard.zip.
+
 DUPLICATE INVOICE WARNING
 Once invoice fields have been analysed or entered manually, the same invoice
 number and date in one client shows a red Duplicate invoice — review status.

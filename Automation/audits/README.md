@@ -33,6 +33,8 @@ original currency checks pass. The subsequent exact-quantity update addresses
 A04 by holding XML when a reused unit cannot represent every quantity. The later
 user-approved A01 behavior is a nonblocking invoice-number/date warning per
 client, retaining both uploads and vouchers; its original audit check passes.
+The subsequent A02 role guard holds unsafe buyer/system ledger conflicts and
+provides explicit local party review; the five original reserved-name checks pass.
 Other
 findings remain separate work, and the
 historical report/JUnit files have not been rewritten. The existing

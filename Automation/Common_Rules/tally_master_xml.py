@@ -23,6 +23,8 @@ def apply_matches(root,records,report,units,masters,vouchers):
     ctx=context(root,records[0])
     if not ctx:return
     catalog=details(ctx);existing={kind:{norm(e['name']) for e in catalog.values() if e['kind']==kind} for kind in ('ledgers','stock_items','units')}
+    from .buyer_ledger_guard import validate_system_roles
+    validate_system_roles(masters,catalog,vouchers)
     source_masters={ (n.tag,n.get('NAME')):msg for msg in masters.find('.//REQUESTDATA') for n in msg }
     source_units={unit_symbol(msg.find('UNIT')):msg for msg in units.find('.//REQUESTDATA')}
     output={};output_units={};external={'company':ctx['company'],'ledgers':set(),'stocks':set(),'units':set()}
@@ -55,6 +57,7 @@ def apply_matches(root,records,report,units,masters,vouchers):
             output_units[new]=msg
     for voucher,row,entry in zip(vouchers.findall('.//VOUCHER'),records,report):
         inv=row.get('invoice') or {};match=assignments(root,row,ctx)
+        if match.get('party_conflict'):raise ValueError(match['party_conflict']+' Previous XML retained.')
         old=voucher.findtext('PARTYLEDGERNAME');party=match['party']
         target=party['name'] if party else fresh('ledgers',old,'party '+str(inv.get('buyer_gstin') or inv.get('buyer_address') or 'review'))
         if party:external['ledgers'].add(target)

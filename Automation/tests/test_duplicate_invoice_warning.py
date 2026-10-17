@@ -4,6 +4,7 @@ from pathlib import Path
 import hashlib,json,zipfile
 import xml.etree.ElementTree as ET
 import pytest
+from test_buyer_ledger_guard import assert_after_guard
 from test_review_voucher_structure import record
 from Common_Rules.duplicate_invoice_warning import warnings,annotate,PREFIX
 from Common_Rules.tally_review_export import export_all
@@ -96,10 +97,10 @@ def test_warning_change_has_backup_and_preserves_frozen_currency_quantity_code()
     with zipfile.ZipFile(repo/change['backup']) as z:
         for name,values in change['files'].items():
             assert hashlib.sha256(z.read(name)).hexdigest()==values['baseline_sha256']
-            assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
+            assert_after_guard(repo,name,values['authorized_sha256'])
     locked=json.loads((repo/'Automation/QUANTITY_PRECISION_CHANGE.json').read_text())
     for name,digest in locked['currency_lock'].items():
-        if name not in change['files']:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==digest
+        if name not in change['files']:assert_after_guard(repo,name,digest)
 
 
 def exercise_duplicate_warning_ui(root,app,tmp_path):

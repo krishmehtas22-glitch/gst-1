@@ -302,6 +302,7 @@ class BillSyncApp(InvoiceApp):
         if iid not in self.table.selection():self.table.selection_set(iid)
         self.table.focus(iid);self.details()
         menu=tk.Menu(self.window,tearoff=False)
+        menu.add_command(label='Review buyer ledger',command=self.review_buyer_ledger)
         for label,command in [('View / edit details',self.review),('Currency / exchange rate',self.currency_review),('Tally master assignments',self.view_master_matches),('Export refund review',self.export_refund_review),('Open original invoice',self.open_source),('View prepared XML',self.view_xml),('Open XML folder',self.open_output)]:menu.add_command(label=label,command=command)
         menu.tk_popup(event.x_root,event.y_root)
 
@@ -401,6 +402,11 @@ class BillSyncApp(InvoiceApp):
         for entry in audit['items']:
             table.insert('','end',values=(items[entry['index']].get('name',''),entry['stock'] or 'Current creation method',entry['unit'] or 'Current creation method'))
         ttk.Label(panel,text='Invoice names and amounts are retained. Existing master references are company-specific.',wraplength=820).pack(anchor='w',pady=10)
+        ttk.Button(panel,text='Review buyer ledger',command=self.review_buyer_ledger).pack(anchor='w')
+
+    def review_buyer_ledger(self):
+        from Buyer_Ledger_Dialog import open_buyer_review
+        open_buyer_review(self)
 
     def view_xml(self):
         row=self.selected()

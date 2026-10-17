@@ -5,6 +5,7 @@ from pathlib import Path
 import json,zipfile,types
 import xml.etree.ElementTree as ET
 import pytest
+from test_buyer_ledger_guard import assert_after_guard
 from Common_Rules.foreign_currency import currency_code,convert,save_settings,for_record,load_settings
 from Common_Rules.tally_review_export import export_all
 from Export_Refund_Review import summary,save_review,load_review
@@ -174,14 +175,14 @@ def test_installer_contains_currency_files_and_historical_hash_chain():
                 duplicate=json.loads((repo/'Automation/DUPLICATE_WARNING_CHANGE.json').read_text())['files']
                 if name in duplicate:
                     assert duplicate[name]['baseline_sha256']==later[name]['authorized_sha256']
-                    assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==duplicate[name]['authorized_sha256']
+                    assert_after_guard(repo,name,duplicate[name]['authorized_sha256'])
                 else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==later[name]['authorized_sha256']
             else:
                 duplicate=json.loads((repo/'Automation/DUPLICATE_WARNING_CHANGE.json').read_text())['files']
                 if name in duplicate:
                     assert duplicate[name]['baseline_sha256']==values['authorized_sha256']
-                    assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==duplicate[name]['authorized_sha256']
-                else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
+                    assert_after_guard(repo,name,duplicate[name]['authorized_sha256'])
+                else:assert_after_guard(repo,name,values['authorized_sha256'])
 
 
 def exercise_currency_dialog(root,app,tmp_path,monkeypatch):

@@ -1,0 +1,22 @@
+{
+  "baseline_commit": "40acd9a92bec5d2040e4d394ee3539e8ac9fda3a",
+  "backup": "Backups/Before_Buyer_Ledger_Guard.zip",
+  "files": {
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "4de4baeff3bb432c197fb393e0d61850d4fa37d7a86b7fc7b8669f0e38b0c497",
+      "authorized_sha256": "3e6189d573e912157c21cac80816708a3dbb9b475381d84df64df5e2000915aa"
+    },
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "7ef4cef82989683567e0a2b6b1aabf2ce9b5ca92eaceb599ae8ac19bb6816d6f",
+      "authorized_sha256": "c685ff3576e7e131ab585debf57e8f93dc0054708f2f597e265036fd53921dae"
+    },
+    "Automation/Common_Rules/tally_master_matching.py": {
+      "baseline_sha256": "9ffea561757b4a9a9b73b3e75bf238ddb3d027a772815dc80bd3fb5f74c6ab79",
+      "authorized_sha256": "73cd8e0f9fe0077001db011cc6f43ec80ab2d2bdd2c1c9ebac3eeb33968f3b93"
+    },
+    "Automation/Common_Rules/tally_master_xml.py": {
+      "baseline_sha256": "6cccda06eb4e3e3ab4a5a785ffde7898eb0a2857bd42652136d3300b7c85e9e2",
+      "authorized_sha256": "61e2a18aa6af3edbbbe02761bb283757e617fc6a8628b0dc689be608af4541e1"
+    }
+  }
+}

@@ -1,3 +1,17 @@
+# Buyer ledger role guard — latest user authorization, 17 October 2026
+
+The user accepts the proposed buyer-ledger name/group check. Validate imported
+buyer assignments in Python, regardless of AI confidence/GSTIN. Reserved system
+names and non-party/unverified parent groups cannot be buyer references. Hold
+new client XML on role conflicts, retaining previous output and source facts.
+Also reject occupied system ledger names whose existing group conflicts with
+its generated accounting role. Expose explicit local buyer-ledger review to
+select a verified party or use current invoice-buyer creation; no AI calls.
+Do not alter existing Tally masters, currency, quantities, unit/UQC, stock GST
+matching (a separate issue), duplicate-warning policy, GUIDs or Import ALL.
+Keep backups and historical lock hashes; record this narrow exception separately.
+No live AI requests or Tally writes during tests.
+
 # Optional duplicate warning — latest user request, 17 October 2026
 
 The user wants a warning only, comparing invoice number and invoice date, with

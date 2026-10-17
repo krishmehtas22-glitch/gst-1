@@ -24,6 +24,11 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
+                guard=json.loads((root/'Automation/BUYER_LEDGER_GUARD_CHANGE.json').read_text())['files']
+                if name in guard:
+                    from test_buyer_ledger_guard import assert_after_guard
+                    assert_after_guard(root,name,guard[name]['baseline_sha256'])
+                    actual=guard[name]['baseline_sha256']
                 quantities=json.loads((root/'Automation/QUANTITY_PRECISION_CHANGE.json').read_text())['files']
                 duplicates=json.loads((root/'Automation/DUPLICATE_WARNING_CHANGE.json').read_text())['files']
                 if name in duplicates:
@@ -136,5 +141,7 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         exercise_currency_dialog(root,app,tmp_path,monkeypatch)
         from test_duplicate_invoice_warning import exercise_duplicate_warning_ui
         exercise_duplicate_warning_ui(root,app,tmp_path)
+        from test_buyer_ledger_guard import exercise_buyer_review_ui
+        exercise_buyer_review_ui(root,app,tmp_path,monkeypatch)
         assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

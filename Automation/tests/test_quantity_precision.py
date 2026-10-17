@@ -5,6 +5,7 @@ from pathlib import Path
 import hashlib,json,zipfile,types
 import xml.etree.ElementTree as ET
 import pytest
+from test_buyer_ledger_guard import assert_after_guard
 from test_review_voucher_structure import record
 from Common_Rules.tally_review_export import export_all
 from Common_Rules.quantity_precision import decimal_places
@@ -86,15 +87,15 @@ def test_currency_lock_and_precision_backup_chain():
     for name,digest in change['currency_lock'].items():
         if name in duplicate:
             assert duplicate[name]['baseline_sha256']==digest
-            assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==duplicate[name]['authorized_sha256']
-        else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==digest
+            assert_after_guard(repo,name,duplicate[name]['authorized_sha256'])
+        else:assert_after_guard(repo,name,digest)
     with zipfile.ZipFile(repo/change['backup']) as z:
         for name,values in change['files'].items():
             assert hashlib.sha256(z.read(name)).hexdigest()==values['baseline_sha256']
             if name in duplicate:
                 assert duplicate[name]['baseline_sha256']==values['authorized_sha256']
-                assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==duplicate[name]['authorized_sha256']
-            else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
+                assert_after_guard(repo,name,duplicate[name]['authorized_sha256'])
+            else:assert_after_guard(repo,name,values['authorized_sha256'])
 
 
 def test_ordinary_xml_identical_to_locked_currency_release(tmp_path):

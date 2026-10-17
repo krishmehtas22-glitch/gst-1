@@ -173,6 +173,9 @@ def assignments(root,record,ctx):
     catalog={k:v for k,v in all_entries.items() if k in raw.get('_offered_ids',[])}
     unit_index={v['name']:v for v in all_entries.values() if v['kind']=='units'}
     party=selected(raw.get('party'),catalog,'ledgers')
+    from .buyer_ledger_guard import party_conflict
+    conflict=party_conflict(party)
+    if conflict:party=None
     if party:
         gstin=norm(inv.get('buyer_gstin'));existing=norm(party['gstin'])
         if (gstin or existing) and gstin!=existing:party=None
@@ -213,7 +216,7 @@ def assignments(root,record,ctx):
                 except (InvalidOperation,TypeError):stock=None
                 if stock:unit=target
         items.append({'stock':stock,'unit':unit})
-    return {'party':party,'items':items}
+    return {'party':party,'items':items,'party_conflict':conflict}
 
 
 def match_cached(root,record,budget,stop_event=None,transport=None):
