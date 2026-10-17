@@ -1,3 +1,19 @@
+# Apply imported Tally masters — latest user request, 17 October 2026
+
+The user now authorizes AI to assign imported Tally party/inventory/unit masters
+to uploaded invoices, falling back to the existing creation method for unmatched
+entries. This supersedes the earlier snapshot-review-only restriction narrowly.
+Bind snapshots explicitly to client and company; match only on explicit processing,
+retain the existing shared AI budget, caches and manual corrections. Preserve
+invoice source values, GST, quantities, rates, GUIDs and document conversion.
+Allow optional Groq matching context/sidecar, an AI-first matching hook and a
+post-generation XML reference adapter. Reused masters must not be recreated or
+altered; validate company-bound external dependencies before import. This allows
+only prerequisite/company checks in tally_import.py, preserving dispatch order,
+Import ALL button, unit creation protocol, receipts and retry behavior. Record
+changed-file exceptions separately; retain all original lock fingerprints and
+back up prior code. No live AI requests or Tally writes for automated checks.
+
 # Export country and refund-review addition — 17 October 2026
 
 The user explicitly requests export country in Tally and a refund column, and

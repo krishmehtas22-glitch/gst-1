@@ -50,6 +50,7 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
         raise ValueError('Choose an active invoice AI provider.')
     progress('Preparing PDF text/OCR for AI; XML conversion has not started.')
     records = inspect_sources(root, client_names, demo, auto_units)
+    from .tally_master_matching import context,match_cached
     approved_paths = None if selected_paths is None else {str(Path(p).resolve()) for p in selected_paths}
     if approved_paths is not None:
         present = {str(Path(r.get('source_path', r['path'])).resolve()) for r in records}
@@ -60,6 +61,7 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
                 (approved_paths is None or str(Path(record.get('source_path', record['path'])).resolve()) in approved_paths))
     if selected_source is not None and selected_source not in {token(r) for r in records}:
         raise ValueError('Selected source changed or disappeared; scan the client again.')
+    bound_clients={r['client'] for r in records if selected(r) and context(root,r)}
     decisions, pending, warnings = {}, [], []
     for record in records:
         try:
@@ -81,15 +83,19 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
         else:
             pending.append(record)
     limit = len(pending)
+    if bound_clients:limit=len([r for r in records if selected(r)])
     if approved_paths is not None:limit = min(limit, len(approved_paths))
     if max_new_requests is not None:limit = min(limit, max(0, int(max_new_requests)))
     budget = RequestBudget(limit)
     progress(f'AI stage: {len(pending)} sources use saved AI reads or new extraction; '
              f'{len(records)-len(pending)} sources retain manual/source review status.')
+    groq_unavailable=False
     try:
         if pending:
             answers = (batch_runner or read_with_fallback)(root, pending, primary=primary,
                 progress=progress, confirm_test=False, stop_event=stop_event, request_budget=budget)
+            import json
+            groq_unavailable=any('Groq HTTP '+str(code) in json.dumps(answers) for code in (401,402,403,404,429))
             for record, answer in zip(pending, answers):
                 if (answer.get('client'), answer.get('digest'), answer.get('path')) != token(record):
                     raise ValueError('AI batch result does not match its source.')
@@ -98,8 +104,21 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
                     'provider': answer.get('provider', 'Python'),
                     'cached': bool(answer.get('cached') or answer.get('status') == 'extracted' and not answer.get('attempts'))}
     except Exception as exc:
+        groq_unavailable=any('Groq HTTP '+str(code) in str(exc) for code in (401,402,403,404,429))
         warnings.append('AI stage ended with '+type(exc).__name__+'; saved reads are retained.')
         progress(warnings[-1])
+    # Matching cached selected invoices shares the original confirmed budget.
+    # Fresh Groq reads already receive candidate masters in the same AI call.
+    matching_start=budget.used
+    if bound_clients and not groq_unavailable and not (stop_event and stop_event.is_set()):
+        current=inspect_sources(root,client_names,demo,auto_units)
+        for record in current:
+            if selected(record) and record['client'] in bound_clients and decisions.get(token(record),{}).get('status') in ('extracted','approved_review'):
+                try:
+                    if match_cached(root,record,budget,stop_event):progress('Tally master matching saved for '+str(record.get('invoice',{}).get('number') or Path(record['path']).name))
+                except (ValueError,OSError,KeyError,TypeError) as exc:
+                    warnings.append('Tally master matching unavailable; current creation method retained: '+str(exc))
+                    if any('Groq HTTP '+str(code) in str(exc) for code in (401,402,403,404,429)):break
     # A worker/report failure must not discard saved successes or trigger retries.
     for record in pending:
         if token(record) not in decisions or decisions[token(record)]['status'] != 'extracted':
@@ -122,6 +141,8 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
     status_map = {token(record): decisions[token(record)] for record in records}
     summary = {
         'mode': 'desktop_ai_first', 'primary_provider': primary,
+        'master_matching_clients': sorted(bound_clients),
+        'master_matching_attempts': budget.used-matching_start,
         'input_invoices': len(records), 'new_ai_attempts': budget.used,
         'new_ai_attempt_limit': budget.limit,
         'ai_read_invoices': sum(d['status'] == 'extracted' for d in decisions.values()),

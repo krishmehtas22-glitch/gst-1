@@ -105,11 +105,19 @@ def extract_selected(root,record,transport=None):
     data=Path(record['path']).read_bytes()
     if len(data)>8*1024*1024:raise ValueError('Groq extraction supports PDFs up to 8 MiB')
     payload=prepare_invoice_payload(record,model)
-    inv=normalize_invoice_result((transport or request_invoice)(payload,key,model),record,'Groq')
+    from .tally_master_matching import context,augment_payload,save_choices
+    master_context=context(root,record)
+    if master_context:payload=augment_payload(payload,master_context,record.get('invoice') or {})
+    answer=(transport or request_invoice)(payload,key,model)
+    choices=answer.pop('_tally_matches',None) if isinstance(answer,dict) else None
+    inv=normalize_invoice_result(answer,record,'Groq')
     verify_source(root,record)
     if hashlib.sha256(data).hexdigest()!=record['digest']:raise ValueError('Source changed during Groq extraction')
     write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],'invoice':inv})
     activate(root,record,'Groq')
+    if master_context:
+        from .tally_master_matching import shortlist
+        save_choices(root,record,master_context,inv,choices,shortlist(master_context,record.get('invoice') or {}))
     return candidate(root,record)
 
 

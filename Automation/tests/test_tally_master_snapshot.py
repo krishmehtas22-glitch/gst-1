@@ -93,7 +93,10 @@ def exercise_snapshot_dialog_in_existing_app(root,tmp_path,monkeypatch):
     def transport(payload):calls.append(payload);return tally_transport(payload)
     monkeypatch.setattr(dialog_module,'loaded_companies',lambda:__import__('Common_Rules.tally_import',fromlist=['loaded_companies']).loaded_companies(transport))
     monkeypatch.setattr(dialog_module,'collect_snapshot',lambda company,progress:collect_snapshot(company,transport,progress))
-    dialog=dialog_module.TallyMasterDialog(root,tmp_path,on_saved=lambda snapshot,path:saved.append((snapshot,path)))
+    from Common_Rules.tally_master_matching import bind_snapshot,context
+    def selected(snapshot,path):
+        saved.append((snapshot,path));bind_snapshot(tmp_path,'Client',path)
+    dialog=dialog_module.TallyMasterDialog(root,tmp_path,on_saved=selected,client='Client')
     def wait():
         deadline=time.monotonic()+5
         while time.monotonic()<deadline:
@@ -106,6 +109,8 @@ def exercise_snapshot_dialog_in_existing_app(root,tmp_path,monkeypatch):
         assert dialog.picker.cget('values')==(COMPANY,)
         dialog.company.set(COMPANY);dialog.read();wait()
         assert len(saved)==1 and len(calls)==5 and saved[0][1].is_file()
+        assert context(tmp_path,{'client':'Client'})['company']==COMPANY
+        assert str(dialog.use_button.cget('state'))=='normal'
         assert all(len(table.get_children())==1 for table in dialog.tables.values())
         dialog.tables['units'].selection_set('0');root.update()
         assert 'MTR-METERS' in dialog.detail.get('1.0','end')

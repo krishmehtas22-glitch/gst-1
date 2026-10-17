@@ -18,7 +18,7 @@ from Export_Refund_Review import summary as refund_summary,load_review as load_r
 from Export_Refund_Dialog import open_refund_review
 
 BG='#f3f6fc';NAV='#101d30';BLUE='#2460ed';INK='#17243a';MUTED='#65748b';BORDER='#dbe3f0'
-UI_VERSION='BillSync UI 2.1'
+UI_VERSION='BillSync UI 2.2'
 
 
 class ActivityLabel(ttk.Label):
@@ -299,7 +299,7 @@ class BillSyncApp(InvoiceApp):
         if iid not in self.table.selection():self.table.selection_set(iid)
         self.table.focus(iid);self.details()
         menu=tk.Menu(self.window,tearoff=False)
-        for label,command in [('View / edit details',self.review),('Export refund review',self.export_refund_review),('Open original invoice',self.open_source),('View prepared XML',self.view_xml),('Open XML folder',self.open_output)]:menu.add_command(label=label,command=command)
+        for label,command in [('View / edit details',self.review),('Tally master assignments',self.view_master_matches),('Export refund review',self.export_refund_review),('Open original invoice',self.open_source),('View prepared XML',self.view_xml),('Open XML folder',self.open_output)]:menu.add_command(label=label,command=command)
         menu.tk_popup(event.x_root,event.y_root)
 
     def update_summary(self):
@@ -353,10 +353,34 @@ class BillSyncApp(InvoiceApp):
     def import_masters_from_tally(self):
         if self.busy:
             messagebox.showinfo('Tally masters','Finish the current operation before reading Tally masters.',parent=self.window);return
+        selected=self.client_scope.get()
+        client=selected.removeprefix('Folder: ') if selected!='All clients' else (self.selected() or {}).get('client')
+        if not client:
+            messagebox.showinfo('Tally masters','Choose a client or select its invoice before importing Tally masters.',parent=self.window);return
         def saved(snapshot,path):
+            from Common_Rules.tally_master_matching import bind_snapshot
+            bind_snapshot(self.root,client,path)
             counts=snapshot['counts']
-            self.status.config(text=f"Tally review copy saved: {counts['ledgers']} ledgers, {counts['stock_items']} inventory items, {counts['units']} units from {snapshot['company']}. Invoice processing unchanged.")
-        TallyMasterDialog(self.window,self.root,on_saved=saved)
+            self.status.config(text=f"Masters selected for {client}: {counts['ledgers']} ledgers, {counts['stock_items']} items, {counts['units']} units from {snapshot['company']}. Process invoices to match with AI; no AI call sent now.")
+        TallyMasterDialog(self.window,self.root,on_saved=saved,client=client)
+
+    def view_master_matches(self):
+        row=self.selected()
+        if not row:return
+        audit=row.get('tally_master_matching')
+        if not audit:
+            messagebox.showinfo('Tally master assignments','No master-matching result for this invoice. Select imported masters for its client, then process the invoice. Existing creation is the fallback.',parent=self.window);return
+        top=tk.Toplevel(self.window);top.title('Tally master assignments');top.geometry('880x460')
+        panel=ttk.Frame(top,padding=18);panel.pack(fill='both',expand=True)
+        ttk.Label(panel,text='Company: '+audit['company']).pack(anchor='w')
+        ttk.Label(panel,text='Buyer ledger: '+str(audit['party'] or 'Current creation method')).pack(anchor='w',pady=8)
+        table=ttk.Treeview(panel,columns=('invoice_item','stock','unit'),show='headings')
+        for key,title in [('invoice_item','Invoice item'),('stock','Assigned stock item'),('unit','Assigned unit')]:table.heading(key,text=title);table.column(key,width=260)
+        table.pack(fill='both',expand=True)
+        items=(row.get('invoice') or {}).get('items',[])
+        for entry in audit['items']:
+            table.insert('','end',values=(items[entry['index']].get('name',''),entry['stock'] or 'Current creation method',entry['unit'] or 'Current creation method'))
+        ttk.Label(panel,text='Invoice names and amounts are retained. Existing master references are company-specific.',wraplength=820).pack(anchor='w',pady=10)
 
     def view_xml(self):
         row=self.selected()

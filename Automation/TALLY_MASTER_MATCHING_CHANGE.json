@@ -1,0 +1,25 @@
+{
+  "authorized_on": "2026-10-17",
+  "request": "AI assigns imported Tally party, inventory and unit masters per client/company; unmatched entries retain current creation.",
+  "baseline_commit": "041dc10ebf7404a2121cb0cc19865f44ad28bc4c",
+  "files": {
+    "Automation/Common_Rules/ai_first.py": {
+      "baseline_sha256": "8774fdf668726ec9307ab52029c38539f1046caddb4f56d25d015ef2ea37fae1",
+      "authorized_sha256": "9240da8437eacc880385a6b96c17517dbb69092a939fe0dd9e75a466cfe78b92"
+    },
+    "Automation/Common_Rules/groq_reader.py": {
+      "baseline_sha256": "916a166d756070feb8032dc03172708aa08c4d23fc97c7ed44f643747eaf1576",
+      "authorized_sha256": "e2f2581f06863a91d18e3e0ba34ce23aba709b610c27eaadcdc1951f18df8247"
+    },
+    "Automation/Common_Rules/tally_review_export.py": {
+      "baseline_sha256": "9c381fd24cd1d32f1d824bf86d929c90c670aa31903c12ef3e71eff617665689",
+      "authorized_sha256": "f39ec7d795edb8d3929664648902e23a4d9ea90d61a746fc1cdeaa6cc6e02324"
+    },
+    "Automation/Common_Rules/tally_import.py": {
+      "baseline_sha256": "aa0ac53f912f80b9cb14e82457ccc5bf674358d7c8d075bf78a0f1c08900810c",
+      "authorized_sha256": "9bdd653f0e79380f9d21504265c877a9b94045e0e621301ba768d1b444e8e854"
+    }
+  },
+  "import_scope": "Company-bound external prerequisite checks only; Import ALL UI/order/unit protocol/receipts/retries unchanged.",
+  "ai_scope": "Optional master context plus separate digest-bound matching sidecar; shared confirmed request budget, no automatic AI."
+}

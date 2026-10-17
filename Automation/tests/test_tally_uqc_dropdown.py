@@ -49,11 +49,27 @@ def test_millilitre_matches_actual_dropdown_spelling():
     assert unit_uqc('ML','MLT-MILILITRE')=='MLT-MILLILITRE'
 
 
-def test_button_transport_helpers_have_not_changed():
+def test_unit_transport_is_unchanged_and_company_guard_exception_is_recorded():
     root=Path(__file__).resolve().parents[2]
     expected={
         'tally_import.py':'aa0ac53f912f80b9cb14e82457ccc5bf674358d7c8d075bf78a0f1c08900810c',
         'tally_units.py':'1fc16af22c7a314d6c2fa2de34b316cd2b084fb25325523ebefc9d7f4b74f65a',
     }
     for name,digest in expected.items():
-        assert hashlib.sha256((root/'Automation/Common_Rules'/name).read_bytes()).hexdigest()==digest
+        actual=hashlib.sha256((root/'Automation/Common_Rules'/name).read_bytes()).hexdigest()
+        if name=='tally_import.py':
+            import json,zipfile,ast
+            change=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']['Automation/Common_Rules/tally_import.py']
+            assert change['baseline_sha256']==digest and change['authorized_sha256']==actual
+            with zipfile.ZipFile(root/'Backups/Before_Tally_Master_Matching.zip') as archive:
+                original=archive.read('Automation/Common_Rules/tally_import.py')
+            assert hashlib.sha256(original).hexdigest()==digest
+            before={n.name:n for n in ast.parse(original).body if isinstance(n,ast.FunctionDef)}
+            after={n.name:n for n in ast.parse((root/'Automation/Common_Rules'/name).read_bytes()).body if isinstance(n,ast.FunctionDef)}
+            # Only the pre-dispatch guard is added; the complete original
+            # unit protocol, ordering, counters and error/retry body remain.
+            after['send_plan'].body[1:3]=[]
+            assert ast.dump(before['send_plan'])==ast.dump(after['send_plan'])
+            for function in before.keys()-{'send_plan','company_payload','consolidated_import_groups'}:
+                assert ast.dump(before[function])==ast.dump(after[function])
+        else:assert actual==digest

@@ -1,15 +1,15 @@
-BillSync UI 2.1 — approved invoice workspace, export-country and refund review
+BillSync UI 2.2 — approved invoice workspace, export-country and refund review
 
 SOURCE-ONLY UPDATE (NO EXE DOWNLOAD)
 Close the app. Save Install_BillSync_Source.py in the existing reader source
 folder containing Invoice_Desktop.py and run it with Python. The installer
 checks the matching Reader 7.30 engine, backs up existing UI files under
 .invoice_app/code_backups/billsync_source_*, then installs UI/upload/snapshot
-files, requirements-ui.txt and the authorized Common_Rules export-country helper/hook. All other reader engine files remain
-unchanged. Existing original and updated exporter fingerprints are checked.
+files, requirements-ui.txt and the authorized Common_Rules export-country and
+optional Tally master-matching hooks. Other reader engine files remain unchanged. Existing original and updated exporter fingerprints are checked.
 No AI, XML generation or Tally import is sent.
 Run the commands printed by the installer to check/install UI dependencies
-with the existing .venv and start BillSync_UI.py. The title shows UI 2.1.
+with the existing .venv and start BillSync_UI.py. The title shows UI 2.2.
 
 WINDOWS EXE
 Download InvoiceReader-Windows from the successful Windows build. Extract the
@@ -54,15 +54,17 @@ original output location.
 TALLY DIRECTIONS
 Import to Tally opens the unchanged Import ALL/company-selection dialog.
 Its order remains Units -> Masters -> Sales vouchers, with actual receipts.
-Read Tally masters opens a separate local, read-only connection window.
+Read Tally masters opens a local, read-only connection window for the selected
+client. Selecting/importing its snapshot enables optional AI master matching.
 Open the source company in Tally and enable its HTTP/XML server on port 9000.
 Click Connect / refresh companies, select the source company, then Import
 ledgers, items & units. All three reads must succeed before a snapshot is saved.
 Ledgers, Inventory items and Units tabs show the returned data. Snapshots are
 JSON under .invoice_app/tally_master_snapshots, grouped by source company.
-View saved snapshot reopens a local copy. These copies are for review ONLY;
-they are not applied to extraction, master matching, unit mapping, current XML
-or Import ALL. No Tally company settings are changed.
+View saved snapshot reopens a local copy; Use snapshot selects it for the client.
+Process invoices to match existing party/stock/unit references with Groq; unmatched
+entries use the current creation method. See TALLY_MASTER_MATCHING.md. No AI
+requests start during snapshot import/selection. No Tally settings are changed.
 
 BACKUPS AND VERIFICATION
 Original_Reader_Backup.zip preserves the original engine and launchers.
@@ -71,7 +73,9 @@ Before_Approved_Design_Backup.zip preserves the UI before this approved design.
 Each code-only backup has a checksum manifest. Original fingerprints remain
 recorded. EXPORT_COUNTRY_REFUND_CHANGE.json
 records the authorized export-country exception. Domestic XML, financial
-allocations, PNG/upload/AI/unit/UQC/Import ALL behavior is preserved. The offline
+allocations, PNG/upload/unit/UQC behavior is preserved. TALLY_MASTER_MATCHING_CHANGE.json
+records optional AI-context/XML-reference and import dependency/company checks;
+Import ALL dispatch, unit protocol, counters and retries remain unchanged. The offline
 build smoke check initializes bundled CPU OCR, the UI and drag-and-drop.
 No live AI requests or Tally imports are used by installation or build checks.
 

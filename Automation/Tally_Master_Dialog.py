@@ -11,7 +11,7 @@ from Tally_Master_Snapshot import collect_snapshot, save_snapshot
 
 
 class TallyMasterDialog(tk.Toplevel):
-    def __init__(self, parent, storage, on_saved=lambda snapshot, path: None):
+    def __init__(self, parent, storage, on_saved=lambda snapshot, path: None, client=None):
         super().__init__(parent)
         self.title('Import masters from Tally')
         self.geometry('1000x670');self.minsize(800,560)
@@ -22,7 +22,7 @@ class TallyMasterDialog(tk.Toplevel):
         panel=ttk.Frame(self,padding=18);panel.pack(fill='both',expand=True)
         ttk.Label(panel,text='Import masters from Tally',font=('Segoe UI',14,'bold')).pack(anchor='w')
         ttk.Label(panel,text='Ledgers · Inventory items · Units',padding=(0,6)).pack(anchor='w')
-        ttk.Label(panel,text='Review copy only. Current invoice processing and master/unit creation stay unchanged.',wraplength=900).pack(anchor='w')
+        ttk.Label(panel,text=('Use masters for '+client+'. Relevant names, GSTINs, HSNs and units are sent to Groq only when you explicitly process invoices. Unmatched entries use the existing creation method.' if client else 'Read-only review copy. No AI analysis starts here.'),wraplength=900).pack(anchor='w')
         connection=ttk.Frame(panel);connection.pack(fill='x',pady=12)
         self.connect_button=ttk.Button(connection,text='Connect / refresh companies',command=self.connect)
         self.connect_button.pack(side='left')
@@ -52,8 +52,10 @@ class TallyMasterDialog(tk.Toplevel):
         self.detail=tk.Text(panel,height=5,wrap='word',font=('Segoe UI',9));self.detail.pack(fill='x',pady=8);self.detail.config(state='disabled')
         bottom=ttk.Frame(panel);bottom.pack(fill='x')
         self.saved_button=ttk.Button(bottom,text='View saved snapshot',command=self.open_saved);self.saved_button.pack(side='left')
+        self.use_button=ttk.Button(bottom,text='Use snapshot for '+client,command=self.use_snapshot,state='disabled') if client else None
+        if self.use_button:self.use_button.pack(side='left',padx=10)
         ttk.Button(bottom,text='Close',command=self.close).pack(side='right')
-        self.snapshot=None
+        self.snapshot=None;self.snapshot_path=None
         self._poll_id=self.after(100,self.poll)
 
     def run(self, worker):
@@ -91,8 +93,9 @@ class TallyMasterDialog(tk.Toplevel):
                 if self.company.get() not in value:self.company.set('')
                 self.state.config(text='Choose the source company, then import its masters.' if value else 'No open company found. Open a company in Tally, then refresh.')
             elif kind=='snapshot':
-                snapshot,path=value;self.show_snapshot(snapshot)
-                self.state.config(text='Saved review copy from '+snapshot['company']+'. No changes were applied to invoice processing.')
+                snapshot,path=value;self.show_snapshot(snapshot);self.snapshot_path=path
+                self.state.config(text='Saved masters from '+snapshot['company']+'. No AI requests or Tally imports sent.')
+                if self.use_button:self.use_button.config(state='normal')
                 self.on_saved(snapshot,path)
             elif kind=='error':
                 self.state.config(text='Could not complete the read: '+value)
@@ -133,8 +136,16 @@ class TallyMasterDialog(tk.Toplevel):
         if not path:return
         try:
             self.show_snapshot(json.loads(Path(path).read_text(encoding='utf-8')))
+            self.snapshot_path=Path(path)
+            if self.use_button:self.use_button.config(state='normal')
             self.state.config(text='Viewing saved review copy from '+self.snapshot['company']+'. No Tally request sent.')
         except (ValueError,OSError,TypeError,KeyError) as exc:messagebox.showerror('Saved snapshot',str(exc),parent=self)
+
+    def use_snapshot(self):
+        if self.running or not self.snapshot_path:return
+        try:self.on_saved(self.snapshot,self.snapshot_path)
+        except (ValueError,OSError) as exc:messagebox.showerror('Tally master selection',str(exc),parent=self);return
+        self.state.config(text='Selected '+self.snapshot['company']+' for this client. Process invoices to run AI matching; no AI call sent now.')
 
     def close(self):
         if self.running:

@@ -39,7 +39,7 @@ jobs:
       - name: Install build and verification dependencies
         run: python -m pip install -r Automation/requirements-build.txt -r Automation/requirements-dev.txt
       - name: Verify unchanged output and executable paths
-        run: python Automation/Run_Windows_Checks.py Automation/tests/test_windows_packaging.py Automation/tests/test_document_upload.py Automation/tests/test_document_format_reading.py Automation/tests/test_billsync_ui.py Automation/tests/test_export_country_refund.py Automation/tests/test_tally_master_snapshot.py Automation/tests/test_complete_batch_output.py Automation/tests/test_tally_direct_import.py Automation/tests/test_large_ai_batch.py Automation/tests/test_openrouter_reader.py Automation/tests/test_shared_groq_reading.py Automation/tests/test_ai_identity_fallback.py Automation/tests/test_tally_unit_reuse.py -q
+        run: python Automation/Run_Windows_Checks.py Automation/tests/test_windows_packaging.py Automation/tests/test_document_upload.py Automation/tests/test_document_format_reading.py Automation/tests/test_billsync_ui.py Automation/tests/test_export_country_refund.py Automation/tests/test_tally_master_matching.py Automation/tests/test_tally_master_snapshot.py Automation/tests/test_complete_batch_output.py Automation/tests/test_tally_direct_import.py Automation/tests/test_large_ai_batch.py Automation/tests/test_openrouter_reader.py Automation/tests/test_shared_groq_reading.py Automation/tests/test_ai_identity_fallback.py Automation/tests/test_tally_unit_reuse.py -q
       - name: Build Windows executable
         working-directory: Automation
         run: python -m PyInstaller --noconfirm --clean InvoiceReader.spec
@@ -56,6 +56,8 @@ jobs:
           Copy-Item Backups/Reader_Before_BillSync_UI.zip Automation/dist/InvoiceReader/Original_Reader_Backup.zip
           Copy-Item Backups/BillSync_UI_Before_Tally_Masters.zip Automation/dist/InvoiceReader/Previous_UI_Backup.zip
           Copy-Item Backups/BillSync_Before_Approved_Design.zip Automation/dist/InvoiceReader/Before_Approved_Design_Backup.zip
+          Copy-Item Backups/Before_Tally_Master_Matching.zip Automation/dist/InvoiceReader/Before_Tally_Master_Matching.zip
+          Copy-Item Automation/docs/TALLY_MASTER_MATCHING.md Automation/dist/InvoiceReader/Tally_Master_Matching.txt
           Copy-Item Backups/Before_Export_Country_Refund.zip Automation/dist/InvoiceReader/Before_Export_Country_Refund.zip
           Copy-Item Automation/docs/EXPORT_COUNTRY_REFUND.md Automation/dist/InvoiceReader/Export_Country_Refund.txt
           Copy-Item Automation/Open_BillSync_EXE.bat Automation/dist/InvoiceReader/Open_BillSync.bat

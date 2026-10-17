@@ -221,6 +221,9 @@ def export_all(root,records,demo):
                     documents.append((units,masters,vouchers))
                     assert len(vouchers.findall('.//VOUCHER'))==len(rows)
                 units,masters,vouchers=consolidate(documents)
+                from .tally_master_xml import apply_matches
+                ordered=[row for _,_,part in sellers for row in part]
+                apply_matches(root,ordered,report,units,masters,vouchers)
                 verify_vouchers(vouchers)
                 if len(vouchers.findall('.//VOUCHER'))!=len(group):raise ValueError('Consolidated voucher count differs from source count')
                 save_document(units,run/'Units.xml');save_document(masters,run/'Masters.xml');save_document(vouchers,run/'Sales_Vouchers.xml')

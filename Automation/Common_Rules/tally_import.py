@@ -162,11 +162,13 @@ def consolidated_import_groups(run,selected,manifest):
                     (n.tag=='STOCKITEM' and n.get('NAME') in stocks) for n in msg)]
         declared_ledgers={n.get('NAME') for msg in chosen for n in msg if n.tag=='LEDGER'}
         declared_stocks={n.get('NAME') for msg in chosen for n in msg if n.tag=='STOCKITEM'}
-        if not ledgers<=declared_ledgers or not stocks<=declared_stocks:
+        from .tally_master_xml import dependencies
+        reused=dependencies(documents['Masters.xml'])
+        if not ledgers<=declared_ledgers|set(reused['ledgers']) or not stocks<=declared_stocks|set(reused['stocks']):
             raise ValueError('Client vouchers reference missing prerequisite masters')
         units={n.findtext('BASEUNITS') for msg in chosen for n in msg if n.tag=='STOCKITEM'}
         chosen_units=[msg for msg in documents['Units.xml'].find('.//REQUESTDATA') if unit_symbol(msg.find('UNIT')) in units]
-        if units!={unit_symbol(msg.find('UNIT')) for msg in chosen_units}:
+        if not units<={unit_symbol(msg.find('UNIT')) for msg in chosen_units}|set(reused['units']):
             raise ValueError('Client stock masters reference missing units')
         filtered=[]
         for filename in ('Units.xml','Masters.xml','Sales_Vouchers.xml'):
@@ -188,7 +190,10 @@ def voucher_count(plan):
 def company_payload(data,company):
     """Only set the transport destination; retain every exported business element."""
     if not company or not company.strip():raise ValueError('Select the destination Tally company.')
+    from .tally_master_xml import check_company
+    check_company([('XML',data)],company)
     document=response_xml(data)
+    document.attrib.pop('BILLSYNCMASTERS',None)
     desc=document.find('./BODY/IMPORTDATA/REQUESTDESC')
     if desc is None:raise ValueError('XML import descriptor is missing')
     variables=desc.find('STATICVARIABLES')
@@ -296,6 +301,8 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
 
     An unknown response still stops dispatch: no ambiguous import is retried.
     """
+    from .tally_master_xml import check_company
+    check_company(plan,company)
     if company not in loaded_companies(transport):raise ValueError('The selected company is no longer available in Tally. Open it in Tally and refresh the company list.')
     results=[]
     for name,data in plan:

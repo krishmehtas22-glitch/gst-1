@@ -21,7 +21,16 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
         manifest=json.loads(backup.read('BACKUP_MANIFEST.json'))
         for name,digest in manifest['files'].items():
             if name.startswith('Automation/Common_Rules/') or name=='Automation/Invoice_Desktop.py':
-                if name=='Automation/Common_Rules/tally_review_export.py':
+                matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
+                if name in matching:
+                    with zipfile.ZipFile(root/'Backups/Before_Tally_Master_Matching.zip') as previous:
+                        assert hashlib.sha256(previous.read(name)).hexdigest()==matching[name]['baseline_sha256']
+                    assert hashlib.sha256((root/name).read_bytes()).hexdigest()==matching[name]['authorized_sha256']
+                    if name=='Automation/Common_Rules/tally_review_export.py':
+                        earlier=json.loads((root/'Automation/EXPORT_COUNTRY_REFUND_CHANGE.json').read_text())
+                        assert earlier['baseline_sha256']==digest and matching[name]['baseline_sha256']==earlier['authorized_sha256']
+                    else:assert matching[name]['baseline_sha256']==digest
+                elif name=='Automation/Common_Rules/tally_review_export.py':
                     change=json.loads((root/'Automation/EXPORT_COUNTRY_REFUND_CHANGE.json').read_text())
                     assert change['baseline_sha256']==digest
                     assert hashlib.sha256((root/name).read_bytes()).hexdigest()==change['authorized_sha256']
