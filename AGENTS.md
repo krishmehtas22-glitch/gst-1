@@ -1,3 +1,18 @@
+# OCR ambiguity evidence — latest user request, 17 October 2026
+
+Authorize local OCR confidence/letter-digit ambiguity checks and bounded second
+reads of suspect regions during explicit processing only. Preserve original OCR
+text and source images; supply clearly separated alternate evidence to the
+existing Groq call, never blindly rewrite names, codes, quantities or money.
+Retain unresolved OCR warnings/evidence in cache, review and batch output; manual
+corrections remain authoritative. No new provider calls, automatic re-analysis,
+new models/dependencies, startup/upload/list OCR, or changed AI request budgets.
+Preserve embedded-PDF text, currency, quantities, units/UQC, buyer guard,
+nonblocking duplicate policy, XML accounting and Import ALL. Record narrow OCR,
+extraction metadata and Groq-evidence exceptions with a backup. OCR uncertainty
+is review evidence, not proof of perfect text accuracy or automatic correction.
+No live AI requests/Tally writes in tests.
+
 # Corrupt PDF upload validation — latest user request, 17 October 2026
 
 Authorize only PDF structural/readability validation during explicit app upload.

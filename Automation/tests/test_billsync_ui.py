@@ -24,6 +24,11 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
+                ocr=json.loads((root/'Automation/OCR_REVIEW_GUARD_CHANGE.json').read_text())['files']
+                if name in ocr:
+                    from test_buyer_ledger_guard import assert_after_guard
+                    assert_after_guard(root,name,ocr[name]['baseline_sha256'])
+                    actual=ocr[name]['baseline_sha256']
                 guard=json.loads((root/'Automation/BUYER_LEDGER_GUARD_CHANGE.json').read_text())['files']
                 if name in guard:
                     from test_buyer_ledger_guard import assert_after_guard
@@ -53,7 +58,7 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 if name in matching:
                     with zipfile.ZipFile(root/'Backups/Before_Tally_Master_Matching.zip') as previous:
                         assert hashlib.sha256(previous.read(name)).hexdigest()==matching[name]['baseline_sha256']
-                    assert hashlib.sha256((root/name).read_bytes()).hexdigest()==matching[name]['authorized_sha256']
+                    assert actual==matching[name]['authorized_sha256']
                     if name=='Automation/Common_Rules/tally_review_export.py':
                         earlier=json.loads((root/'Automation/EXPORT_COUNTRY_REFUND_CHANGE.json').read_text())
                         assert earlier['baseline_sha256']==digest and matching[name]['baseline_sha256']==earlier['authorized_sha256']
@@ -62,7 +67,7 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                     change=json.loads((root/'Automation/EXPORT_COUNTRY_REFUND_CHANGE.json').read_text())
                     assert change['baseline_sha256']==digest
                     assert hashlib.sha256((root/name).read_bytes()).hexdigest()==change['authorized_sha256']
-                else:assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest,name
+                else:assert actual==digest,name
 
 
 @pytest.mark.skipif(not os.environ.get('DISPLAY') and os.name!='nt',reason='Requires a desktop display')
@@ -143,5 +148,7 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         exercise_duplicate_warning_ui(root,app,tmp_path)
         from test_buyer_ledger_guard import exercise_buyer_review_ui
         exercise_buyer_review_ui(root,app,tmp_path,monkeypatch)
+        from test_ocr_review_guard import exercise_ocr_review_ui
+        exercise_ocr_review_ui(root,app,monkeypatch)
         assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

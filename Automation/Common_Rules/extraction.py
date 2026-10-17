@@ -70,17 +70,22 @@ def text_from_pdf(path):
         raise ValueError('Password-protected PDF; provide a readable copy')
     pages = []
     used_ocr = False
+    ocr_evidence=[]
     for index,page in enumerate(reader.pages):
         plain = page.extract_text() or ''
         text = choose_embedded_text(plain,page.extract_text(extraction_mode='layout') or '')
         if len(text.strip()) < 30:
             text = read_page(path,index)
+            ocr_evidence.extend(getattr(text,'ocr_evidence',[]))
             used_ocr = True
         pages.append(text)
     text = '\n'.join(pages)
     if len(text.strip()) < 30:
         raise ValueError('No readable text; scanned PDFs require OCR or a reviewed JSON record')
-    return (MARKER+'\n'+text) if used_ocr else text
+    if used_ocr:
+        from .ocr import OCRText
+        return OCRText(MARKER+'\n'+text,ocr_evidence)
+    return text
 
 
 def split_label_lines(text, fields=None):

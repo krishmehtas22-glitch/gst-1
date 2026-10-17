@@ -159,3 +159,22 @@ No live AI requests or Tally imports are used by installation or build checks.
 EXPORT COUNTRY AND REFUND REVIEW
 See EXPORT_COUNTRY_REFUND.md. The workspace adds Export country and Potential
 IGST refund columns, with Refund review available for an analysed export.
+
+OCR ambiguity review (17 October 2026): during explicit invoice processing,
+low-confidence regions and possible letter/digit confusions such as Penci1
+receive up to four local threshold-crop second reads per page. Primary OCR text
+and original documents are retained. Alternate readings are clearly marked as
+uncertain evidence in the existing AI request, without another provider call.
+If alternate numbers disagree with primary numbers, those alternatives stay in
+local evidence and are withheld from AI hints. Python never performs a global
+1→l or 0→o replacement. This does not guarantee every spelling/code is correct.
+
+Uncertain invoices retain an OCR source-review warning in results and XML audit
+narration. Right-click an invoice > OCR reading evidence to compare readings,
+open the source or edit through the existing invoice editor. Saving reviewed
+manual corrections preserves them and resolves the same warnings. Old AI caches
+remain reusable; no paid reread is forced. New local evidence can flag a cached
+result without rewriting its extracted values. Embedded-PDF text and the existing
+unit, accounting and Import ALL rules are preserved. Upload/list/startup do not
+run OCR or AI. Up to 5,000 JSON characters of complete evidence entries are
+included in AI hints; remaining local evidence remains available for review.

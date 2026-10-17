@@ -303,6 +303,7 @@ class BillSyncApp(InvoiceApp):
         self.table.focus(iid);self.details()
         menu=tk.Menu(self.window,tearoff=False)
         menu.add_command(label='Review buyer ledger',command=self.review_buyer_ledger)
+        menu.add_command(label='OCR reading evidence',command=self.review_ocr_evidence)
         for label,command in [('View / edit details',self.review),('Currency / exchange rate',self.currency_review),('Tally master assignments',self.view_master_matches),('Export refund review',self.export_refund_review),('Open original invoice',self.open_source),('View prepared XML',self.view_xml),('Open XML folder',self.open_output)]:menu.add_command(label=label,command=command)
         menu.tk_popup(event.x_root,event.y_root)
 
@@ -407,6 +408,10 @@ class BillSyncApp(InvoiceApp):
     def review_buyer_ledger(self):
         from Buyer_Ledger_Dialog import open_buyer_review
         open_buyer_review(self)
+
+    def review_ocr_evidence(self):
+        from OCR_Review_Dialog import open_ocr_review
+        open_ocr_review(self)
 
     def view_xml(self):
         row=self.selected()

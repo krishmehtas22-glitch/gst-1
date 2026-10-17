@@ -140,6 +140,10 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                         if text is None:
                             text=text_from_pdf(path)
                         record['invoice'] = extract_with_layouts(text,layouts,demo)
+                        if getattr(text,'ocr_evidence',None):
+                            from .ocr import review_warning
+                            record['invoice']['ocr_reading_evidence']=list(text.ocr_evidence)
+                            record['invoice'].setdefault('extraction_warnings',[]).append(review_warning(text.ocr_evidence))
                         write_json(cache,{'parser_revision':revision,'reader_revision':PARSER_REVISION,
                                          'source_sha256':digest,'text':text,'invoice':record['invoice']})
                 except Exception as exc:

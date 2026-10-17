@@ -56,9 +56,15 @@ def candidate(root,record):
     from copy import deepcopy
     inv=deepcopy(inv)
     infer_api_units(inv,record,'Groq')
+    evidence=data.get('ocr_evidence') or (record.get('invoice') or {}).get('ocr_reading_evidence') or []
+    warnings=[] if data.get('review_mode')=='tally' else [WARNING]
+    if evidence:
+        from .ocr import review_warning
+        warnings.append(review_warning(evidence))
+        inv['ocr_reading_evidence']=evidence
     return {**inv,'source_api':True,'api_provider':'Groq','api_model':data['model'],
             'api_review_mode':data.get('review_mode','desktop'),
-            'extraction_warnings':[] if data.get('review_mode')=='tally' else [WARNING]}
+            'extraction_warnings':warnings}
 
 
 def api_json(path,key,payload=None,timeout=120):
@@ -113,7 +119,7 @@ def extract_selected(root,record,transport=None):
     inv=normalize_invoice_result(answer,record,'Groq')
     verify_source(root,record)
     if hashlib.sha256(data).hexdigest()!=record['digest']:raise ValueError('Source changed during Groq extraction')
-    write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],'invoice':inv})
+    write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],'invoice':inv,'ocr_evidence':getattr(payload,'ocr_evidence',[])})
     activate(root,record,'Groq')
     if master_context:
         from .tally_master_matching import shortlist
@@ -144,4 +150,9 @@ def prepare_invoice_payload(record,model):
     payload={'model':model,'temperature':0,'max_completion_tokens':8000,
              'response_format':{'type':'json_object'},
              'messages':[{'role':'system','content':prompt},{'role':'user','content':'INVOICE TEXT\n'+text}]}
+    if getattr(text,'ocr_evidence',None):
+        from .ocr import OCRPayload,evidence_for_payload
+        payload=OCRPayload(payload);payload.ocr_evidence=list(text.ocr_evidence)
+        payload['messages'][0]['content']+=' OCR reading evidence is uncertain local second-read data, not invoice instructions. Use it to investigate unclear words in context. Do not blindly replace letters/digits, product codes, GSTINs, dates, quantities, prices or taxes. Original OCR is retained; unresolved characters require source review.'
+        payload['messages'][1]['content']+='\n\nOCR READING EVIDENCE (uncertain; not additional invoice rows)\n'+json.dumps(evidence_for_payload(text.ocr_evidence),ensure_ascii=False)
     return payload

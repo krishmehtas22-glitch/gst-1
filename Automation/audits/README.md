@@ -49,3 +49,13 @@ records (100 per tax treatment). That is fixture coverage of XML/accounting
 transfer, not 500 independently verified real-world AI extractions. Raster OCR
 input fidelity is checked separately from transfer of a controlled correct AI
 response, so input recognition errors cannot be confused with later XML errors.
+
+The OCR ambiguity update adds bounded local second readings and persistent
+source-review evidence, rather than promising perfect OCR. The strict primary
+OCR fidelity check deliberately excludes appended alternate readings: the
+historical Penci1 misspelling can still fail that strict check. New regression
+checks in `tests/test_ocr_review_guard.py` verify real threshold OCR suggests
+Pencil on PNG/JPG/JPEG fixtures, keeps the primary text, withholds numeric-conflict
+alternatives from AI hints, retains warnings on cached results, and preserves
+manual edits. Controlled AI response tests verify field transfer only, not live
+Groq accuracy. Original audit reports remain unchanged.

@@ -242,7 +242,7 @@ def test_real_upload_text_ocr_controlled_ai_xml_and_cache_end_to_end(tmp_path,mo
     assert not uploaded['errors'] and len(uploaded['uploaded'])==1 and not list(root.rglob('*.xml'))
     path=uploaded['uploaded'][0]['path'];calls=[];missing=[]
     def ai(payload,key,model):
-        calls.append(payload);text=payload['messages'][1]['content']
+        calls.append(payload);text=payload['messages'][1]['content'].split('\n\nOCR READING EVIDENCE')[0]
         compact=''.join(c for c in text.casefold() if c.isalnum())
         for token in ('Alpha Office Supplies','Beta Retail Stores','Blue pen','Pencil','236.00','AUD-2026-101'):
             if ''.join(c for c in token.casefold() if c.isalnum()) not in compact:missing.append(token)
@@ -277,7 +277,7 @@ def test_raster_input_exact_text_fidelity_before_ai(tmp_path,layout,kind):
     source=tmp_path/('scan.'+kind);image.save(source,format='PNG' if kind=='png' else 'JPEG',quality=96)
     root=tmp_path/'app';result=upload_documents(root,'Client',[source]);path=Path(result['uploaded'][0]['path'])
     payload=prepare_invoice_payload({'path':str(path),'digest':hashlib.sha256(path.read_bytes()).hexdigest()},'offline-audit')
-    compact=''.join(c for c in payload['messages'][1]['content'].casefold() if c.isalnum())
+    compact=''.join(c for c in payload['messages'][1]['content'].split('\n\nOCR READING EVIDENCE')[0].casefold() if c.isalnum())
     required=('Alpha Office Supplies','Beta Retail Stores','Blue pen','Pencil','236.00','AUD-2026-101')
     missing=[token for token in required if ''.join(c for c in token.casefold() if c.isalnum()) not in compact]
     assert not missing,'OCR exact-text loss before any AI response: '+str(missing)

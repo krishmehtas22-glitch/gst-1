@@ -1,0 +1,31 @@
+{
+  "baseline_commit": "9d3922923c97a09d4acc6d49a478af67b9e19ed5",
+  "backup": "Backups/Before_OCR_Review_Guard.zip",
+  "policy": "Keep primary OCR and invoice facts; bounded local second reads become uncertain evidence and source-review warnings. No additional provider calls.",
+  "files": {
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "a233db6ed5d2ce728a7f2af0b54d8f58fd9f23c1d351a45cabddc7720827cb24",
+      "authorized_sha256": "ce991e4ac0c000ff2d213c9fc80bea940fbbfbc7b7eae911ffc3fe6c484010c7"
+    },
+    "Automation/Common_Rules/ocr.py": {
+      "baseline_sha256": "10d4d9ad7ced966499fb02772b17470de4bcd95b63ea9c40ab4c9cdbe5a3b78c",
+      "authorized_sha256": "d2f3e67065279447675c41479faa56afdec3774d4e255d6e9cd8ef0b9c1e6946"
+    },
+    "Automation/Common_Rules/extraction.py": {
+      "baseline_sha256": "cf7870fdec1a4e6cb0712e70fe0987cfce1a7bcb96a88c84e86fb1d640bdbea8",
+      "authorized_sha256": "78eecedc192882baeed71d1380d62da25056a086f8fb07fb5ae6debd9789cfc1"
+    },
+    "Automation/Common_Rules/groq_reader.py": {
+      "baseline_sha256": "e2f2581f06863a91d18e3e0ba34ce23aba709b610c27eaadcdc1951f18df8247",
+      "authorized_sha256": "362493efe387e6c3c94b732cf83de9864037f77e87a84892027d2139b85ff2c7"
+    },
+    "Automation/Common_Rules/desktop.py": {
+      "baseline_sha256": "ad51c3e9b8a45364b347d284c694d75906552dca588733aa6dd22780c0f42bb1",
+      "authorized_sha256": "c7e2272a32b151e9be132cd40ae49aa68616936e8ee7d71de6166adcdf4a52b1"
+    },
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "c685ff3576e7e131ab585debf57e8f93dc0054708f2f597e265036fd53921dae",
+      "authorized_sha256": "8fdfe5d4855866cd2f3767a36accb79315620e93af41cc7ad0e19ebbf507eac9"
+    }
+  }
+}
