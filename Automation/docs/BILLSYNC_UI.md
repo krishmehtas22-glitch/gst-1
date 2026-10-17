@@ -1,5 +1,18 @@
 BillSync UI 2.3 — invoice workspace, foreign currency and refund review
 
+EXACT QUANTITIES
+The currency release is locked. The quantity-only follow-up preserves 2.4877 KG
+as 2.4877 KG in actual/billed quantities and batch allocations, with at least
+four decimal places on a newly generated unit. The maximum required precision
+across all rows using a unit is retained. Existing imported Tally units are
+checked across every referenced row, including rows without an AI assignment.
+If an existing KG unit supports fewer decimals, new XML is held with an explicit
+instruction: increase Number of decimal places in Tally, read masters again,
+then prepare XML. The app does not round quantities or silently alter Tally
+masters. The existing import connection also checks units in the destination.
+More than six significant decimal places requires source/unit review rather
+than automatic rounding. Backup: Backups/Before_Quantity_Precision.zip.
+
 FOREIGN CURRENCY
 Select an invoice and click Currency / exchange rate (also in the right-click
 menu). AI reads the currency and any printed rate during your explicit Process

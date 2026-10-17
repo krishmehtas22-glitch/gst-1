@@ -24,6 +24,13 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
+                quantities=json.loads((root/'Automation/QUANTITY_PRECISION_CHANGE.json').read_text())['files']
+                if name in quantities:
+                    with zipfile.ZipFile(root/'Backups/Before_Quantity_Precision.zip') as before:
+                        assert hashlib.sha256(before.read(name)).hexdigest()==quantities[name]['baseline_sha256']
+                    assert actual==quantities[name]['authorized_sha256']
+                    assert quantities[name]['baseline_sha256']==fx[name]['authorized_sha256']
+                    continue
                 if name in fx:
                     with zipfile.ZipFile(root/'Backups/Before_Foreign_Currency.zip') as before:
                         assert hashlib.sha256(before.read(name)).hexdigest()==fx[name]['baseline_sha256']

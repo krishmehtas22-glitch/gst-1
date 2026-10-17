@@ -168,7 +168,11 @@ def test_installer_contains_currency_files_and_historical_hash_chain():
     with zipfile.ZipFile(repo/change['backup']) as archive:
         for name,values in change['files'].items():
             assert hashlib.sha256(archive.read(name)).hexdigest()==values['baseline_sha256']
-            assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
+            later=json.loads((repo/'Automation/QUANTITY_PRECISION_CHANGE.json').read_text())['files']
+            if name in later:
+                assert later[name]['baseline_sha256']==values['authorized_sha256']
+                assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==later[name]['authorized_sha256']
+            else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
 
 
 def exercise_currency_dialog(root,app,tmp_path,monkeypatch):

@@ -93,6 +93,8 @@ def apply_matches(root,records,report,units,masters,vouchers):
     needed={n.text for n in vouchers.iter('LEDGERNAME')}
     for (kind,name),msg in source_masters.items():
         if kind=='LEDGER' and name in needed and ('LEDGER',name) not in output and name not in external['ledgers']:keep(deepcopy(msg))
+    from .quantity_precision import validate_existing_units
+    validate_existing_units(vouchers,catalog)
     for name in list(output_units):
         if name in external['units']:del output_units[name]
     # Exact symbol reuse without an AI assignment still follows the original

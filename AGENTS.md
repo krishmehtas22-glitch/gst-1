@@ -1,3 +1,15 @@
+# Currency lock and exact quantity precision — latest user request, 17 October 2026
+
+Lock the foreign-currency release at 7a52bc33fe7e7972e2425a5f23139f1e493c1fd6.
+The user authorizes only exact fractional quantities such as 2.4877 KG in XML,
+adequate generated unit precision, and batch-wide validation of reused unit
+precision. Preserve quantities without rounding/scaling, UQC/formal names,
+monetary values/currency conversion and Import ALL transport/protocol. Do not
+silently alter an existing Tally master. Insufficient existing precision must
+request correction in Tally; unsupported >6 significant decimal places must
+hold XML rather than round. Back up code and record new exceptions separately;
+retain original lock hashes and all customer data. No live AI/Tally writes.
+
 # Foreign-currency invoice conversion — latest user request, 17 October 2026
 
 Authorize only currency identification, printed exchange-rate extraction, explicit

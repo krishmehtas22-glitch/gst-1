@@ -45,6 +45,8 @@ def precise(value):
 
 
 def export_all(root,records,demo):
+    from .quantity_precision import validate_records
+    validate_records(records)
     from .foreign_currency import for_record
     # Resolve all currencies before staging; source records remain intact.
     for record in records:for_record(root,record)

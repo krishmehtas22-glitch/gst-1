@@ -29,7 +29,9 @@ live Tally company is needed.
 At the audited source revision, the acceptance command exits **1**, with 27
 failed / 25 passed checks. This is historical evidence, not a passing release gate.
 The later, separately authorized foreign-currency update addresses A05; its six
-original currency checks pass. Other findings remain separate work, and the
+original currency checks pass. The subsequent exact-quantity update addresses
+A04 by holding XML when a reused unit cannot represent every quantity. Other
+findings remain separate work, and the
 historical report/JUnit files have not been rewritten. The existing
 Windows workflow runs `Automation/tests`; it does not yet include these added
 adversarial acceptance checks. A green historical Windows build therefore does

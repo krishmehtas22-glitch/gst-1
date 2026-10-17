@@ -1,0 +1,27 @@
+{
+  "baseline_commit": "7a52bc33fe7e7972e2425a5f23139f1e493c1fd6",
+  "backup": "Backups/Before_Quantity_Precision.zip",
+  "currency_lock": {
+    "Automation/Common_Rules/foreign_currency.py": "2271b83eadb0225cbab69e3caec42ce3bed3b0bc0f3d7fcc58d3b8b64883573e",
+    "Automation/Common_Rules/ai_invoice_rules.py": "fbc43635681be05efea8e8188b52a1ce4f4ed245521ab618aeca4abf88d6bb8e",
+    "Automation/Common_Rules/gemini_reader.py": "a37875b52af43128415cb78f027e8db47d9fd0b618e71286c4cebbbe6cbe5557",
+    "Automation/Export_Refund_Review.py": "3b6a027207c5ef34edc7af36c3af0ceefd27f55f6342e77cb99515ecce3177d2",
+    "Automation/Export_Refund_Dialog.py": "885f610ed85c8e17959633c4f1f17f7f9641aa86e16df44a24835f8eabf3c8d0",
+    "Automation/Currency_Review_Dialog.py": "7d9d22da6adddfbe953ee0871abd66ddf2ac058e5bf9608021e45df55f134e3d",
+    "Automation/BillSync_UI.py": "e8985572c293e9766f9f339c6ee4652aded22b1148cccacc1c2269dec4b75c15"
+  },
+  "files": {
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "33b4e3cc0ab42b550ceb1a7f889dbaedde51346eae09471f17327b0b8629fe42",
+      "authorized_sha256": "af3ded917dba975c5fd895d442643f99df281620f5e67d10671dd8e1677c5a10"
+    },
+    "Automation/Common_Rules/tally_review_export.py": {
+      "baseline_sha256": "031c053f2296356f6080123b66aec2b3abf6c8d22f06c87bbd8c2765ad351eb4",
+      "authorized_sha256": "e19e2a6026d055c876f72d785bd74cae07b17f5a1fad3daed1c67e92326d8b99"
+    },
+    "Automation/Common_Rules/tally_master_xml.py": {
+      "baseline_sha256": "6cad8fdc2b18d194302daf7b0be60df57d4b8acba29b5f88afd27f8addcc06e4",
+      "authorized_sha256": "6cccda06eb4e3e3ab4a5a785ffde7898eb0a2857bd42652136d3300b7c85e9e2"
+    }
+  }
+}
