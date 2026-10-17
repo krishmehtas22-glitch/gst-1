@@ -1,3 +1,19 @@
+# Export country and refund-review addition — 17 October 2026
+
+The user explicitly requests export country in Tally and a refund column, and
+chooses Show IGST estimate + review status. Authorize a narrow export-country
+hook in Common_Rules/tally_review_export.py plus a helper, and UI/local refund
+review tracking. Export country must be valid before new export XML is generated;
+missing/conflicting country must not be fabricated. Reuse known Tally country
+fields; do not claim GST-return nature mapping is verified. Preserve financial
+allocations, GUIDs, invoice values, domestic XML, AI prompts, import transport,
+unit/UQC and PDF/JPEG/PNG processing. Preserve the original fingerprints; record
+this one-file export-metadata exception separately with its baseline hash and
+verify unchanged domestic XML against the archived exporter. Refund is an
+unverified invoice-IGST estimate, not confirmed entitlement or tax-payment proof.
+Keep manual claim/review data separate from invoice amounts/XML. LUT input-ITC
+refund is not calculated from a sales invoice. Retain existing files/backups.
+
 # Implement approved BillSync design — latest request, 16 October 2026
 
 The user now explicitly says to make the planned app. Implement the locked

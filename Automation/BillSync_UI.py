@@ -14,9 +14,11 @@ from Common_Rules.workflow_status import invoice_status
 from Document_Upload import upload_documents,client_folder
 from BillSync_Controls import ActionButton,rounded_box,RoundedCard,draw_icon
 from Tally_Master_Dialog import TallyMasterDialog
+from Export_Refund_Review import summary as refund_summary,load_review as load_refund_review,review_key,amount as refund_amount
+from Export_Refund_Dialog import open_refund_review
 
 BG='#f3f6fc';NAV='#101d30';BLUE='#2460ed';INK='#17243a';MUTED='#65748b';BORDER='#dbe3f0'
-UI_VERSION='BillSync UI 2.0'
+UI_VERSION='BillSync UI 2.1'
 
 
 class ActivityLabel(ttk.Label):
@@ -45,7 +47,7 @@ class BillSyncApp(InvoiceApp):
                 elif (storage.parent/'Invoice_Desktop.py').is_file():storage=storage.parent
             except (ValueError,OSError,KeyError,TypeError):pass
         self.root=Path(data_root) if data_root is not None else storage
-        self.records=[];self.busy=False;self.ai_stop=None;self.events=queue.Queue()
+        self.refund_reviews={};self.records=[];self.busy=False;self.ai_stop=None;self.events=queue.Queue()
         self.last=None;self.observed=None;self.closing=False;self.activity=[];self._view_signature=None
         self.demo=tk.BooleanVar(value=True);self.auto_units=tk.BooleanVar(value=True)
         # Hide the old checkbox, preserving its original accounting default exactly.
@@ -158,8 +160,8 @@ class BillSyncApp(InvoiceApp):
         ttk.Label(search,text='Search ',style='Muted.TLabel').pack(side='left')
         ttk.Entry(search,textvariable=self.search,width=24).pack(side='left',ipady=5)
         table_frame=ttk.Frame(workspace,style='Card.TFrame');table_frame.grid(row=1,column=0,sticky='nsew')
-        self.table=ttk.Treeview(table_frame,columns=('client','invoice','seller','total','quantity_unit','status'),displaycolumns=('invoice','client','seller','quantity_unit','total','status'),show='headings',height=5 if window.winfo_screenheight()<900 else 7)
-        for field,label,width in [('client','Client',100),('invoice','Invoice number',175),('seller','Seller',220),('total','Total (₹)',115),('quantity_unit','Quantity / unit',200),('status','Status',190)]:
+        self.table=ttk.Treeview(table_frame,columns=('client','invoice','seller','total','quantity_unit','status','export_country','refund_estimate'),displaycolumns=('invoice','client','seller','export_country','quantity_unit','total','refund_estimate','status'),show='headings',height=5 if window.winfo_screenheight()<900 else 7)
+        for field,label,width in [('client','Client',100),('invoice','Invoice number',175),('seller','Seller',220),('total','Total (₹)',115),('quantity_unit','Quantity / unit',200),('status','Status',190),('export_country','Export country',145),('refund_estimate','Potential IGST refund (₹)',235)]:
             self.table.heading(field,text=label);self.table.column(field,width=width,minwidth=80,anchor='e' if field=='total' else 'w')
         self.table.grid(row=0,column=0,sticky='nsew');table_frame.columnconfigure(0,weight=1)
         ybar=ttk.Scrollbar(table_frame,orient='vertical',command=self.table.yview);ybar.grid(row=0,column=1,sticky='ns')
@@ -171,6 +173,7 @@ class BillSyncApp(InvoiceApp):
         self.table.tag_configure('even',background='#ffffff');self.table.tag_configure('odd',background='#f7faff')
         lower=ttk.Frame(workspace,style='Card.TFrame');lower.grid(row=2,column=0,sticky='ew',pady=(8,0))
         ttk.Label(lower,text='Double-click an invoice to view or edit details',style='Muted.TLabel').pack(side='left')
+        ActionButton(lower,text='Refund review',command=self.export_refund_review,style='Text.TButton').pack(side='left',padx=14)
         self.list_count=ttk.Label(lower,text='0 invoices',style='Muted.TLabel');self.list_count.pack(side='right')
         activity=self.card(5);activity.columnconfigure(1,weight=1)
         ttk.Label(activity,text='Activity',style='Heading.TLabel').grid(row=0,column=0,padx=(0,14),sticky='w')
@@ -296,7 +299,7 @@ class BillSyncApp(InvoiceApp):
         if iid not in self.table.selection():self.table.selection_set(iid)
         self.table.focus(iid);self.details()
         menu=tk.Menu(self.window,tearoff=False)
-        for label,command in [('View / edit details',self.review),('Open original invoice',self.open_source),('View prepared XML',self.view_xml),('Open XML folder',self.open_output)]:menu.add_command(label=label,command=command)
+        for label,command in [('View / edit details',self.review),('Export refund review',self.export_refund_review),('Open original invoice',self.open_source),('View prepared XML',self.view_xml),('Open XML folder',self.open_output)]:menu.add_command(label=label,command=command)
         menu.tk_popup(event.x_root,event.y_root)
 
     def update_summary(self):
@@ -316,6 +319,20 @@ class BillSyncApp(InvoiceApp):
             if status=='Awaiting processing':match=match and bool(row.get('listing_only'))
             elif status=='Needs review':match=match and bool(row.get('errors') or row.get('tally_review_warnings'))
             elif status=='XML prepared':match=match and bool(row.get('output_path'))
+            info=refund_summary(row)
+            country=info['country'] or ('Required' if info['export'] else '—')
+            display=info['display']
+            if info['export']:
+                key=review_key(row)
+                if key not in self.refund_reviews:
+                    try:self.refund_reviews[key]=load_refund_review(self.root,row)
+                    except ValueError:self.refund_reviews[key]={'status':'Review file error'}
+                saved=self.refund_reviews[key]
+                if saved:
+                    if saved['status']=='Not eligible':display='— · Not eligible'
+                    elif saved['status']=='Claimed' and saved.get('claim_amount'):display=format(refund_amount(saved['claim_amount']),',.2f')+' · Claimed'
+                    else:display=(format(refund_amount(info['estimate']),',.2f')+' · ' if info['estimate'] else '')+saved['status']
+            self.table.set(iid,'export_country',country);self.table.set(iid,'refund_estimate',display)
             self.table.item(iid,tags=('even' if i%2==0 else 'odd',))
             if match:self.table.reattach(iid,'','end')
             else:
@@ -329,6 +346,9 @@ class BillSyncApp(InvoiceApp):
         content=tk.Text(top,wrap='word',font=('Segoe UI',10));content.pack(fill='both',expand=True)
         content.insert('end','\n'.join(time+'  '+message for time,message in self.activity)+'\n\nSELECTED INVOICE DETAILS\n'+self.detail.get('1.0','end'))
         content.config(state='disabled')
+
+    def export_refund_review(self):
+        open_refund_review(self)
 
     def import_masters_from_tally(self):
         if self.busy:

@@ -13,6 +13,7 @@ from .tally_xml import envelope,message,text,display_name,allocation,save_docume
 from .processing_lock import guard
 from .unit_catalog import UNITS,unit_formal_name
 from .tally_units import simple_unit,unit_symbol
+from .export_metadata import is_export,export_country,party_country_fields,voucher_country_fields
 
 
 def policy_path(root,client):
@@ -44,6 +45,9 @@ def precise(value):
 
 
 def export_all(root,records,demo):
+    # Validate export metadata before staging or changing any current output.
+    for record in records:
+        if is_export(record.get('invoice') or {}):export_country(record['invoice'])
     clients=defaultdict(list)
     for record in records:clients[record['client']].append(record)
     for client,group in clients.items():
@@ -96,7 +100,7 @@ def export_all(root,records,demo):
                         gstin=clean(inv.get('buyer_gstin'))
                         # Master and voucher references use the same printed party name.
                         party=names.party(buyer,gstin,inv)
-                        ledger(party,'Sundry Debtors',ISBILLWISEON='Yes',**({'PARTYGSTIN':gstin} if gstin else {}))
+                        ledger(party,'Sundry Debtors',ISBILLWISEON='Yes',**({'PARTYGSTIN':gstin} if gstin else {}),**party_country_fields(inv))
                         row_seller=clean(inv.get('seller_name') or inv.get('seller_name_candidate')) or 'Seller unresolved - '+client
                         row_seller_gstin=clean(inv.get('seller_gstin'))
                         if not inv.get('seller_name'):notes.append('Seller unresolved or candidate only; seller not invented')
@@ -138,7 +142,10 @@ def export_all(root,records,demo):
                             text(address,'BASICBUYERADDRESS',clean(inv['buyer_address']))
                         if gstin:text(voucher,'PARTYGSTIN',gstin)
                         pos=clean(inv.get('place_of_supply'))
-                        if pos:text(voucher,'PLACEOFSUPPLY',STATES.get(pos,pos))
+                        if is_export(inv):
+                            for tag,value in voucher_country_fields(inv).items():text(voucher,tag,value)
+                            notes.append('Export country supplied; verify export GST nature/GSTR-1 treatment in Tally. Refund eligibility is not established by this XML.')
+                        elif pos:text(voucher,'PLACEOFSUPPLY',STATES.get(pos,pos))
                         entries_tag='LEDGERENTRIES.LIST' if inventory else 'ALLLEDGERENTRIES.LIST'
                         allocation(voucher,{'ledger':party,'debit':amounts['total'],'credit':0},no,True,entries_tag=entries_tag)
                         if inventory:

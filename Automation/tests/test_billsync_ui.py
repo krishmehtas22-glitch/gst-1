@@ -14,14 +14,18 @@ def test_working_actions_are_inherited_without_replacement(name):
     assert getattr(BillSyncApp,name) is getattr(Invoice_Desktop.InvoiceApp,name)
 
 
-def test_all_existing_common_rules_match_the_backup():
+def test_engine_matches_backup_except_the_authorized_export_metadata_change():
     import zipfile
     root=Path(__file__).parents[2]
     with zipfile.ZipFile(root/'Backups/Reader_Before_BillSync_UI.zip') as backup:
         manifest=json.loads(backup.read('BACKUP_MANIFEST.json'))
         for name,digest in manifest['files'].items():
             if name.startswith('Automation/Common_Rules/') or name=='Automation/Invoice_Desktop.py':
-                assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest,name
+                if name=='Automation/Common_Rules/tally_review_export.py':
+                    change=json.loads((root/'Automation/EXPORT_COUNTRY_REFUND_CHANGE.json').read_text())
+                    assert change['baseline_sha256']==digest
+                    assert hashlib.sha256((root/name).read_bytes()).hexdigest()==change['authorized_sha256']
+                else:assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest,name
 
 
 @pytest.mark.skipif(not os.environ.get('DISPLAY') and os.name!='nt',reason='Requires a desktop display')
@@ -73,7 +77,7 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
             assert panel.winfo_y()+panel.winfo_height()<card.winfo_height()-2
             assert panel.winfo_x()>2
         app.process_menu.invoke(1);assert not calls
-        assert app.table.cget('displaycolumns')==('invoice','client','seller','quantity_unit','total','status')
+        assert app.table.cget('displaycolumns')==('invoice','client','seller','export_country','quantity_unit','total','refund_estimate','status')
         assert [app.process_menu.entrycget(i,'label') for i in range(3)]==['Process selected invoices','Process all client invoices','Process this invoice']
         assert app.process_menu.entrycget(1,'command')
         app.table.focus_force();root.update()
@@ -94,5 +98,7 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         assert not list(tmp_path.rglob('*.xml'))
         from test_tally_master_snapshot import exercise_snapshot_dialog_in_existing_app
         exercise_snapshot_dialog_in_existing_app(root,tmp_path,monkeypatch)
+        from test_export_country_refund import exercise_refund_dialog_in_existing_app
+        exercise_refund_dialog_in_existing_app(root,app,tmp_path)
         assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

@@ -16,12 +16,12 @@ def sample_rows(root):
         inv=row['invoice'];inv['number']=f'TEST-{i+1}';inv['buyer_name']=f'Customer {i+1}'
         for item in inv['items']:item['name']+=f' {i+1}'
         if i==2:
-            inv.update(supply='EXPORT',classification='export_lut',cgst='0',sgst='0',total='22000')
+            inv.update(supply='EXPORT',classification='export_lut',buyer_country='United Kingdom',place_of_supply='Outside India',cgst='0',sgst='0',total='22000')
         rows.append(row)
     return rows
 
 
-def test_only_batch_suffix_changes_against_prechange_golden_xml(tmp_path):
+def test_plain_names_and_authorized_export_metadata_against_prechange_golden_xml(tmp_path):
     rows=sample_rows(tmp_path);original=deepcopy([r['invoice'] for r in rows])
     export_all(tmp_path,rows,True);output=Path(rows[0]['output_path'])
     fixture=Path(__file__).parent/'fixtures/plain_names_before'
@@ -29,6 +29,19 @@ def test_only_batch_suffix_changes_against_prechange_golden_xml(tmp_path):
         before=(fixture/filename).read_text()
         expected=re.sub(r' \[batch [0-9a-f]+\]','',before)
         actual=(output/filename).read_text()
+        if filename!='Units.xml':
+            doc=ET.fromstring(actual)
+            # The later export-country feature is tested separately. Remove only
+            # its explicit metadata additions for this older name-only golden.
+            for parent in doc.findall('.//LEDGER')+doc.findall('.//VOUCHER'):
+                for child in list(parent):
+                    if child.tag in ('COUNTRYNAME','LEDSTATENAME','COUNTRYOFRESIDENCE','STATENAME'):parent.remove(child)
+            for voucher in doc.findall('.//VOUCHER'):
+                if voucher.findtext('VOUCHERNUMBER')=='TEST-3':
+                    voucher.find('PLACEOFSUPPLY').text='Maharashtra'
+                    narration=voucher.find('NARRATION')
+                    narration.text=narration.text.replace('; Export country supplied; verify export GST nature/GSTR-1 treatment in Tally. Refund eligibility is not established by this XML.','')
+            actual=ET.tostring(doc,encoding='unicode')
         assert ET.canonicalize(actual,strip_text=True)==ET.canonicalize(expected,strip_text=True)
     assert original==[r['invoice'] for r in rows]
     report=json.loads((output/'Batch_Report.json').read_text())

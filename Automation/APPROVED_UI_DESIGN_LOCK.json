@@ -14,7 +14,7 @@
     "Double-click to open invoice details and editing",
     "Professional restrained colours, spacing and typography"
   ],
-  "current_runtime": "BillSync UI 2.0 with locked Reader 7.30 processing",
+  "current_runtime": "BillSync UI 2.1 with authorized export-country metadata and local invoice-IGST refund review; all other locked Reader 7.30 processing retained.",
   "format_audit_baseline": {
     "Automation/Document_Upload.py": "160d68558971760e74e169caf29de33dbe3b62aef85e5e1a6320efb47665835b",
     "Automation/Invoice_Desktop.py": "d4fb06abed12ccb734ce291e948d7e83bd038fc79ba7aa31902779e653b5f51d",
@@ -30,5 +30,6 @@
     "Preserve AI prompts, output generation, units/UQC, master generation and Tally Import ALL.",
     "Format verification must not send paid AI requests or import into Tally."
   ],
-  "implementation_authorization": "User: Ignore the shared link; let us make the app we planned."
+  "implementation_authorization": "User: Ignore the shared link; let us make the app we planned.",
+  "export_metadata_addition": "EXPORT_COUNTRY_REFUND_CHANGE.json records the narrow authorized engine exception; original design and audit hashes retained."
 }

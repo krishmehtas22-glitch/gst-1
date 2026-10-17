@@ -1,0 +1,19 @@
+{
+  "authorized_on": "2026-10-17",
+  "request": "Export country in Tally and invoice-IGST estimate with review status.",
+  "changed_existing_engine_file": "Automation/Common_Rules/tally_review_export.py",
+  "baseline_sha256": "820913dfe457eeaeb964ce7c5b991c33826faa2b454d186f30b7a9fac80e9943",
+  "authorized_sha256": "9c381fd24cd1d32f1d824bf86d929c90c670aa31903c12ef3e71eff617665689",
+  "preserved": [
+    "Financial allocations and invoice amounts",
+    "Domestic XML bytes",
+    "AI prompts and PDF/JPEG/PNG processing",
+    "Unit/UQC logic and Tally Import ALL"
+  ],
+  "not_implemented": [
+    "Refund eligibility determination",
+    "Actual tax-payment verification",
+    "GST-return export-nature mapping verification",
+    "Automatic refund submission or refund-receivable posting"
+  ]
+}

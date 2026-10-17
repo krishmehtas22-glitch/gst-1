@@ -1,14 +1,15 @@
-BillSync UI 2.0 — approved invoice workspace, locked Reader 7.30 engine
+BillSync UI 2.1 — approved invoice workspace, export-country and refund review
 
 SOURCE-ONLY UPDATE (NO EXE DOWNLOAD)
 Close the app. Save Install_BillSync_Source.py in the existing reader source
 folder containing Invoice_Desktop.py and run it with Python. The installer
 checks the matching Reader 7.30 engine, backs up existing UI files under
-.invoice_app/code_backups/billsync_source_*, then replaces only UI/upload/
-snapshot presentation files and requirements-ui.txt. It never changes the
-reader or Common_Rules. No AI, XML generation or Tally import is sent.
+.invoice_app/code_backups/billsync_source_*, then installs UI/upload/snapshot
+files, requirements-ui.txt and the authorized Common_Rules export-country helper/hook. All other reader engine files remain
+unchanged. Existing original and updated exporter fingerprints are checked.
+No AI, XML generation or Tally import is sent.
 Run the commands printed by the installer to check/install UI dependencies
-with the existing .venv and start BillSync_UI.py. The title shows UI 2.0.
+with the existing .venv and start BillSync_UI.py. The title shows UI 2.1.
 
 WINDOWS EXE
 Download InvoiceReader-Windows from the successful Windows build. Extract the
@@ -67,7 +68,13 @@ BACKUPS AND VERIFICATION
 Original_Reader_Backup.zip preserves the original engine and launchers.
 Previous_UI_Backup.zip preserves the UI before incoming Tally snapshots.
 Before_Approved_Design_Backup.zip preserves the UI before this approved design.
-Each code-only backup has a checksum manifest. Original engine/PNG/upload/
-AI/XML/unit/UQC/master/import code fingerprints remain unchanged. The offline
+Each code-only backup has a checksum manifest. Original fingerprints remain
+recorded. EXPORT_COUNTRY_REFUND_CHANGE.json
+records the authorized export-country exception. Domestic XML, financial
+allocations, PNG/upload/AI/unit/UQC/Import ALL behavior is preserved. The offline
 build smoke check initializes bundled CPU OCR, the UI and drag-and-drop.
 No live AI requests or Tally imports are used by installation or build checks.
+
+EXPORT COUNTRY AND REFUND REVIEW
+See EXPORT_COUNTRY_REFUND.md. The workspace adds Export country and Potential
+IGST refund columns, with Refund review available for an analysed export.
