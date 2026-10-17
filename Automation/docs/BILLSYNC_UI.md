@@ -1,5 +1,17 @@
 BillSync UI 2.3 — invoice workspace, foreign currency and refund review
 
+PDF UPLOAD READABILITY
+Explicit PDF uploads now validate the page tree/content references and load/render
+every page using a small in-memory preview. Header-only files, truncated/unreadable
+PDFs, zero-page files and password-protected PDFs show a per-file error before
+being stored. Save an unlocked/exported/scanned copy and upload again. Valid
+files in the same batch continue, preserving their original bytes and filenames.
+Scanned and multipage PDFs are supported. This is a local readability check,
+not OCR, AI extraction or proof that the invoice content is correct. No new AI
+credits are used, and existing folder files are not scanned on startup/refresh.
+PNG/JPEG conversion, processing, financial XML, masters, quantities, currencies
+and import controls are unchanged. Backup: Backups/Before_PDF_Upload_Validation.zip.
+
 BUYER LEDGER ROLE CHECK
 Python validates AI buyer-ledger choices using the imported name and Under group,
 even when the buyer GSTIN matches. Sales, CGST, SGST, IGST, Cess, Round Off and

@@ -1,3 +1,16 @@
+# Corrupt PDF upload validation — latest user request, 17 October 2026
+
+Authorize only PDF structural/readability validation during explicit app upload.
+Reject corrupt, unreadable, zero-page and password-protected PDFs with clear
+file errors; retain valid files in a mixed upload and preserve their exact bytes.
+Use existing PDF libraries locally, without OCR, text/invoice extraction, AI or
+XML/Tally work during upload. Preserve PNG/JPEG conversion byte-for-byte,
+existing intake size/path/dedup rules, all processing and previously locked fixes.
+Do not inspect existing PDFs automatically on startup/listing/watch. Back up the
+original adapter, preserve its original fingerprint, record the PDF-only exception
+separately and allow both known adapter revisions in the source installer.
+No live AI requests or Tally writes for tests.
+
 # Buyer ledger role guard — latest user authorization, 17 October 2026
 
 The user accepts the proposed buyer-ledger name/group check. Validate imported

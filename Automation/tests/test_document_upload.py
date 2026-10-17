@@ -48,7 +48,7 @@ def test_intake_never_calls_ai_or_creates_xml(tmp_path,monkeypatch):
     from Common_Rules import ai_first,desktop,groq_reader
     for module,name in [(ai_first,'run_ai_first'),(desktop,'process_sources'),(groq_reader,'request_invoice')]:
         monkeypatch.setattr(module,name,lambda *a,**kw:pytest.fail('Upload must not process invoices'))
-    source=tmp_path/'a.pdf';source.write_bytes(b'%PDF-1.4\nfixture bytes only')
+    source=tmp_path/'a.pdf';source.write_bytes(next((Path(__file__).parent/'fixtures/client23').glob('*.pdf')).read_bytes())
     result=upload_documents(tmp_path/'app','Client',[source])
     assert len(result['uploaded'])==1
     assert not list((tmp_path/'app').rglob('*.xml'))
@@ -56,14 +56,14 @@ def test_intake_never_calls_ai_or_creates_xml(tmp_path,monkeypatch):
 
 def test_bad_files_are_reported_without_losing_valid_upload(tmp_path):
     bad=tmp_path/'bad.png';bad.write_bytes(b'not a PNG')
-    good=tmp_path/'good.pdf';good.write_bytes(b'%PDF-1.4\n')
+    good=tmp_path/'good.pdf';good.write_bytes(next((Path(__file__).parent/'fixtures/client23').glob('*.pdf')).read_bytes())
     result=upload_documents(tmp_path/'app','Client',[bad,good])
     assert len(result['errors'])==1 and len(result['uploaded'])==1
 
 
 def test_upload_reuses_existing_client_pdf_without_changing_its_path_or_hash(tmp_path):
     root=tmp_path/'app';client_folder(root,'Client',create=True)
-    original=root/'Client/existing.pdf';original.write_bytes(b'%PDF-1.4\noriginal invoice')
+    original=root/'Client/existing.pdf';original.write_bytes(next((Path(__file__).parent/'fixtures/client23').glob('*.pdf')).read_bytes())
     source=tmp_path/'new-name.pdf';source.write_bytes(original.read_bytes())
     result=upload_documents(root,'Client',[source])
     assert not result['uploaded'] and result['reused'][0]['path']==str(original)

@@ -67,7 +67,8 @@ def upload_documents(root,client,paths):
             if not data:raise ValueError('The file is empty.')
             suffix=source.suffix.lower()
             if suffix=='.pdf':
-                if b'%PDF-' not in data[:1024]:raise ValueError('This file is not a valid PDF document.')
+                from PDF_Upload_Validation import validate_pdf
+                validate_pdf(data)
                 prepared=data;name=source.name
             else:
                 prepared=image_pdf(data);name=source.name+'.pdf'

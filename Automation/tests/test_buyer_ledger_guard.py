@@ -18,6 +18,11 @@ def assert_after_guard(repo,name,expected):
         entry=change['files'][name];assert entry['baseline_sha256']==expected
         with zipfile.ZipFile(repo/change['backup']) as z:assert hashlib.sha256(z.read(name)).hexdigest()==expected
         expected=entry['authorized_sha256']
+    pdf=json.loads((repo/'Automation/PDF_UPLOAD_VALIDATION_CHANGE.json').read_text())
+    if name in pdf['files']:
+        entry=pdf['files'][name];assert entry['baseline_sha256']==expected
+        with zipfile.ZipFile(repo/pdf['backup']) as z:assert hashlib.sha256(z.read(name)).hexdigest()==expected
+        expected=entry['authorized_sha256']
     assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==expected
 
 

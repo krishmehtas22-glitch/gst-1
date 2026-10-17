@@ -35,6 +35,8 @@ user-approved A01 behavior is a nonblocking invoice-number/date warning per
 client, retaining both uploads and vouchers; its original audit check passes.
 The subsequent A02 role guard holds unsafe buyer/system ledger conflicts and
 provides explicit local party review; the five original reserved-name checks pass.
+The later PDF-only upload check addresses A07 by rejecting structurally unreadable
+PDFs before storage; its original header-only acceptance check now passes.
 Other
 findings remain separate work, and the
 historical report/JUnit files have not been rewritten. The existing

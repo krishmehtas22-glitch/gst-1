@@ -1,0 +1,14 @@
+{
+  "baseline_commit": "310cbf35da49b428f8973e5a17d7331b05b663d1",
+  "backup": "Backups/Before_PDF_Upload_Validation.zip",
+  "files": {
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "3e6189d573e912157c21cac80816708a3dbb9b475381d84df64df5e2000915aa",
+      "authorized_sha256": "a233db6ed5d2ce728a7f2af0b54d8f58fd9f23c1d351a45cabddc7720827cb24"
+    },
+    "Automation/Document_Upload.py": {
+      "baseline_sha256": "160d68558971760e74e169caf29de33dbe3b62aef85e5e1a6320efb47665835b",
+      "authorized_sha256": "e10a30c8b2b85cc38353a554a7cba72282f056b2589ff9be833a5bc42fc36464"
+    }
+  }
+}
