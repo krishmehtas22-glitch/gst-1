@@ -1,0 +1,19 @@
+{
+  "baseline_commit": "a24eb9e6bcc7249cdd07d2e8dfa11018c21d84b9",
+  "backup": "Backups/Before_Duplicate_Warning.zip",
+  "policy": "Nonblocking number/date warning within a client; uploads, XML, GUIDs and import remain allowed.",
+  "files": {
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "af3ded917dba975c5fd895d442643f99df281620f5e67d10671dd8e1677c5a10",
+      "authorized_sha256": "4de4baeff3bb432c197fb393e0d61850d4fa37d7a86b7fc7b8669f0e38b0c497"
+    },
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "e8985572c293e9766f9f339c6ee4652aded22b1148cccacc1c2269dec4b75c15",
+      "authorized_sha256": "7ef4cef82989683567e0a2b6b1aabf2ce9b5ca92eaceb599ae8ac19bb6816d6f"
+    },
+    "Automation/Common_Rules/tally_review_export.py": {
+      "baseline_sha256": "e19e2a6026d055c876f72d785bd74cae07b17f5a1fad3daed1c67e92326d8b99",
+      "authorized_sha256": "977ed91bf73456360a7aa2aa74604ed73ece88f8a2be4e18c529188d82849a9d"
+    }
+  }
+}

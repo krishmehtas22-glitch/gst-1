@@ -288,6 +288,8 @@ class BillSyncApp(InvoiceApp):
             self.apply_filter();self.update_summary()
 
     def details(self,event=None):
+        from Common_Rules.duplicate_invoice_warning import annotate
+        annotate(self.records)
         super().details(event)
         self.selection_label.config(text=f'{len(self.table.selection())} selected · AI runs only when you choose Process.')
 
@@ -304,13 +306,17 @@ class BillSyncApp(InvoiceApp):
         menu.tk_popup(event.x_root,event.y_root)
 
     def update_summary(self):
-        counts=[len(self.records),sum(bool(r.get('listing_only')) for r in self.records),sum(bool(r.get('errors') or r.get('tally_review_warnings')) for r in self.records),sum(bool(r.get('output_path')) for r in self.records)]
+        counts=[len(self.records),sum(bool(r.get('listing_only')) for r in self.records),sum(bool(r.get('errors') or r.get('tally_review_warnings') or r.get('duplicate_warning')) for r in self.records),sum(bool(r.get('output_path')) for r in self.records)]
         for label,value in zip(self.count_labels,counts):label.config(text=str(value))
         self.test_badge.config(text='  Test workspace  ' if self.demo.get() else '  Real invoices  ',background='#fff5de' if self.demo.get() else '#e5f6ed')
         if hasattr(self,'list_count'):self.list_count.config(text=f'{len(self.table.get_children())} of {len(self.records)} invoices')
 
     def apply_filter(self):
         if not hasattr(self,'table'):return
+        from Common_Rules.duplicate_invoice_warning import annotate
+        from Invoice_Desktop import invoice_status
+        annotate(self.records)
+        self.table.tag_configure('duplicate',foreground='#b52538')
         text=self.search.get().casefold();status=self.filter_status.get()
         for i,row in enumerate(self.records):
             iid=str(i)
@@ -318,7 +324,7 @@ class BillSyncApp(InvoiceApp):
             inv=row.get('invoice') or {};haystack=' '.join(str(inv.get(f,'')) for f in ('number','seller_name','buyer_name'))+' '+Path(row['path']).name
             match=(not text or text in haystack.casefold())
             if status=='Awaiting processing':match=match and bool(row.get('listing_only'))
-            elif status=='Needs review':match=match and bool(row.get('errors') or row.get('tally_review_warnings'))
+            elif status=='Needs review':match=match and bool(row.get('errors') or row.get('tally_review_warnings') or row.get('duplicate_warning'))
             elif status=='XML prepared':match=match and bool(row.get('output_path'))
             info=refund_summary(row,self.root)
             if not row.get('listing_only'):
@@ -342,7 +348,8 @@ class BillSyncApp(InvoiceApp):
                     elif saved['status']=='Claimed' and saved.get('claim_amount'):display=format(refund_amount(saved['claim_amount']),',.2f')+' · Claimed'
                     else:display=(format(refund_amount(info['estimate']),',.2f')+' · ' if info['estimate'] else '')+saved['status']
             self.table.set(iid,'export_country',country);self.table.set(iid,'refund_estimate',display)
-            self.table.item(iid,tags=('even' if i%2==0 else 'odd',))
+            self.table.set(iid,'status','Duplicate invoice — review' if row.get('duplicate_warning') else invoice_status(row))
+            self.table.item(iid,tags=('even' if i%2==0 else 'odd',)+(('duplicate',) if row.get('duplicate_warning') else ()))
             if match:self.table.reattach(iid,'','end')
             else:
                 self.table.selection_remove(iid);self.table.detach(iid)

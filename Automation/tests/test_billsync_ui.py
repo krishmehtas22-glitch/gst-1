@@ -25,6 +25,13 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
                 quantities=json.loads((root/'Automation/QUANTITY_PRECISION_CHANGE.json').read_text())['files']
+                duplicates=json.loads((root/'Automation/DUPLICATE_WARNING_CHANGE.json').read_text())['files']
+                if name in duplicates:
+                    with zipfile.ZipFile(root/'Backups/Before_Duplicate_Warning.zip') as before:
+                        assert hashlib.sha256(before.read(name)).hexdigest()==duplicates[name]['baseline_sha256']
+                    assert actual==duplicates[name]['authorized_sha256']
+                    assert duplicates[name]['baseline_sha256']==quantities[name]['authorized_sha256']
+                    continue
                 if name in quantities:
                     with zipfile.ZipFile(root/'Backups/Before_Quantity_Precision.zip') as before:
                         assert hashlib.sha256(before.read(name)).hexdigest()==quantities[name]['baseline_sha256']
@@ -127,5 +134,7 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         exercise_refund_dialog_in_existing_app(root,app,tmp_path)
         from test_foreign_currency import exercise_currency_dialog
         exercise_currency_dialog(root,app,tmp_path,monkeypatch)
+        from test_duplicate_invoice_warning import exercise_duplicate_warning_ui
+        exercise_duplicate_warning_ui(root,app,tmp_path)
         assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

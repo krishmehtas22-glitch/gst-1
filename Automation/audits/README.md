@@ -30,7 +30,10 @@ At the audited source revision, the acceptance command exits **1**, with 27
 failed / 25 passed checks. This is historical evidence, not a passing release gate.
 The later, separately authorized foreign-currency update addresses A05; its six
 original currency checks pass. The subsequent exact-quantity update addresses
-A04 by holding XML when a reused unit cannot represent every quantity. Other
+A04 by holding XML when a reused unit cannot represent every quantity. The later
+user-approved A01 behavior is a nonblocking invoice-number/date warning per
+client, retaining both uploads and vouchers; its original audit check passes.
+Other
 findings remain separate work, and the
 historical report/JUnit files have not been rewritten. The existing
 Windows workflow runs `Automation/tests`; it does not yet include these added

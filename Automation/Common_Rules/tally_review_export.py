@@ -53,6 +53,8 @@ def export_all(root,records,demo):
     # Validate export metadata before staging or changing any current output.
     for record in records:
         if is_export(record.get('invoice') or {}):export_country(record['invoice'])
+    from .duplicate_invoice_warning import annotate
+    annotate(records)
     clients=defaultdict(list)
     for record in records:clients[record['client']].append(record)
     for client,group in clients.items():
@@ -95,6 +97,7 @@ def export_all(root,records,demo):
                         from .invoice_dates import recover_date
                         normalized_date=recover_date(root,record)
                         inv=for_record(root,record);notes=list(record.get('errors',[]))+list(inv.get('extraction_warnings',[]))
+                        if record.get('duplicate_warning'):notes.append(record['duplicate_warning'])
                         if inv.get('currency_conversion'):
                             fx=inv['currency_conversion']
                             notes.append('Converted '+fx['source_currency']+' to INR: 1 '+fx['source_currency']+' = INR '+fx['inr_per_unit']+'; rate from '+fx['rate_source']+'; original source amounts retained')

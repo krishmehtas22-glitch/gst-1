@@ -1,3 +1,16 @@
+# Optional duplicate warning — latest user request, 17 October 2026
+
+The user wants a warning only, comparing invoice number and invoice date, with
+permission to keep/upload/process both documents. Scope comparisons to one client
+workspace; seller/GSTIN/amount/source digest must not decide business duplicates.
+Detect only known analysed/manual fields; no startup/upload/refresh AI or OCR.
+Show a visible review warning and include it in the report/narration, without
+blocking uploads/XML/import, removing files, changing GUIDs or auto-merging.
+Clear stale warnings when number/date or the set of invoices changes. Preserve
+currency and quantity locks, unit/UQC, master assignment, Import ALL and budgets.
+Record the narrow UI/export warning additions separately and back up prior code.
+No live AI/Tally writes in tests. This supersedes A01's earlier proposed block.
+
 # Currency lock and exact quantity precision — latest user request, 17 October 2026
 
 Lock the foreign-currency release at 7a52bc33fe7e7972e2425a5f23139f1e493c1fd6.

@@ -1,5 +1,21 @@
 BillSync UI 2.3 — invoice workspace, foreign currency and refund review
 
+DUPLICATE INVOICE WARNING
+Once invoice fields have been analysed or entered manually, the same invoice
+number and date in one client shows a red Duplicate invoice — review status.
+Seller/GSTIN, amount and file fingerprint are not part of this comparison.
+Known date formats normalize to the same calendar date; number comparison ignores
+case and extra spaces but preserves punctuation. Missing/unread fields do not
+match. Clients are kept separate. Uploading/listing does not start extra AI/OCR.
+This is a warning only: both files and vouchers are retained, GUIDs stay stable,
+and the user can continue processing/importing both. Needs review includes these
+rows; selected-invoice details and Batch_Report.json/narration explain the warning.
+Correcting the number/date or removing a row clears its current-list warning.
+Existing XML is only rebuilt through the existing explicit processing/save actions.
+The comparison covers invoices present in the client workspace, not deleted
+documents or a live query of Tally's voucher history. Currency/quantity rules
+remain locked. Backup: Backups/Before_Duplicate_Warning.zip.
+
 EXACT QUANTITIES
 The currency release is locked. The quantity-only follow-up preserves 2.4877 KG
 as 2.4877 KG in actual/billed quantities and batch allocations, with at least

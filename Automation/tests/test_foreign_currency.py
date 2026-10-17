@@ -171,8 +171,17 @@ def test_installer_contains_currency_files_and_historical_hash_chain():
             later=json.loads((repo/'Automation/QUANTITY_PRECISION_CHANGE.json').read_text())['files']
             if name in later:
                 assert later[name]['baseline_sha256']==values['authorized_sha256']
-                assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==later[name]['authorized_sha256']
-            else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
+                duplicate=json.loads((repo/'Automation/DUPLICATE_WARNING_CHANGE.json').read_text())['files']
+                if name in duplicate:
+                    assert duplicate[name]['baseline_sha256']==later[name]['authorized_sha256']
+                    assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==duplicate[name]['authorized_sha256']
+                else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==later[name]['authorized_sha256']
+            else:
+                duplicate=json.loads((repo/'Automation/DUPLICATE_WARNING_CHANGE.json').read_text())['files']
+                if name in duplicate:
+                    assert duplicate[name]['baseline_sha256']==values['authorized_sha256']
+                    assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==duplicate[name]['authorized_sha256']
+                else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
 
 
 def exercise_currency_dialog(root,app,tmp_path,monkeypatch):

@@ -82,11 +82,19 @@ def test_beyond_supported_precision_holds_xml_without_rounding(tmp_path,qty):
 
 def test_currency_lock_and_precision_backup_chain():
     repo=Path(__file__).parents[2];change=json.loads((repo/'Automation/QUANTITY_PRECISION_CHANGE.json').read_text())
-    for name,digest in change['currency_lock'].items():assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==digest
+    duplicate=json.loads((repo/'Automation/DUPLICATE_WARNING_CHANGE.json').read_text())['files']
+    for name,digest in change['currency_lock'].items():
+        if name in duplicate:
+            assert duplicate[name]['baseline_sha256']==digest
+            assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==duplicate[name]['authorized_sha256']
+        else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==digest
     with zipfile.ZipFile(repo/change['backup']) as z:
         for name,values in change['files'].items():
             assert hashlib.sha256(z.read(name)).hexdigest()==values['baseline_sha256']
-            assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
+            if name in duplicate:
+                assert duplicate[name]['baseline_sha256']==values['authorized_sha256']
+                assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==duplicate[name]['authorized_sha256']
+            else:assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==values['authorized_sha256']
 
 
 def test_ordinary_xml_identical_to_locked_currency_release(tmp_path):
