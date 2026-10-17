@@ -45,6 +45,9 @@ def precise(value):
 
 
 def export_all(root,records,demo):
+    from .foreign_currency import for_record
+    # Resolve all currencies before staging; source records remain intact.
+    for record in records:for_record(root,record)
     # Validate export metadata before staging or changing any current output.
     for record in records:
         if is_export(record.get('invoice') or {}):export_country(record['invoice'])
@@ -89,7 +92,10 @@ def export_all(root,records,demo):
                     for record in rows:
                         from .invoice_dates import recover_date
                         normalized_date=recover_date(root,record)
-                        inv=record.get('invoice') or {};notes=list(record.get('errors',[]))+list(inv.get('extraction_warnings',[]))
+                        inv=for_record(root,record);notes=list(record.get('errors',[]))+list(inv.get('extraction_warnings',[]))
+                        if inv.get('currency_conversion'):
+                            fx=inv['currency_conversion']
+                            notes.append('Converted '+fx['source_currency']+' to INR: 1 '+fx['source_currency']+' = INR '+fx['inr_per_unit']+'; rate from '+fx['rate_source']+'; original source amounts retained')
                         if inv.get('date_evidence'):notes.append(inv['date_evidence'])
                         for i,item in enumerate(inv.get('items',[]),1):
                             if item.get('unit_auto'):notes.append('Item '+str(i)+' unit '+str(item.get('unit','Units'))+' assumed: '+str(item.get('unit_evidence','Product-context reasoning')))

@@ -26,8 +26,11 @@ not against client storage. Network connections are forbidden by the contract
 tests; AI/Tally responses are controlled test doubles. No real provider key or
 live Tally company is needed.
 
-The acceptance command currently exits **1**, with 27 failed / 25 passed checks.
-This is the result being reported, not a passing release gate. The existing
+At the audited source revision, the acceptance command exits **1**, with 27
+failed / 25 passed checks. This is historical evidence, not a passing release gate.
+The later, separately authorized foreign-currency update addresses A05; its six
+original currency checks pass. Other findings remain separate work, and the
+historical report/JUnit files have not been rewritten. The existing
 Windows workflow runs `Automation/tests`; it does not yet include these added
 adversarial acceptance checks. A green historical Windows build therefore does
 not mean the acceptance findings are fixed.

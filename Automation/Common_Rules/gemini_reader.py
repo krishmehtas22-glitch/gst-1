@@ -12,7 +12,8 @@ DEFAULT_MODEL='gemini-2.5-flash'
 FIELDS=('number','date','seller_name','seller_gstin','seller_state','seller_address',
         'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address',
         'buyer_country','place_of_supply','classification','supply','export_mode',
-        'currency','taxable','cgst','sgst','igst','cess','round_off','total')
+        'currency','taxable','cgst','sgst','igst','cess','round_off','total',
+        'foreign_currency','exchange_rate','exchange_rate_basis','exchange_rate_units','foreign_invoice_value')
 ITEM_FIELDS=('name','hsn','quantity','unit','rate','value','gst_rate',
              'cgst_rate','sgst_rate','igst_rate','unit_basis','unit_reason')
 WARNING='Gemini extracted fields: compare with the source PDF and approve in Review'

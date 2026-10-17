@@ -18,7 +18,7 @@ from Export_Refund_Review import summary as refund_summary,load_review as load_r
 from Export_Refund_Dialog import open_refund_review
 
 BG='#f3f6fc';NAV='#101d30';BLUE='#2460ed';INK='#17243a';MUTED='#65748b';BORDER='#dbe3f0'
-UI_VERSION='BillSync UI 2.2'
+UI_VERSION='BillSync UI 2.3'
 
 
 class ActivityLabel(ttk.Label):
@@ -174,6 +174,7 @@ class BillSyncApp(InvoiceApp):
         lower=ttk.Frame(workspace,style='Card.TFrame');lower.grid(row=2,column=0,sticky='ew',pady=(8,0))
         ttk.Label(lower,text='Double-click an invoice to view or edit details',style='Muted.TLabel').pack(side='left')
         ActionButton(lower,text='Refund review',command=self.export_refund_review,style='Text.TButton').pack(side='left',padx=14)
+        ActionButton(lower,text='Currency / exchange rate',command=self.currency_review,style='Text.TButton').pack(side='left',padx=8)
         self.list_count=ttk.Label(lower,text='0 invoices',style='Muted.TLabel');self.list_count.pack(side='right')
         activity=self.card(5);activity.columnconfigure(1,weight=1)
         ttk.Label(activity,text='Activity',style='Heading.TLabel').grid(row=0,column=0,padx=(0,14),sticky='w')
@@ -299,7 +300,7 @@ class BillSyncApp(InvoiceApp):
         if iid not in self.table.selection():self.table.selection_set(iid)
         self.table.focus(iid);self.details()
         menu=tk.Menu(self.window,tearoff=False)
-        for label,command in [('View / edit details',self.review),('Tally master assignments',self.view_master_matches),('Export refund review',self.export_refund_review),('Open original invoice',self.open_source),('View prepared XML',self.view_xml),('Open XML folder',self.open_output)]:menu.add_command(label=label,command=command)
+        for label,command in [('View / edit details',self.review),('Currency / exchange rate',self.currency_review),('Tally master assignments',self.view_master_matches),('Export refund review',self.export_refund_review),('Open original invoice',self.open_source),('View prepared XML',self.view_xml),('Open XML folder',self.open_output)]:menu.add_command(label=label,command=command)
         menu.tk_popup(event.x_root,event.y_root)
 
     def update_summary(self):
@@ -319,11 +320,19 @@ class BillSyncApp(InvoiceApp):
             if status=='Awaiting processing':match=match and bool(row.get('listing_only'))
             elif status=='Needs review':match=match and bool(row.get('errors') or row.get('tally_review_warnings'))
             elif status=='XML prepared':match=match and bool(row.get('output_path'))
-            info=refund_summary(row)
+            info=refund_summary(row,self.root)
+            if not row.get('listing_only'):
+                from Common_Rules.foreign_currency import for_record
+                try:
+                    converted=for_record(self.root,row)
+                    self.table.set(iid,'total',format(refund_amount(converted['total']),',.2f') if refund_amount(converted.get('total')) is not None else '—')
+                except (ValueError,OSError):
+                    self.table.set(iid,'total','Review currency')
             country=info['country'] or ('Required' if info['export'] else '—')
             display=info['display']
             if info['export']:
-                key=review_key(row)
+                try:key=review_key(row,self.root)
+                except (ValueError,OSError):key=review_key(row)
                 if key not in self.refund_reviews:
                     try:self.refund_reviews[key]=load_refund_review(self.root,row)
                     except ValueError:self.refund_reviews[key]={'status':'Review file error'}
@@ -349,6 +358,10 @@ class BillSyncApp(InvoiceApp):
 
     def export_refund_review(self):
         open_refund_review(self)
+
+    def currency_review(self):
+        from Currency_Review_Dialog import open_currency_review
+        open_currency_review(self)
 
     def import_masters_from_tally(self):
         if self.busy:

@@ -1,3 +1,16 @@
+# Foreign-currency invoice conversion — latest user request, 17 October 2026
+
+Authorize only currency identification, printed exchange-rate extraction, explicit
+per-invoice manual currency/rate entry, and deterministic INR conversion before
+review XML and refund display. AI extracts source facts, Python uses Decimal.
+Keep original source/caches/amounts, stable GUIDs, quantities, GST percentages,
+unit/UQC, imported-master method, Import ALL dispatch and explicit AI budgets.
+Never guess ambiguous currency/rate or exchange direction. Missing/invalid rates
+hold new XML, retaining previous output. Rate entry is INR per one source unit;
+manual overrides are client/source/fact scoped. Preserve old locks and record
+new file-hash exceptions, with Backups/Before_Foreign_Currency.zip. No live AI or
+Tally writes during tests. Other audit findings remain separate work.
+
 # Apply imported Tally masters — latest user request, 17 October 2026
 
 The user now authorizes AI to assign imported Tally party/inventory/unit masters

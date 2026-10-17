@@ -1,4 +1,23 @@
-BillSync UI 2.2 — approved invoice workspace, export-country and refund review
+BillSync UI 2.3 — invoice workspace, foreign currency and refund review
+
+FOREIGN CURRENCY
+Select an invoice and click Currency / exchange rate (also in the right-click
+menu). AI reads the currency and any printed rate during your explicit Process
+action. Python converts source monetary values with Decimal, retaining original
+amounts in the batch report. Codes, unambiguous symbols and common names/spelling
+variants are recognized; ambiguous dollar/yen/rupee symbols need a currency choice.
+No market-rate lookup or AI request happens during rate entry, preview or save.
+If no printed rate is available, enter INR per ONE unit (e.g. USD, 83.25), preview,
+then Save rate & prepare XML. Confirm whether source values are foreign or
+already INR. Already-INR values are not multiplied again. Quantity and tax
+percentages are unchanged. Printed inverse/100-unit rates are normalized locally.
+Missing/invalid/conflicting currency or rate holds new XML and retains previous
+output. Fix it before importing the revised invoice. A saved manual rate applies
+only to the selected client/source and must be reviewed again if amounts change.
+Table totals and export IGST estimates use the INR projection. Refund eligibility
+still needs review; changing a manual rate invalidates saved refund reviews.
+Original invoice files, AI caches, UQC and Import ALL behavior are preserved.
+Backup before this change: Backups/Before_Foreign_Currency.zip.
 
 SOURCE-ONLY UPDATE (NO EXE DOWNLOAD)
 Close the app. Save Install_BillSync_Source.py in the existing reader source

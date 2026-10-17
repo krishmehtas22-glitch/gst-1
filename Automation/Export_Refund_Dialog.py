@@ -7,7 +7,7 @@ from Export_Refund_Review import summary,load_review,save_review,STATUSES,NOTICE
 def open_refund_review(app):
     record=app.selected()
     if app.busy or not record:return
-    info=summary(record)
+    info=summary(record,app.root)
     if not info['export']:
         messagebox.showinfo('Export refund review','Select an analysed export invoice first.',parent=app.window);return
     try:saved=load_review(app.root,record) or {}
@@ -36,7 +36,7 @@ def open_refund_review(app):
         try:data=save_review(app.root,record,status.get(),claim.get(),reference.get(),notes.get('1.0','end').strip())
         except (ValueError,OSError) as exc:messagebox.showerror('Refund review',str(exc),parent=top);return
         from Export_Refund_Review import review_key
-        app.refund_reviews[review_key(record)]=data
+        app.refund_reviews[review_key(record,app.root)]=data
         app.apply_filter();app.status.config(text='Export refund review saved locally. No tax values, XML or Tally entries changed.');top.destroy()
     ttk.Button(bottom,text='Edit invoice / country',command=edit_invoice).pack(side='left')
     ttk.Button(bottom,text='Save review',command=save).pack(side='right')

@@ -1,0 +1,35 @@
+{
+  "baseline_commit": "bdedb18325da065933044b693a7a0a616e6de9b4",
+  "request": "Printed or per-invoice manual exchange rate, source-preserving Decimal INR projection before XML and refund display.",
+  "backup": "Backups/Before_Foreign_Currency.zip",
+  "files": {
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "4079d3352ab927b14a7975b8eea4afb7cf7dd0c75aa83ebbc3829656c50d5a2d",
+      "authorized_sha256": "33b4e3cc0ab42b550ceb1a7f889dbaedde51346eae09471f17327b0b8629fe42"
+    },
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "993856dfe711e643ad33c63379aa3526e7336ad7acdbb1c2a2e0c6cc88e93702",
+      "authorized_sha256": "e8985572c293e9766f9f339c6ee4652aded22b1148cccacc1c2269dec4b75c15"
+    },
+    "Automation/Export_Refund_Review.py": {
+      "baseline_sha256": "7de28c7571bf849cce5f89281d16de226954182413d30eee05270330847e8ca9",
+      "authorized_sha256": "3b6a027207c5ef34edc7af36c3af0ceefd27f55f6342e77cb99515ecce3177d2"
+    },
+    "Automation/Export_Refund_Dialog.py": {
+      "baseline_sha256": "b58e189676b5783e93c9a098d84cfe83f094ee2bc10325cad710626aceebee4a",
+      "authorized_sha256": "885f610ed85c8e17959633c4f1f17f7f9641aa86e16df44a24835f8eabf3c8d0"
+    },
+    "Automation/Common_Rules/gemini_reader.py": {
+      "baseline_sha256": "00dcdd005b5faea418036baad9418f62d8a6a1048b92ab7955d274ec72fc0785",
+      "authorized_sha256": "a37875b52af43128415cb78f027e8db47d9fd0b618e71286c4cebbbe6cbe5557"
+    },
+    "Automation/Common_Rules/ai_invoice_rules.py": {
+      "baseline_sha256": "9bd67214d59e7bebbc886b2a669b1c675ff56fe4d5ae91fd742925bd76922d93",
+      "authorized_sha256": "fbc43635681be05efea8e8188b52a1ce4f4ed245521ab618aeca4abf88d6bb8e"
+    },
+    "Automation/Common_Rules/tally_review_export.py": {
+      "baseline_sha256": "f39ec7d795edb8d3929664648902e23a4d9ea90d61a746fc1cdeaa6cc6e02324",
+      "authorized_sha256": "031c053f2296356f6080123b66aec2b3abf6c8d22f06c87bbd8c2765ad351eb4"
+    }
+  }
+}

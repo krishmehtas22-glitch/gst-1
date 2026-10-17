@@ -18,11 +18,15 @@ def amount(value):
     except (ValueError,InvalidOperation):return None
 
 
-def summary(record):
+def summary(record,root=None):
     inv=record.get('invoice') or {}
     result={'export':False,'country':'','estimate':None,'status':'Not applicable','reason':'','display':'—'}
     if record.get('listing_only') or not is_export(inv):return result
     result.update(export=True,status='Review required')
+    from Common_Rules.foreign_currency import for_record
+    try:inv=for_record(root,record)
+    except (ValueError,OSError) as exc:
+        result.update(reason=str(exc),display='Review currency');return result
     try:result['country']=export_country(inv)
     except ValueError as exc:result.update(reason=str(exc),display='Review country');return result
     if inv.get('classification')=='export_lut':
@@ -42,26 +46,35 @@ def summary(record):
     return result
 
 
-def review_key(record):
+def review_key(record,root=None):
     inv=record.get('invoice') or {}
     identity={'client':record.get('client'),'source':record.get('digest') or str(record.get('source_path') or record.get('path')),
               **{k:inv.get(k) for k in ('number','date','seller_gstin','buyer_country','classification','supply','taxable','total','igst','cgst','sgst','foreign_currency','exchange_rate')}}
+    from Common_Rules.foreign_currency import currency_code
+    try:code=currency_code(inv.get('currency'))
+    except ValueError:code=str(inv.get('currency'))
+    if code not in (None,'INR'):
+        identity['foreign_conversion_basis']={k:inv.get(k) for k in ('currency','exchange_rate_basis','exchange_rate_units')}
+    if root is not None:
+        from Common_Rules.foreign_currency import load_settings
+        settings=load_settings(root,record)
+        if settings:identity['currency_review']=settings
     return hashlib.sha256(json.dumps(identity,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 
 
 def load_review(root,record):
-    path=Path(root)/'.invoice_app'/'export_refund_reviews'/(review_key(record)+'.json')
+    path=Path(root)/'.invoice_app'/'export_refund_reviews'/(review_key(record,root)+'.json')
     if not path.exists():return None
     try:
         data=json.loads(path.read_text(encoding='utf-8'))
-        if data.get('key')!=review_key(record) or data.get('status') not in STATUSES:raise ValueError('Invalid saved refund review.')
+        if data.get('key')!=review_key(record,root) or data.get('status') not in STATUSES:raise ValueError('Invalid saved refund review.')
         if data.get('status')=='Claimed' and (amount(data.get('claim_amount')) is None or amount(data['claim_amount'])<=0):raise ValueError('Invalid saved claim amount.')
         return data
     except (ValueError,OSError,TypeError,AttributeError) as exc:raise ValueError('Saved refund review could not be read: '+str(exc)) from exc
 
 
 def save_review(root,record,status,claim_amount='',reference='',notes=''):
-    info=summary(record)
+    info=summary(record,root)
     if not info['export']:raise ValueError('Select an analysed export invoice.')
     if status not in STATUSES:raise ValueError('Choose a valid review status.')
     claim=amount(claim_amount)
@@ -71,7 +84,7 @@ def save_review(root,record,status,claim_amount='',reference='',notes=''):
         if claim is None or claim<=0 or claim>amount(info['estimate']):raise ValueError('Claim amount must be positive and no greater than the recorded export IGST.')
         if not str(reference).strip():raise ValueError('Enter the claim / shipping bill reference.')
     if status=='Eligibility reviewed' and not str(notes).strip():raise ValueError('Record the basis for the eligibility review in notes.')
-    data={'schema_version':1,'key':review_key(record),'status':status,'invoice_igst_reference':info['estimate'],
+    data={'schema_version':1,'key':review_key(record,root),'status':status,'invoice_igst_reference':info['estimate'],
           'claim_amount':format(claim,'.2f') if claim is not None else None,'reference':str(reference).strip(),
           'notes':str(notes).strip(),'updated_at':datetime.now(timezone.utc).isoformat(),'manual_review':True,'tally_posting':False}
     folder=Path(root)/'.invoice_app'/'export_refund_reviews';folder.mkdir(parents=True,exist_ok=True)
