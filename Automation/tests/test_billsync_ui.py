@@ -83,6 +83,14 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         app.search.set('NO MATCH');root.update()
         assert not app.table.get_children() and not app.table.selection()
         assert len(app.records)==2
+        app.start()
+        deadline=time.monotonic()+5
+        while app.busy and time.monotonic()<deadline:
+            root.update();time.sleep(.02)
+        assert not errors
+        assert not app.busy and not app.table.get_children()
+        app.search.set('');root.update()
+        assert len(app.table.get_children())==2
         assert not list(tmp_path.rglob('*.xml'))
         from test_tally_master_snapshot import exercise_snapshot_dialog_in_existing_app
         exercise_snapshot_dialog_in_existing_app(root,tmp_path,monkeypatch)

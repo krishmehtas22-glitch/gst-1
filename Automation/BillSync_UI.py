@@ -273,9 +273,15 @@ class BillSyncApp(InvoiceApp):
             else:
                 with self.events.mutex:
                     self.events.queue.appendleft(item);self.events.not_empty.notify()
+        # Detached filter rows must be visible to the inherited table-clear step.
+        # Restore within this callback, then reapply the filter before Tk redraws.
+        visible=set(self.table.get_children())
+        for index in range(len(self.records)):
+            iid=str(index)
+            if iid not in visible and self.table.exists(iid):self.table.reattach(iid,'','end')
         super().tick()
         if not self.closing:
-            self.update_summary();self.apply_filter()
+            self.apply_filter();self.update_summary()
 
     def details(self,event=None):
         super().details(event)
