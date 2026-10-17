@@ -150,5 +150,7 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         exercise_buyer_review_ui(root,app,tmp_path,monkeypatch)
         from test_ocr_review_guard import exercise_ocr_review_ui
         exercise_ocr_review_ui(root,app,monkeypatch)
+        from test_premium_ui import exercise_premium_ui
+        exercise_premium_ui(root,app,tmp_path,monkeypatch)
         assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

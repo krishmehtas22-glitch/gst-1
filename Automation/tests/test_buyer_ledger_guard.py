@@ -28,6 +28,11 @@ def assert_after_guard(repo,name,expected):
         entry=ocr['files'][name];assert entry['baseline_sha256']==expected
         with zipfile.ZipFile(repo/ocr['backup']) as z:assert hashlib.sha256(z.read(name)).hexdigest()==expected
         expected=entry['authorized_sha256']
+    premium=json.loads((repo/'Automation/PREMIUM_UI_CHANGE.json').read_text())
+    if name in premium['files']:
+        entry=premium['files'][name];assert entry['baseline_sha256']==expected
+        with zipfile.ZipFile(repo/premium['backup']) as z:assert hashlib.sha256(z.read(name)).hexdigest()==expected
+        expected=entry['authorized_sha256']
     assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==expected
 
 

@@ -1,4 +1,27 @@
-BillSync UI 2.3 — invoice workspace, foreign currency and refund review
+BillSync UI 3.0 — complete workspace and dialog redesign
+
+PREMIUM PRESENTATION
+Deep green navigation, warm neutral backgrounds, rounded controls, consistent
+Segoe UI typography, calmer status cards and a full-width invoice list. Client
+management now has a searchable table and Open workspace action; New client has
+a dedicated modal form. Settings groups Preferences and Tools & storage.
+
+The existing invoice editor now presents Invoice details, Seller & buyer, Items,
+and Export & currency sections. Every original field, variable, item add/remove
+command and Save changes to XML callback is retained. Long sections scroll;
+source/test-data notices remain visible. Other app windows share the same style:
+Tally import and master review, currency, refund, buyer-ledger and OCR review,
+XML, activity and supplier layouts. Confirmations use the app's visual style and
+retain explicit yes/no/cancel semantics. Native operating-system file pickers
+remain native. XML tabs have horizontal and vertical scrollbars.
+
+Invoice_Desktop.py and all Common_Rules files are byte-identical to the OCR
+release. No AI prompts/budgets, processing defaults, source/cache formats, unit
+rules, financial calculations, XML writers or Tally transport changed. The source
+installer remains cumulative, including all prior foreign-currency and quality
+fixes. Backup: Backups/Before_Premium_UI.zip; fingerprints are recorded separately
+in PREMIUM_UI_CHANGE.json without replacing earlier locks. Preview images use
+included synthetic invoice fixtures, never customer documents.
 
 PDF UPLOAD READABILITY
 Explicit PDF uploads now validate the page tree/content references and load/render

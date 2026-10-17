@@ -45,7 +45,7 @@ def draw_icon(canvas,name,x,y,size,color):
 class RoundedCard(tk.Canvas):
     """Measure inner content so DPI/font changes cannot cover or clip the border."""
     def __init__(self,parent,fill='white',border='#dce5f0',minheight=0):
-        background=ttk.Style(parent).lookup('TFrame','background') or '#f3f6fc'
+        background=ttk.Style(parent).lookup('TFrame','background') or '#f4f5f1'
         super().__init__(parent,width=1,height=max(1,minheight),bg=background,highlightthickness=0)
         self.fill=fill;self.border=border;self.minheight=minheight
         self.panel=tk.Frame(self,bg=fill)
@@ -65,16 +65,16 @@ class ActionButton(tk.Canvas):
     """Bordered rounded button with mouse, Tab, Return and Space activation."""
     def __init__(self,parent,text,command,style='TButton',width=None,icon=None,**kwargs):
         primary=style in ('Primary.TButton','Upload.TButton');nav=style in ('Nav.TButton','NavActive.TButton')
-        self.fill='#2460ed' if primary else '#fff4f4' if style=='Stop.TButton' else '#f4f8ff' if style=='Soft.TButton' else '#101d30' if nav else '#ffffff'
-        if style=='NavActive.TButton':self.fill='#1752bd'
-        self.ink='#ffffff' if primary or nav else '#b43345' if style=='Stop.TButton' else '#2460ed' if style in ('Soft.TButton','Text.TButton') else '#25364e'
-        self.border=self.fill if primary or nav or style=='Text.TButton' else '#ead2d7' if style=='Stop.TButton' else '#bcd2f5' if style=='Soft.TButton' else '#d3deed'
-        self.hover='#164cd0' if primary else '#203b66' if nav else '#eef4ff'
+        self.fill='#216d59' if primary else '#fff4f4' if style=='Stop.TButton' else '#f1f6ee' if style=='Soft.TButton' else '#112b27' if nav else '#ffffff'
+        if style=='NavActive.TButton':self.fill='#2a4b3d'
+        self.ink='#ffffff' if primary or nav else '#b43345' if style=='Stop.TButton' else '#216d59' if style in ('Soft.TButton','Text.TButton') else '#1d302b'
+        self.border=self.fill if primary or nav or style=='Text.TButton' else '#ead2d7' if style=='Stop.TButton' else '#d2e2ce' if style=='Soft.TButton' else '#dfe6dc'
+        self.hover='#18523f' if primary else '#21483b' if nav else '#edf4ec'
         self.text=text;self.command=command;self.icon=icon;self.nav=nav;self.over=False;self.pressed=False
-        self.text_font=tkfont.Font(family='Segoe UI',size=11 if style=='Upload.TButton' else 10 if nav else 9)
-        if isinstance(parent,ttk.Frame):background=ttk.Style(parent).lookup(parent.cget('style') or 'TFrame','background') or '#f3f6fc'
+        self.text_font=tkfont.Font(family='Segoe UI',size=11 if style=='Upload.TButton' else 10)
+        if isinstance(parent,ttk.Frame):background=ttk.Style(parent).lookup(parent.cget('style') or 'TFrame','background') or '#f4f5f1'
         else:background=parent.cget('bg')
-        super().__init__(parent,width=width or self.text_font.measure(text)+24+(24 if icon else 0),height=46 if style=='Upload.TButton' else 40 if nav else 34,bg=background,highlightthickness=0,takefocus=True,cursor='hand2',**kwargs)
+        super().__init__(parent,width=width or self.text_font.measure(text)+28+(24 if icon else 0),height=48 if style=='Upload.TButton' else 43 if nav else 36,bg=background,highlightthickness=0,takefocus=True,cursor='hand2',**kwargs)
         self.bind('<Configure>',self.draw);self.bind('<Enter>',lambda e:self.hovered(True));self.bind('<Leave>',lambda e:self.hovered(False))
         self.bind('<ButtonPress-1>',self.press);self.bind('<ButtonRelease-1>',self.release)
         self.bind('<Return>',lambda e:self.invoke());self.bind('<space>',lambda e:self.invoke())
@@ -83,7 +83,7 @@ class ActionButton(tk.Canvas):
     def draw(self,event=None):
         self.delete('all');w=self.winfo_width()-2;h=self.winfo_height()-2
         focused=self.focus_get() is self
-        rounded_box(self,2,2,w-1,h-1,r=14,fill=self.hover if self.over else self.fill,outline='#4678dd' if focused else self.border,width=2 if focused else 1)
+        rounded_box(self,2,2,w-1,h-1,r=14,fill=self.hover if self.over else self.fill,outline='#7ba88a' if focused else self.border,width=2 if focused else 1)
         total=self.text_font.measure(self.text)+(24 if self.icon and self.text else 0)
         left=16 if self.nav else (w-total)/2
         if self.icon:

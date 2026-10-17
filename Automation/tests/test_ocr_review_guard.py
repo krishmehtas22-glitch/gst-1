@@ -85,7 +85,13 @@ def test_installer_contains_exact_ocr_changes_and_backups():
     with zipfile.ZipFile(root/change['backup']) as archive:
         for name,hashes in change['files'].items():
             assert hashlib.sha256(archive.read(name)).hexdigest()==hashes['baseline_sha256']
-            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==hashes['authorized_sha256']
+            expected=hashes['authorized_sha256']
+            premium=json.loads((root/'Automation/PREMIUM_UI_CHANGE.json').read_text())
+            if name in premium['files']:
+                replacement=premium['files'][name];assert replacement['baseline_sha256']==expected
+                with zipfile.ZipFile(root/premium['backup']) as later:assert hashlib.sha256(later.read(name)).hexdigest()==expected
+                expected=replacement['authorized_sha256']
+            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
 
 
 def exercise_ocr_review_ui(root,app,monkeypatch):

@@ -140,6 +140,11 @@ def test_backup_and_new_adapter_hash_are_recorded_without_replacing_original():
                 replacement=ocr['files'][name];assert replacement['baseline_sha256']==expected
                 with zipfile.ZipFile(repo/ocr['backup']) as later:assert hashlib.sha256(later.read(name)).hexdigest()==expected
                 expected=replacement['authorized_sha256']
+            premium=json.loads((repo/'Automation/PREMIUM_UI_CHANGE.json').read_text())
+            if name in premium['files']:
+                replacement=premium['files'][name];assert replacement['baseline_sha256']==expected
+                with zipfile.ZipFile(repo/premium['backup']) as later:assert hashlib.sha256(later.read(name)).hexdigest()==expected
+                expected=replacement['authorized_sha256']
             assert hashlib.sha256((repo/name).read_bytes()).hexdigest()==expected
     original=json.loads((repo/'Automation/APPROVED_UI_DESIGN_LOCK.json').read_text())
     # The old design manifest remains historical; the PDF-only exception is separate.

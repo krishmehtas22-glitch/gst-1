@@ -1,3 +1,17 @@
+# Complete premium UI redesign — latest user request, 17 October 2026
+
+The user explicitly authorizes changing the workspace layout and every app-owned
+window/control, including Clients and invoice editing. Preserve all existing
+fields/actions and their exact data/AI/XML/Tally behavior. Prefer presentation
+helpers over changes to Invoice_Desktop.py or Common_Rules. Rearrange review
+controls, retaining their existing bound variables and validation/save closures,
+and preserve Import ALL dispatch. Shared visual styling/confirmation views must preserve
+modal return values, cancellation and explicit AI consent. Native OS file pickers
+may remain native. Preserve current accounting defaults, source data/caches and
+all locks outside presentation. Back up previous UI, record a separate visual
+exception and publish the cumulative source installer/Windows build. No live AI
+or Tally writes in tests. No synthetic data may be seeded into user storage.
+
 # OCR ambiguity evidence — latest user request, 17 October 2026
 
 Authorize local OCR confidence/letter-digit ambiguity checks and bounded second

@@ -14,11 +14,12 @@ from Common_Rules.workflow_status import invoice_status
 from Document_Upload import upload_documents,client_folder
 from BillSync_Controls import ActionButton,rounded_box,RoundedCard,draw_icon
 from Tally_Master_Dialog import TallyMasterDialog
+from BillSync_Theme import install_theme,DialogPresentation,header
 from Export_Refund_Review import summary as refund_summary,load_review as load_refund_review,review_key,amount as refund_amount
 from Export_Refund_Dialog import open_refund_review
 
-BG='#f3f6fc';NAV='#101d30';BLUE='#2460ed';INK='#17243a';MUTED='#65748b';BORDER='#dbe3f0'
-UI_VERSION='BillSync UI 2.3'
+BG='#f4f5f1';NAV='#112b27';BLUE='#216d59';INK='#1d302b';MUTED='#73817c';BORDER='#e1e7e1'
+UI_VERSION='BillSync UI 3.0'
 
 
 class ActivityLabel(ttk.Label):
@@ -54,55 +55,41 @@ class BillSyncApp(InvoiceApp):
         self.summary_accounting=tk.BooleanVar(value=False)
         self.auto=tk.BooleanVar(value=False);self.ai_primary=tk.StringVar(value='Groq')
         self.client_scope=tk.StringVar(value='All clients');self.client_display=tk.StringVar(value='All clients');self.search=tk.StringVar();self.filter_status=tk.StringVar(value='All statuses')
-        self.style=ttk.Style(window);self.style.theme_use('clam')
-        self.style.configure('.',font=('Segoe UI',9),background=BG,foreground=INK)
-        self.style.configure('Card.TFrame',background='white');self.style.configure('Card.TLabel',background='white')
-        self.style.configure('Heading.TLabel',font=('Segoe UI',11,'bold'),background='white')
-        self.style.configure('Muted.TLabel',foreground=MUTED,background='white')
-        self.style.configure('Section.TLabel',font=('Segoe UI',9),foreground='#455872',background='white')
-        self.style.configure('TButton',padding=(9,6),background='white',bordercolor=BORDER,foreground=INK,relief='solid',borderwidth=1,focusthickness=0)
-        self.style.map('TButton',background=[('active','#e9f0ff')])
-        self.style.configure('Primary.TButton',background=BLUE,foreground='white',bordercolor=BLUE)
-        self.style.map('Primary.TButton',background=[('active','#164cd0')],foreground=[('active','white')])
-        self.style.configure('Upload.TButton',font=('Segoe UI',11),padding=(14,10),background=BLUE,foreground='white')
-        self.style.map('Upload.TButton',background=[('active','#164cd0')])
-        self.style.configure('Stop.TButton',foreground='#c62828',background='#fff4f4',bordercolor='#ed7777')
-        self.style.configure('Client.TCombobox',font=('Segoe UI',10),padding=5,fieldbackground='white')
-        self.style.configure('Treeview',background='white',fieldbackground='white',font=('Segoe UI',10),rowheight=30,bordercolor=BORDER)
-        self.style.configure('Treeview.Heading',font=('Segoe UI',9),background='#f4f7fc',padding=(10,9),relief='flat')
-        self.style.map('TCombobox',fieldbackground=[('readonly','white')],selectbackground=[('readonly','white')],selectforeground=[('readonly',INK)])
-        self.style.map('Treeview',background=[('selected','#e1ebff')],foreground=[('selected',INK)])
+        self.style=install_theme(window)
+        self.presentation=DialogPresentation(self)
         window.title(f'BillSync — Invoice to Tally | {UI_VERSION} | {APP_VERSION}')
         width=min(1500,max(1100,window.winfo_screenwidth()-50));height=min(1000,max(650,window.winfo_screenheight()-100))
         window.geometry(f'{width}x{height}');window.minsize(1100,650);window.configure(bg=BG)
         window.protocol('WM_DELETE_WINDOW',self.close)
         window.bind_all('<MouseWheel>',self.scroll_workspace,add='+')
-        self.sidebar=tk.Frame(window,bg=NAV,width=176);self.sidebar.pack(side='left',fill='y');self.sidebar.pack_propagate(False)
+        self.sidebar=tk.Frame(window,bg=NAV,width=198);self.sidebar.pack(side='left',fill='y');self.sidebar.pack_propagate(False)
         brand=tk.Frame(self.sidebar,bg=NAV);brand.pack(anchor='w',padx=20,pady=(27,8))
         tk.Label(brand,text='Bill',font=('Segoe UI',21,'bold'),fg='white',bg=NAV).pack(side='left')
-        tk.Label(brand,text='Sync',font=('Segoe UI',21,'bold'),fg='#3988ff',bg=NAV).pack(side='left')
-        tk.Label(self.sidebar,text='Invoice to Tally',font=('Segoe UI',9),fg='#b5c3da',bg=NAV).pack(anchor='w',padx=22,pady=(0,24))
+        tk.Label(brand,text='Sync',font=('Segoe UI',21,'bold'),fg='#9cd7b7',bg=NAV).pack(side='left')
+        tk.Label(self.sidebar,text='YOUR INVOICE OPERATIONS',font=('Segoe UI',8),fg='#9fb9ad',bg=NAV).pack(anchor='w',padx=22,pady=(0,24))
         for label,command,icon in [('Invoices',self.show_invoices,'document'),('Dashboard',self.show_dashboard,'bars'),('Review',self.review,'check'),('Tally',self.import_tally,'transfer'),('Clients',self.manage_clients,'person'),('Settings',self.settings,'settings')]:
             ActionButton(self.sidebar,text=label,command=command,icon=icon,style='NavActive.TButton' if label=='Invoices' else 'Nav.TButton').pack(fill='x',padx=10,pady=4)
-        tk.Label(self.sidebar,text='Tally masters: review copy',font=('Segoe UI',8),fg='#b5c3da',bg=NAV,wraplength=145,justify='left').pack(side='bottom',anchor='w',padx=20,pady=20)
+        tk.Label(self.sidebar,text='Connected by your workflow.\nProcessed on your terms.',font=('Segoe UI',8),fg='#9fb9ad',bg=NAV,wraplength=145,justify='left').pack(side='bottom',anchor='w',padx=20,pady=20)
         # Scrollable presentation: the inherited table/controller retains its IDs and values.
         outer=ttk.Frame(window);outer.pack(side='left',fill='both',expand=True)
         self.canvas=tk.Canvas(outer,bg=BG,highlightthickness=0)
         scrollbar=ttk.Scrollbar(outer,orient='vertical',command=self.canvas.yview);scrollbar.pack(side='right',fill='y')
         self.canvas.configure(yscrollcommand=scrollbar.set);self.canvas.pack(fill='both',expand=True)
-        self.content=ttk.Frame(self.canvas,padding=(18,16));self.content_id=self.canvas.create_window((0,0),window=self.content,anchor='nw')
+        self.content=ttk.Frame(self.canvas,padding=(26,22));self.content_id=self.canvas.create_window((0,0),window=self.content,anchor='nw')
         self.canvas.bind('<Configure>',lambda event:self.canvas.itemconfigure(self.content_id,width=event.width))
         self.content.bind('<Configure>',lambda event:self.canvas.configure(scrollregion=self.canvas.bbox('all')))
         self.content.columnconfigure(0,weight=1)
         header=ttk.Frame(self.content);header.grid(row=0,column=0,sticky='ew',pady=(0,12))
         title=ttk.Frame(header);title.pack(side='left')
-        ttk.Label(title,text='Invoice workspace',font=('Segoe UI',21,'bold')).pack(anchor='w')
-        ttk.Label(title,text='Upload, review and import your invoices',foreground=MUTED).pack(anchor='w',pady=(3,0))
+        ttk.Label(title,text='WORKSPACE / INVOICES',font=('Segoe UI',9,'bold'),foreground=BLUE).pack(anchor='w',pady=(0,6))
+        ttk.Label(title,text='Your invoices, in sync.',font=('Segoe UI',26,'bold')).pack(anchor='w')
+        ttk.Label(title,text='One place to process, review and move invoices to Tally.',foreground=MUTED).pack(anchor='w',pady=(3,0))
         self.test_badge=ttk.Label(header,text='  Test workspace  ',padding=(8,5),background='#fff5de',foreground='#915400');self.test_badge.pack(side='right')
         self.folder_label=ttk.Label(header,text='')
         upload=self.card(1);upload.columnconfigure(0,weight=2,uniform='upload');upload.columnconfigure(1,weight=3,uniform='upload')
         left=ttk.Frame(upload,style='Card.TFrame');left.grid(row=0,column=0,sticky='ew',padx=(0,20))
-        ttk.Label(left,text='Client',style='Card.TLabel').pack(anchor='w',pady=(0,7))
+        ttk.Label(left,text='Add documents to your workspace',style='Heading.TLabel').pack(anchor='w',pady=(0,5))
+        ttk.Label(left,text='Choose a client to keep every invoice organised.',style='Muted.TLabel').pack(anchor='w',pady=(0,12))
         selection=ttk.Frame(left,style='Card.TFrame');selection.pack(fill='x',pady=(0,12))
         self.client_picker=ttk.Combobox(selection,textvariable=self.client_display,state='readonly',style='Client.TCombobox',font=('Segoe UI',10),width=15)
         self.client_picker.pack(side='left',fill='both',expand=True)
@@ -119,9 +106,9 @@ class BillSyncApp(InvoiceApp):
             self.drop.drop_target_register(DND_FILES);self.drop.dnd_bind('<<Drop>>',self.drop_files);self.drop_supported=True
         except (ImportError,AttributeError,tk.TclError):pass
         stats=ttk.Frame(self.content);stats.grid(row=2,column=0,sticky='ew',pady=(0,9));self.count_labels=[]
-        for i,(label,tint,accent,icon) in enumerate([('Uploaded invoices','#eef5ff',BLUE,'document'),('Awaiting processing','#fff9ed','#a86b08','clock'),('Needs review','#fff2f5','#cf3356','alert'),('XML ready','#eefaf4','#188553','check')]):
+        for i,(label,tint,accent,icon) in enumerate([('Uploaded invoices','#edf3ed',BLUE,'document'),('Awaiting processing','#faf2e2','#a27730','clock'),('Needs review','#f8eeee','#b56868','alert'),('XML ready','#eaf4ef','#32826b','check')]):
             stats.columnconfigure(i,weight=1,uniform='stats')
-            card=RoundedCard(stats,fill=tint,border={'document':'#cfe0ff','clock':'#f1e0b9','alert':'#f6d5df','check':'#ceeada'}[icon],minheight=72)
+            card=RoundedCard(stats,fill=tint,border={'document':'#d6e4d6','clock':'#eaddc4','alert':'#ead6d6','check':'#d0e4d9'}[icon],minheight=72)
             card.grid(row=0,column=i,sticky='ew',padx=(0,10 if i<3 else 0))
             glyph=tk.Canvas(card.panel,width=36,height=38,bg=tint,highlightthickness=0);glyph.pack(side='left',padx=(0,9))
             draw_icon(glyph,icon,8,9,21,accent)
@@ -130,7 +117,7 @@ class BillSyncApp(InvoiceApp):
             count=tk.Label(texts,text='0',font=('Segoe UI',17),bg=tint,fg=INK,anchor='w');count.pack(anchor='w');self.count_labels.append(count)
         self.toolbar=self.card(3);self.toolbar.columnconfigure(0,weight=1,uniform='action');self.toolbar.columnconfigure(2,weight=1,uniform='action')
         self.processing_group=ttk.Frame(self.toolbar,style='Card.TFrame');self.processing_group.grid(row=0,column=0,sticky='nw')
-        ttk.Label(self.processing_group,text='PROCESS INVOICES',style='Section.TLabel').pack(anchor='w',pady=(0,7))
+        ttk.Label(self.processing_group,text='01   PROCESS',style='Section.TLabel').pack(anchor='w',pady=(0,7))
         process=ttk.Frame(self.processing_group,style='Card.TFrame');process.pack(anchor='w')
         self.process_menu=tk.Menu(window,tearoff=False)
         self.process_menu.add_command(label='Process selected invoices',command=self.analyse_selected)
@@ -143,7 +130,7 @@ class BillSyncApp(InvoiceApp):
         ActionButton(process,text='Stop',command=self.stop_ai,style='Stop.TButton').pack(side='left')
         ttk.Separator(self.toolbar,orient='vertical').grid(row=0,column=1,sticky='ns',padx=14)
         self.tally_group=ttk.Frame(self.toolbar,style='Card.TFrame');self.tally_group.grid(row=0,column=2,sticky='nw')
-        ttk.Label(self.tally_group,text='TALLY & XML',style='Section.TLabel').pack(anchor='w',pady=(0,7))
+        ttk.Label(self.tally_group,text='02   TALLY & XML',style='Section.TLabel').pack(anchor='w',pady=(0,7))
         tally_actions=ttk.Frame(self.tally_group,style='Card.TFrame');tally_actions.pack(anchor='w')
         ActionButton(tally_actions,text='Import to Tally',command=self.import_tally,style='Primary.TButton').pack(side='left',padx=(0,7))
         ActionButton(tally_actions,text='Read Tally masters',command=self.import_masters_from_tally).pack(side='left',padx=(0,7))
@@ -153,14 +140,14 @@ class BillSyncApp(InvoiceApp):
         self.selection_label.grid(row=1,column=0,columnspan=3,sticky='w',pady=(9,0))
         workspace=self.card(4);workspace.columnconfigure(0,weight=1)
         tools=ttk.Frame(workspace,style='Card.TFrame');tools.grid(row=0,column=0,sticky='ew',pady=(0,10))
-        ttk.Label(tools,text='Invoices',font=('Segoe UI',14,'bold'),style='Card.TLabel').pack(side='left')
+        ttk.Label(tools,text='Invoices',font=('Segoe UI',15,'bold'),style='Card.TLabel').pack(side='left')
         ActionButton(tools,text='Refresh',icon='refresh',command=self.start).pack(side='right',padx=(8,0))
         ttk.Combobox(tools,textvariable=self.filter_status,values=['All statuses','Awaiting processing','Needs review','XML prepared'],state='readonly',width=18).pack(side='right',padx=(8,0),ipady=5)
         search=ttk.Frame(tools,style='Card.TFrame');search.pack(side='right')
         ttk.Label(search,text='Search ',style='Muted.TLabel').pack(side='left')
         ttk.Entry(search,textvariable=self.search,width=24).pack(side='left',ipady=5)
         table_frame=ttk.Frame(workspace,style='Card.TFrame');table_frame.grid(row=1,column=0,sticky='nsew')
-        self.table=ttk.Treeview(table_frame,columns=('client','invoice','seller','total','quantity_unit','status','export_country','refund_estimate'),displaycolumns=('invoice','client','seller','export_country','quantity_unit','total','refund_estimate','status'),show='headings',height=5 if window.winfo_screenheight()<900 else 7)
+        self.table=ttk.Treeview(table_frame,columns=('client','invoice','seller','total','quantity_unit','status','export_country','refund_estimate'),displaycolumns=('invoice','client','seller','export_country','quantity_unit','total','refund_estimate','status'),show='headings',height=7 if window.winfo_screenheight()<900 else 9)
         for field,label,width in [('client','Client',100),('invoice','Invoice number',175),('seller','Seller',220),('total','Total (₹)',115),('quantity_unit','Quantity / unit',200),('status','Status',190),('export_country','Export country',145),('refund_estimate','Potential IGST refund (₹)',235)]:
             self.table.heading(field,text=label);self.table.column(field,width=width,minwidth=80,anchor='e' if field=='total' else 'w')
         self.table.grid(row=0,column=0,sticky='nsew');table_frame.columnconfigure(0,weight=1)
@@ -170,7 +157,7 @@ class BillSyncApp(InvoiceApp):
         self.table.bind('<<TreeviewSelect>>',self.details);self.table.bind('<Control-a>',self.select_all)
         self.table.bind('<Double-1>',lambda event:self.review());self.table.bind('<Return>',lambda event:self.review())
         self.table.bind('<Button-3>',self.invoice_menu)
-        self.table.tag_configure('even',background='#ffffff');self.table.tag_configure('odd',background='#f7faff')
+        self.table.tag_configure('even',background='#ffffff');self.table.tag_configure('odd',background='#f9fbf7')
         lower=ttk.Frame(workspace,style='Card.TFrame');lower.grid(row=2,column=0,sticky='ew',pady=(8,0))
         ttk.Label(lower,text='Double-click an invoice to view or edit details',style='Muted.TLabel').pack(side='left')
         ActionButton(lower,text='Refund review',command=self.export_refund_review,style='Text.TButton').pack(side='left',padx=14)
@@ -203,10 +190,10 @@ class BillSyncApp(InvoiceApp):
 
     def draw_drop(self,event=None):
         self.drop.delete('all');width=self.drop.winfo_width();height=self.drop.winfo_height()
-        rounded_box(self.drop,2,2,width-3,height-3,r=18,fill='#f0f6ff',outline='#b9d2ff')
-        rounded_box(self.drop,11,11,width-12,height-12,r=16,fill='#f0f6ff',outline='#8fb7fb',dash=(4,4))
+        rounded_box(self.drop,2,2,width-3,height-3,r=18,fill='#f2f6ef',outline='#d4e3d2')
+        rounded_box(self.drop,11,11,width-12,height-12,r=16,fill='#f2f6ef',outline='#a9c8ac',dash=(4,4))
         draw_icon(self.drop,'upload',width/2-17,height/2-58,34,BLUE)
-        self.drop.create_text(width/2,height/2-5,text='Drag invoices here',font=('Segoe UI',12,'bold'),fill=INK)
+        self.drop.create_text(width/2,height/2-5,text='Drag invoices here',font=('Segoe UI',15,'bold'),fill=INK)
         self.drop.create_text(width/2,height/2+23,text='or click to browse files',font=('Segoe UI',10),fill=MUTED)
         self.drop.create_text(width/2,height/2+48,text='PDF · PNG · JPG · JPEG',font=('Segoe UI',9),fill=MUTED)
 
@@ -238,7 +225,8 @@ class BillSyncApp(InvoiceApp):
 
     def add_client(self):
         if self.busy:return
-        name=simpledialog.askstring('Add client','Client name:',parent=self.window)
+        from BillSync_Workspace_Views import ask_client_name
+        name=ask_client_name(self)
         if name is None:return
         try:client_folder(self.root,name,create=True)
         except (ValueError,OSError) as exc:messagebox.showerror('Add client',str(exc));return
@@ -420,34 +408,27 @@ class BillSyncApp(InvoiceApp):
         top=tk.Toplevel(self.window);top.title('Prepared XML — read only');top.geometry('1050x700')
         tabs=ttk.Notebook(top);tabs.pack(fill='both',expand=True)
         for name in ('Units.xml','Masters.xml','Sales_Vouchers.xml'):
-            frame=ttk.Frame(tabs);tabs.add(frame,text=name);content=tk.Text(frame,wrap='none',font=('Consolas',10));content.pack(fill='both',expand=True)
+            frame=ttk.Frame(tabs);tabs.add(frame,text=name);content=tk.Text(frame,wrap='none',font=('Consolas',10))
+            frame.columnconfigure(0,weight=1);frame.rowconfigure(0,weight=1);content.grid(row=0,column=0,sticky='nsew')
+            yscroll=ttk.Scrollbar(frame,command=content.yview);yscroll.grid(row=0,column=1,sticky='ns')
+            xscroll=ttk.Scrollbar(frame,orient='horizontal',command=content.xview);xscroll.grid(row=1,column=0,sticky='ew')
+            content.configure(yscrollcommand=yscroll.set,xscrollcommand=xscroll.set)
             path=folder/name
             try:body=path.read_text(encoding='utf-8-sig') if path.is_file() else 'Not generated.'
             except OSError as exc:body=str(exc)
             content.insert('end',body);content.config(state='disabled')
 
     def settings(self):
-        top=tk.Toplevel(self.window);top.title('Settings');top.geometry('560x420')
-        panel=ttk.Frame(top,padding=22);panel.pack(fill='both',expand=True)
-        for title,var in [('Test invoices (fictional data)',self.demo),('Auto-fill units',self.auto_units),('Watch for new PDFs (list only)',self.auto)]:ttk.Checkbutton(panel,text=title,variable=var,command=self.reset).pack(anchor='w',pady=9)
-        ttk.Separator(panel).pack(fill='x',pady=12)
-        ActionButton(panel,text='Re-read selected PDFs',command=self.reread).pack(fill='x',pady=3)
-        ActionButton(panel,text='Save supplier layout',command=self.supplier_layout).pack(fill='x',pady=3)
-        ActionButton(panel,text='Use existing invoice storage…',command=self.choose).pack(fill='x',pady=3)
-        ttk.Label(panel,text='Storage: '+str(self.root),wraplength=490).pack(anchor='w',pady=8)
-        ttk.Label(panel,text='AI and accounting defaults are unchanged. Uploading never starts AI.',wraplength=490).pack(anchor='w')
+        from BillSync_Workspace_Views import settings_view
+        settings_view(self)
 
     def manage_clients(self):
-        top=tk.Toplevel(self.window);top.title('Clients');top.geometry('420x400')
-        ttk.Label(top,text='Select a client in the workspace, or add a new client.',wraplength=360,padding=20).pack()
-        ActionButton(top,text='Add client',command=self.add_client).pack(pady=8)
-        for name in self.client_picker.cget('values'):
-            if name!='All clients':ttk.Label(top,text=name.removeprefix('Folder: '),padding=5).pack(anchor='w',padx=20)
+        from BillSync_Workspace_Views import clients_view
+        clients_view(self)
 
     def show_dashboard(self):
-        top=tk.Toplevel(self.window);top.title('Dashboard');top.geometry('480x300')
-        for title,label in zip(('Uploaded invoices','Awaiting processing','Needs review','XML prepared'),self.count_labels):ttk.Label(top,text=title+': '+label.cget('text'),padding=12,font=('Segoe UI',13)).pack(anchor='w')
-        ttk.Label(top,text='Counts reflect listed records. XML preparation is not Tally import.',wraplength=420,padding=12).pack(anchor='w')
+        from BillSync_Workspace_Views import dashboard_view
+        dashboard_view(self)
 
     def show_invoices(self):self.canvas.yview_moveto(0)
 
