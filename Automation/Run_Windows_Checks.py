@@ -15,7 +15,7 @@ def main():
             error=case.find('failure')
             if error is None:error=case.find('error')
             if error is None:continue
-            name=case.get('name','Windows test');detail=(error.text or error.get('message',''))[:6000]
+            name=case.get('name','Windows test');detail=error.get('message','')+'\n'+(error.text or '')[-5500:]
             encoded=detail.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
             print('::error title=Windows regression '+name+'::'+encoded,flush=True)
             failures.append('### '+name+'\n```text\n'+detail+'\n```\n')
