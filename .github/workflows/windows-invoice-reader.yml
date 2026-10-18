@@ -62,6 +62,8 @@ jobs:
           Copy-Item Automation/docs/LOCAL_GEMMA.md Automation/dist/InvoiceReader/Local_Gemma.txt
           Copy-Item Automation/docs/AI_FIRST_WORKFLOW.md Automation/dist/InvoiceReader/AI_First_Workflow.txt
           Copy-Item Backups/Before_AI_Workflow_Validation.zip Automation/dist/InvoiceReader/Before_AI_Workflow_Validation.zip
+          Copy-Item Backups/Before_Import_Review_UX.zip Automation/dist/InvoiceReader/Before_Import_Review_UX.zip
+          Copy-Item Automation/docs/IMPORT_REVIEW.md Automation/dist/InvoiceReader/Import_Review.txt
           Copy-Item Backups/Before_Export_Country_Refund.zip Automation/dist/InvoiceReader/Before_Export_Country_Refund.zip
           Copy-Item Automation/docs/EXPORT_COUNTRY_REFUND.md Automation/dist/InvoiceReader/Export_Country_Refund.txt
           Copy-Item Automation/Open_BillSync_EXE.bat Automation/dist/InvoiceReader/Open_BillSync.bat

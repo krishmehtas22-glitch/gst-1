@@ -58,13 +58,18 @@ def test_valid_domestic_fields_reach_all_three_import_stages_exactly(tmp_path):
 
 
 @pytest.mark.parametrize('field,value',[('number',''),('date',''),('place_of_supply',''),('buyer_name',''),('buyer_state','Mars')])
-def test_missing_required_information_is_draft_and_never_bypassable(tmp_path,field,value):
+def test_missing_invoice_data_requires_explicit_user_override_without_invention(tmp_path,field,value):
     row=source_row(tmp_path);row['invoice'][field]=value;_,plan,v=output(tmp_path,row)
     assert not row['workflow_ready']
-    calls=[]
-    with pytest.raises(WorkflowReviewRequired) as caught:require_plan(plan,'Company',lambda data:calls.append(data))
-    assert any(p['blocking'] for p in caught.value.issues) and not calls
-    with pytest.raises(ValueError,match='cannot bypass'):acknowledge(plan,caught.value,tmp_path)
+    transport,writes,reads=server()
+    with pytest.raises(WorkflowReviewRequired) as caught:require_plan(plan,'Company',transport)
+    assert any(p['blocking'] for p in caught.value.issues) and not writes
+    assert reads==['BillSyncWorkflowCompany']
+    approved=acknowledge(plan,caught.value,tmp_path)
+    require_plan(approved,'Company',transport)
+    assert not writes
+    approved_v=ET.fromstring(dict(approved)['Sales_Vouchers.xml']).find('.//VOUCHER')
+    assert ET.tostring(approved_v)==ET.tostring(v)
     if field=='number':assert not v.findtext('VOUCHERNUMBER') and 'UNREAD-' not in (v.findtext('VOUCHERNUMBER') or '')
 
 
@@ -268,16 +273,30 @@ def exercise_workflow_review_dialog(root):
     callbacks=[];previous=root.grab_current()
     review=WorkflowReviewRequired([issue('INV-1','Buyer GSTIN','Invoice GSTIN','Tally GSTIN','Identity differs')],'exact-output-token','Company')
     top=open_workflow_review(root,review,callbacks.append);root.update()
-    button=next(w for w in descendants(top) if isinstance(w,ttk.Button) and w.cget('text')=='Proceed with invoice details')
+    button=next(w for w in descendants(top) if isinstance(w,ttk.Button) and w.cget('text')=='Import to Tally anyway')
     assert 'disabled' in button.state()
     checkbox=next(w for w in descendants(top) if isinstance(w,ttk.Checkbutton));checkbox.invoke();root.update()
     assert 'disabled' not in button.state();button.invoke();root.update()
     assert callbacks==[True] and not top.winfo_exists() and root.grab_current()==previous
     review=WorkflowReviewRequired([issue('INV-1','Invoice date','','','Missing date',True)],'blocking','Company')
     top=open_workflow_review(root,review,callbacks.append);root.update()
-    assert not any(isinstance(w,ttk.Button) and w.cget('text')=='Proceed with invoice details' for w in descendants(top))
-    next(w for w in descendants(top) if isinstance(w,ttk.Button) and w.cget('text')=='Close — review invoices').invoke();root.update()
+    button=next(w for w in descendants(top) if isinstance(w,ttk.Button) and w.cget('text')=='Import to Tally anyway')
+    assert button.winfo_rooty()+button.winfo_height()<root.winfo_screenheight()-30
+    next(w for w in descendants(top) if isinstance(w,ttk.Button) and w.cget('text')=='Cancel import').invoke();root.update()
     assert callbacks==[True,False] and root.grab_current()==previous
+    original_scale=root.tk.call('tk','scaling')
+    try:
+        for scale in (1.0,1.333,1.667,2.0):
+            root.tk.call('tk','scaling',scale)
+            top=open_workflow_review(root,review,lambda _:None);root.update()
+            for widget in descendants(top):
+                if isinstance(widget,ttk.Button):
+                    assert widget.winfo_ismapped()
+                    assert widget.winfo_rooty()+widget.winfo_height()<=top.winfo_rooty()+top.winfo_height()
+                    assert widget.winfo_rootx()+widget.winfo_width()<=top.winfo_rootx()+top.winfo_width()
+            top.destroy();root.update()
+    finally:root.tk.call('tk','scaling',original_scale)
+
 
 
 def test_company_registration_lookup_accepts_native_utf16_and_system_control_references():
@@ -287,7 +306,7 @@ def test_company_registration_lookup_accepts_native_utf16_and_system_control_ref
     assert facts['gstins']==[SELLER] and facts['states']==['Maharashtra']
 
 
-def exercise_import_review_roundtrip(root,app,monkeypatch):
+def exercise_import_review_roundtrip(root,app,monkeypatch,mode='import'):
     """Exercise the real import worker -> Tk review -> acknowledgement -> dispatch."""
     import tempfile
     from tkinter import ttk
@@ -303,6 +322,15 @@ def exercise_import_review_roundtrip(root,app,monkeypatch):
         monkeypatch.setattr(tally_import,'send_plan',lambda plan,company,**kwargs:original_send(plan,company,transport=transport,**kwargs))
         monkeypatch.setattr(Invoice_Desktop.messagebox,'showinfo',lambda *args,**kwargs:notifications.append(args))
         monkeypatch.setattr(app,'selected',lambda:row)
+        monkeypatch.setattr(app,'records',[row])
+        edits=[]
+        if mode=='edit':monkeypatch.setattr(app,'review',lambda:edits.append((app.busy,app.selected())))
+        if mode in ('cancel','edit','partial'):
+            original_groups=tally_import.client_import_groups
+            def two_groups(*args):
+                groups=original_groups(*args)
+                return groups+[{**groups[0],'label':'Second seller — must not be reviewed after cancellation'}]
+            monkeypatch.setattr(tally_import,'client_import_groups',two_groups)
         app.root=storage;app.busy=False
         try:
             app.import_tally()
@@ -314,7 +342,7 @@ def exercise_import_review_roundtrip(root,app,monkeypatch):
                     pickers=[w for w in descendants(dialog) if isinstance(w,ttk.Combobox)]
                     if pickers and 'Company' in pickers[0].cget('values'):break
             assert dialog is not None and pickers
-            pickers[0].set('Company')
+            for picker in pickers:picker.set('Company')
             next(w for w in descendants(dialog) if isinstance(w,ttk.Button) and w.cget('text')=='Import ALL: Units + Masters + Vouchers').invoke()
             deadline=time.monotonic()+5;review=None
             while time.monotonic()<deadline:
@@ -322,8 +350,41 @@ def exercise_import_review_roundtrip(root,app,monkeypatch):
                 review=next((w for w in descendants(dialog) if w.winfo_class()=='Toplevel' and w.title()=='Invoice workflow review'),None)
                 if review:break
             assert review is not None and not writes
+            import Workflow_Review_Dialog
+            opened=[]
+            monkeypatch.setattr(Workflow_Review_Dialog,'open_source_document',lambda issue:opened.append(issue['read_path']))
+            next(w for w in descendants(review) if isinstance(w,ttk.Button) and w.cget('text')=='Open source PDF / image').invoke()
+            assert opened==[str(Path(row['path']).resolve())]
+            if mode=='partial':
+                next(w for w in descendants(review) if isinstance(w,ttk.Checkbutton)).invoke()
+                next(w for w in descendants(review) if isinstance(w,ttk.Button) and w.cget('text')=='Import to Tally anyway').invoke()
+                deadline=time.monotonic()+5
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.01)
+                    review=next((w for w in descendants(dialog) if w.winfo_class()=='Toplevel' and w.title()=='Invoice workflow review'),None)
+                    if review:break
+                assert review is not None and len(writes)==3
+            if mode in ('cancel','edit','partial'):
+                if mode in ('cancel','partial'):review.tk.call(review.protocol('WM_DELETE_WINDOW'))
+                else:next(w for w in descendants(review) if isinstance(w,ttk.Button) and w.cget('text')=='Edit invoice').invoke()
+                deadline=time.monotonic()+5
+                receipt_path=Path(row['output_path'])/'Last_Tally_Import.json'
+                while time.monotonic()<deadline:
+                    root.update();time.sleep(.01)
+                    if receipt_path.exists() and (edits if mode=='edit' else any('Import cancelled.' in str(w.cget('text')) for w in descendants(dialog) if isinstance(w,ttk.Label))):break
+                assert len(writes)==(3 if mode=='partial' else 0) and not notifications
+                assert reads.count('BillSyncWorkflowCompany')==(3 if mode=='partial' else 1)
+                receipt=json.loads(receipt_path.read_text())
+                assert receipt['cancelled'] and len(receipt['results'])==(4 if mode=='partial' else 1)
+                assert receipt['results'][-1]['status']=='cancelled'
+                if mode=='edit':assert edits==[(False,row)] and not app.busy
+                else:
+                    if mode=='partial':assert any('Earlier groups may have been sent' in str(w.cget('text')) for w in descendants(dialog) if isinstance(w,ttk.Label))
+                    assert not any(w.winfo_class()=='Toplevel' and w.title()=='Invoice workflow review' for w in descendants(dialog))
+                    next(w for w in descendants(dialog) if isinstance(w,ttk.Button) and w.cget('text')=='Close').invoke()
+                return
             next(w for w in descendants(review) if isinstance(w,ttk.Checkbutton)).invoke()
-            next(w for w in descendants(review) if isinstance(w,ttk.Button) and w.cget('text')=='Proceed with invoice details').invoke()
+            next(w for w in descendants(review) if isinstance(w,ttk.Button) and w.cget('text')=='Import to Tally anyway').invoke()
             deadline=time.monotonic()+5
             while time.monotonic()<deadline and not notifications:root.update();time.sleep(.01)
             assert notifications and len(writes)==3
@@ -336,3 +397,45 @@ def exercise_import_review_roundtrip(root,app,monkeypatch):
         finally:
             if dialog is not None and dialog.winfo_exists():dialog.destroy()
             app.root=previous_root;app.busy=previous_busy
+
+
+def test_missing_number_keeps_exact_source_link_and_integrity_cannot_be_overridden(tmp_path):
+    row=source_row(tmp_path);row['invoice']['number']=''
+    folder,plan,_=output(tmp_path,row);transport,writes,_=server()
+    with pytest.raises(WorkflowReviewRequired) as caught:require_plan(plan,'Company',transport)
+    missing=next(p for p in caught.value.issues if p['field']=='Invoice number')
+    assert missing['source']==str(Path(row['path']).resolve()) and missing['read_sha256']==row['digest']
+    from Common_Rules.workflow_validation import cannot_override
+    assert not cannot_override(missing)
+    approved=acknowledge(plan,caught.value,folder)
+    Path(row['path']).write_bytes(b'Changed original')
+    with pytest.raises(WorkflowReviewRequired) as stale:require_plan(approved,'Company',transport)
+    assert any(cannot_override(p) for p in stale.value.issues)
+    with pytest.raises(ValueError,match='cannot bypass'):acknowledge(approved,stale.value,folder)
+    assert not writes
+
+
+def test_source_document_opener_uses_exact_path_and_rejects_outside_root(tmp_path,monkeypatch):
+    import Workflow_Review_Dialog as ui
+    folder=tmp_path/'invoices';folder.mkdir();source=folder/'actual invoice.pdf';source.write_bytes(b'offline')
+    opened=[]
+    if ui.os.name=='nt':monkeypatch.setattr(ui.os,'startfile',lambda p:opened.append(p))
+    else:monkeypatch.setattr(ui.subprocess,'Popen',lambda args:opened.append(args[-1]))
+    ui.open_source_document({'source':str(source),'root':str(folder)})
+    assert opened==[str(source)]
+    with pytest.raises(ValueError):ui.open_source_document({'source':str(source),'root':str(folder/'other')})
+    source.unlink()
+    with pytest.raises(ValueError):ui.open_source_document({'source':str(source),'root':str(folder)})
+
+
+def test_import_review_change_manifest_preserves_baseline_and_installer_payload():
+    import runpy,zipfile
+    root=Path(__file__).parents[2]
+    change=json.loads((root/'Automation/IMPORT_REVIEW_UX_CHANGE.json').read_text())
+    package=runpy.run_path(str(root/'Install_BillSync_Source.py'))
+    with zipfile.ZipFile(root/change['backup']) as archive:
+        for name,entry in change['files'].items():
+            assert hashlib.sha256(archive.read(name)).hexdigest()==entry['baseline_sha256']
+            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==entry['authorized_sha256']
+            if name.startswith('Automation/'):
+                assert package['FILES'][name.removeprefix('Automation/')].encode()==(root/name).read_bytes()

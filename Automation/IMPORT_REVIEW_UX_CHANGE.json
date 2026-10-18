@@ -1,0 +1,28 @@
+{
+  "baseline_commit": "f4f99953a358492fdd758935e305e9d39d9bf0d1",
+  "backup": "Backups/Before_Import_Review_UX.zip",
+  "policy": "User authorizes source-linked review/edit, visible explicit import-anyway for data issues and cancel all remaining groups. Stale or unverified sources/inputs remain blocked. Original XML, amounts, AI and transport ordering are retained.",
+  "files": {
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "84bc5a6152178bb9c4231e8f42e9cd44bea994a3cbafeace3a93a115f2b2887b",
+      "authorized_sha256": "bd917b7414d03a69a6d40eb24609c227de3dc3b29ba754b52a73d3fa81755fad"
+    },
+    "Automation/Invoice_Desktop.py": {
+      "baseline_sha256": "7bf0435f896d167ccc9fe92034ab4202923d304032fa2c72fa12c8594b4f24e2",
+      "authorized_sha256": "bc9f059f5e6d46de4dc963b42fadb0878aa99c8c90389e8aea92b6ea43a372c7"
+    },
+    "Automation/Workflow_Review_Dialog.py": {
+      "baseline_sha256": "3a097281b98849b33db4c6b7b9ddc9b3dd7a57ee143fc571ebba29070b4e92cd",
+      "authorized_sha256": "3543b223aff8ddcbaf56e652e98d66d29bb6ae5934d2f562fab963ad41618791"
+    },
+    "Automation/Common_Rules/workflow_validation.py": {
+      "baseline_sha256": "14f6345c2a79668b51faa95af301e57d33b7fcbd8cdce34f1398e7c1f1e9cdc0",
+      "authorized_sha256": "134b3de49e3ff8e6af906ee484efbf287cc342a5b12646154ffc067d983b162a"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "f824ce18331006ecc398d761c72799ba66ad2ee298461a3074ba44844664d3cd",
+      "authorized_sha256": "cab95a4bec04d8de96899bff4684c64498be9797798836b47703de9601be0725"
+    }
+  },
+  "new_files": {}
+}

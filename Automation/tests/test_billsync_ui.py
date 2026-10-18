@@ -171,6 +171,7 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         from test_ai_workflow_validation import exercise_workflow_review_dialog
         exercise_workflow_review_dialog(root)
         from test_ai_workflow_validation import exercise_import_review_roundtrip
-        exercise_import_review_roundtrip(root,app,monkeypatch)
+        for mode in ('import','cancel','edit','partial'):
+            with monkeypatch.context() as scoped:exercise_import_review_roundtrip(root,app,scoped,mode)
         assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

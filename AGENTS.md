@@ -1,3 +1,15 @@
+# Actionable import review — latest user request, 18 October 2026
+
+Authorize source-document access and exact-invoice editing from review, a visible
+explicit import-anyway decision for invoice data errors, screen-bounded windows
+with pinned actions, and cancellation of all remaining seller groups on close.
+Preserve original facts without inventing missing values. Changed/missing sources,
+stale inputs/snapshots, unreviewed extraction and altered XML cannot be overridden.
+Record acknowledgement against exact output/destination. No automatic retries,
+AI calls or live Tally writes in tests. Back up the current release and retain
+historical locks/manifests. This supersedes mandatory-field nonoverride only for
+an informed explicit client import-anyway decision; Tally may reject the data.
+
 # Complete AI-first workflow — latest user request, 18 October 2026
 
 User authorizes implementing the audited invoice-to-Tally workflow and explicitly

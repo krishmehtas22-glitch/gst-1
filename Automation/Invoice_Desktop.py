@@ -444,23 +444,33 @@ class InvoiceApp:
             messagebox.showerror('Import to Tally',str(exc));return
         self.auto.set(False);self.busy=True
         dialog=tk.Toplevel(self.window);dialog.title('Import existing XML to Tally')
-        dialog.geometry(f'820x{min(740,440+55*len(groups))}');dialog.transient(self.window);dialog.grab_set()
-        ttk.Label(dialog,text='Current XML: '+str(folder),wraplength=680).pack(anchor='w',padx=12,pady=10)
-        ttk.Label(dialog,text='Open the destination company in Tally, then choose it below.\nOrder: '+ ' → '.join(name for name,_ in plan)).pack(anchor='w',padx=12)
+        dialog._billsync_custom=True
+        width=min(940,dialog.winfo_screenwidth()-60);height=min(670,dialog.winfo_screenheight()-100)
+        dialog.geometry(f'{width}x{height}+30+20');dialog.minsize(min(760,width),min(460,height));dialog.transient(self.window);dialog.grab_set()
+        footer=ttk.Frame(dialog,padding=8);footer.pack(side='bottom',fill='x')
+        ttk.Label(dialog,text='Import to Tally',font=('Segoe UI',18,'bold')).pack(anchor='w',padx=16,pady=14)
+        area=ttk.Frame(dialog);area.pack(fill='both',expand=True,padx=8)
+        canvas=tk.Canvas(area,highlightthickness=0,background='white');canvas.pack(side='left',fill='both',expand=True)
+        scrollbar=ttk.Scrollbar(area,orient='vertical',command=canvas.yview);scrollbar.pack(side='right',fill='y');canvas.configure(yscrollcommand=scrollbar.set)
+        content=ttk.Frame(canvas);content_id=canvas.create_window((0,0),window=content,anchor='nw')
+        content.bind('<Configure>',lambda event:canvas.configure(scrollregion=canvas.bbox('all')))
+        canvas.bind('<Configure>',lambda event:canvas.itemconfigure(content_id,width=event.width))
+        ttk.Label(content,text='Current XML: '+str(folder),wraplength=width-70).pack(anchor='w',padx=12,pady=10)
+        ttk.Label(content,text='Open the destination company in Tally, then choose it below.\nOrder: '+ ' → '.join(name for name,_ in plan)).pack(anchor='w',padx=12)
         include_all=tk.BooleanVar(value=True)
         if all_folder_count>1 or len(groups)>1 or voucher_count(selected_plan)<all_voucher_count:
-            ttk.Checkbutton(dialog,text=f'Include complete client batch: {all_voucher_count} invoices',variable=include_all).pack(anchor='w',padx=12,pady=6)
-            ttk.Label(dialog,text=f'Untick to import only this selected set ({voucher_count(selected_plan)} invoices), when completing an earlier partial import.',wraplength=760).pack(anchor='w',padx=12)
+            ttk.Checkbutton(content,text=f'Include complete client batch: {all_voucher_count} invoices',variable=include_all).pack(anchor='w',padx=12,pady=6)
+            ttk.Label(content,text=f'Untick to import only this selected set ({voucher_count(selected_plan)} invoices), when completing an earlier partial import.',wraplength=760).pack(anchor='w',padx=12)
         else:
-            ttk.Label(dialog,text=f'This import contains {all_voucher_count} invoices.',wraplength=720).pack(anchor='w',padx=12)
+            ttk.Label(content,text=f'This import contains {all_voucher_count} invoices.',wraplength=720).pack(anchor='w',padx=12)
         company_variables=[];company_choices=[]
         for group in groups:
-            ttk.Label(dialog,text=group['label']+f" ({voucher_count(group['plan'])} invoices)",wraplength=760).pack(anchor='w',padx=12)
+            ttk.Label(content,text=group['label']+f" ({voucher_count(group['plan'])} invoices)",wraplength=760).pack(anchor='w',padx=12)
             variable=tk.StringVar(value='')
-            choice=ttk.Combobox(dialog,textvariable=variable,state='readonly',width=80)
+            choice=ttk.Combobox(content,textvariable=variable,state='readonly',width=80)
             choice.pack(anchor='w',padx=12,pady=5)
             company_variables.append(variable);company_choices.append(choice)
-        state=ttk.Label(dialog,text='Connecting to local Tally…',wraplength=680)
+        state=ttk.Label(footer,text='Connecting to local Tally…',wraplength=680)
         state.pack(anchor='w',padx=12,pady=10)
         messages=queue.Queue();running=[False];launch_attempted=[False]
         def close():
@@ -485,7 +495,7 @@ class InvoiceApp:
             receipt_folder=Path(record['output_path']) if include_all.get() else folder
             def worker():
                 try:
-                    results=[]
+                    results=[];cancelled=False;edit_issue=None
                     for group,target in zip(chosen_groups,targets):
                         try:
                             from Common_Rules.workflow_validation import WorkflowReviewRequired,acknowledge,enabled as workflow_enabled,MARKER
@@ -496,22 +506,25 @@ class InvoiceApp:
                             except WorkflowReviewRequired as review:
                                 decision=queue.Queue()
                                 messages.put(('workflow_review',(review,decision)))
-                                if decision.get():
+                                answer=decision.get()
+                                if answer is True:
                                     approved_plan=acknowledge(group['plan'],review,receipt_folder)
                                     received=send_plan(approved_plan,target,progress=lambda text:messages.put(('progress',text)),submit_all=True)
                                 else:
-                                    received=[{'file':'Invoice workflow review','company':target,'errors':['Import cancelled for review. No units, masters or vouchers sent for this company.'],'status':'not sent','request_attempted':False}]
+                                    cancelled=True
+                                    edit_issue=answer.get('issue') if isinstance(answer,dict) and answer.get('action')=='edit' else None
+                                    received=[{'file':'Invoice workflow review','company':target,'errors':[],'reason':'Cancelled by user. This group and all remaining groups were not sent.','status':'cancelled','request_attempted':False}]
                         except (ValueError,OSError) as exc:
                             received=[{'file':'Company/connection check','company':target,'errors':[str(exc)],'status':'unknown'}]
                         for result in received:result['xml_folders']=[str(p) for p in group['folders']]
                         results.extend(received)
-                        if any(r.get('status')=='unknown' for r in received):break
-                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'import_mode':'full-submit-all','output_generation':groups[0].get('generation',record.get('output_generation')),'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results})
+                        if cancelled or any(r.get('status')=='unknown' for r in received):break
+                    try:write_json(receipt_folder/'Last_Tally_Import.json',{'import_mode':'full-submit-all','output_generation':groups[0].get('generation',record.get('output_generation')),'expected_vouchers':sum(voucher_count(g['plan']) for g in chosen_groups),'results':results,'cancelled':cancelled})
                     except OSError:pass
-                    messages.put(('imported',results))
+                    messages.put(('import_cancelled',(results,edit_issue)) if cancelled else ('imported',results))
                 except Exception as exc:messages.put(('import_error',str(exc)))
             threading.Thread(target=worker,daemon=True).start()
-        buttons=ttk.Frame(dialog);buttons.pack(anchor='w',padx=12,pady=8)
+        buttons=ttk.Frame(footer);buttons.pack(anchor='w',padx=12,pady=8)
         ttk.Button(buttons,text='Refresh companies',command=refresh).pack(side='left')
         import_button=ttk.Button(buttons,text='Import ALL: Units + Masters + Vouchers',command=import_now,state='disabled')
         import_button.pack(side='left',padx=8)
@@ -554,6 +567,19 @@ class InvoiceApp:
                                         write_json(self.root/'.invoice_app'/'tally_connection.json',{'executable':str(executable)})
                                         state.config(text='Tally opened. Select/open your company in Tally, then click Refresh companies. Enable its HTTP/XML server on port 9000 once if needed.')
                                     except (ValueError,OSError) as exc:state.config(text=str(exc))
+                    elif kind=='import_cancelled':
+                        results,edit_issue=value
+                        attempted=any(r.get('request_attempted') for r in results)
+                        state.config(text='Import cancelled. Remaining groups were not sent. '+('Earlier groups may have been sent; see Last_Tally_Import.json and check Tally.' if attempted else 'No units, masters or vouchers were sent.'))
+                        import_button.config(state='normal')
+                        if edit_issue:
+                            matches=[(i,r) for i,r in enumerate(self.records) if str(Path(r['path']).resolve())==edit_issue.get('read_path') and r.get('digest')==edit_issue.get('read_sha256')]
+                            if len(matches)==1:
+                                i,matched=matches[0];close()
+                                self.table.reattach(str(i),'','end');self.table.selection_set(str(i));self.table.focus(str(i));self.table.see(str(i))
+                                self.window.after_idle(self.review)
+                                return
+                            state.config(text='Import cancelled. Refresh the invoice list, then double-click the source invoice to edit it. No new AI request was sent.')
                     elif kind=='imported':
                         lines=[];failed=False
                         for result in value:

@@ -224,6 +224,17 @@ def attach(root,records,report,masters,vouchers):
     vouchers.set(MARKER,json.dumps({'version':1,'entries':entries},ensure_ascii=False))
 
 
+def cannot_override(problem):
+    """Data disagreements are reviewable; stale/unverified inputs are not."""
+    return problem.get('blocking',False) and problem.get('field') in {
+        'Source invoice','Saved invoice review','Tally snapshot','AI extraction'}
+
+
+def link_source(problem,entry):
+    return {**problem,'source':entry['source'],'read_path':entry['read_path'],
+            'read_sha256':entry['read_sha256'],'root':entry['root'],'guid':entry['guid']}
+
+
 class WorkflowReviewRequired(ValueError):
     def __init__(self,issues,token,company):
         self.issues=issues;self.token=token;self.company=company
@@ -268,7 +279,8 @@ def require_plan(plan,company,transport):
         for voucher in doc.findall('.//VOUCHER'):
             entry=by_guid.get(voucher.findtext('GUID'))
             if not entry or entry['voucher_sha256']!=voucher_hash(voucher):raise ValueError('Invoice XML changed after validation; re-process before import. No import sent.')
-            entries.append(entry);problems.extend(entry['issues'])
+            entries.append(entry);problems.extend(link_source(p,entry) for p in entry['issues'])
+            start=len(problems)
             source=Path(entry['source'])
             for path,sha in ((source,entry['source_sha256']),(Path(entry['read_path']),entry['read_sha256'])):
                 if not sha or path.is_symlink() or not path.resolve().is_relative_to(Path(entry['root']).resolve()) or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest()!=sha:
@@ -283,11 +295,13 @@ def require_plan(plan,company,transport):
             ctx=context(entry['root'],{'client':entry['client']})
             if (ctx['sha256'] if ctx else '')!=entry['snapshot_sha256']:
                 problems.append(issue(entry['invoice'].get('number'),'Tally snapshot','','','Selected masters changed; re-process invoices.',True))
+            problems[start:]=[link_source(p,entry) for p in problems[start:]]
     if not entries:return
     facts=None
-    if not any(p['blocking'] for p in problems):
+    if not any(cannot_override(p) for p in problems):
         facts=company_facts(company,transport)
         for entry in entries:
+            start=len(problems)
             inv=entry['invoice'];gstin=str(inv.get('seller_gstin') or '').strip().upper()
             if not facts['gstins']:
                 problems.append(issue(inv.get('number'),'Destination GSTIN',gstin,'Not returned by Tally','Company registration could not be verified. Confirm the chosen company before proceeding.'))
@@ -297,13 +311,14 @@ def require_plan(plan,company,transport):
             known={state(s) for s in facts['states']};known.discard('')
             if seller_state and known and seller_state not in known:
                 problems.append(issue(inv.get('number'),'Destination state',seller_state,', '.join(sorted(known)),'Supplier state differs from the selected company state.'))
+            problems[start:]=[link_source(p,entry) for p in problems[start:]]
     token=digest({'entries':entries,'issues':problems,'destination':facts,'company':company})
-    if problems and (any(p['blocking'] for p in problems) or not approvals or any(a!=token for a in approvals)):
+    if problems and (any(cannot_override(p) for p in problems) or not approvals or any(a!=token for a in approvals)):
         raise WorkflowReviewRequired(problems,token,company)
 
 
 def acknowledge(plan,review,folder):
-    if any(p['blocking'] for p in review.issues):raise ValueError('Missing/changed mandatory information must be corrected; acknowledgement cannot bypass it.')
+    if any(cannot_override(p) for p in review.issues):raise ValueError('Changed or unverified inputs must be corrected; acknowledgement cannot bypass them.')
     from datetime import datetime,timezone
     path=Path(folder)/'Workflow_Review_Decisions.json'
     old=read_json(path) if path.exists() else {'decisions':[]}
