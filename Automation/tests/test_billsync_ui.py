@@ -9,7 +9,7 @@ import Invoice_Desktop
 from BillSync_UI import BillSyncApp
 
 
-@pytest.mark.parametrize('name',['import_tally','analyse_selected','analyse_one_pdf','read_gemini_batch','review','save_manual_edits','revalidate','start','stop_ai'])
+@pytest.mark.parametrize('name',['import_tally','analyse_selected','read_gemini_batch','review','save_manual_edits','revalidate','start','stop_ai'])
 def test_working_actions_are_inherited_without_replacement(name):
     assert getattr(BillSyncApp,name) is getattr(Invoice_Desktop.InvoiceApp,name)
 
@@ -24,11 +24,18 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
-                numbering=json.loads((root/'Automation/INVOICE_NUMBER_GUARD_CHANGE.json').read_text())
-                if name in numbering['files']:
-                    from test_premium_ui import after_boxed_ui
-                    after_boxed_ui(root,name,numbering['files'][name]['baseline_sha256'])
-                    actual=numbering['files'][name]['baseline_sha256']
+                for manifest in ('LOCAL_GEMMA_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json'):
+                    latest=json.loads((root/'Automation'/manifest).read_text())
+                    if name in latest['files']:
+                        from test_premium_ui import after_boxed_ui
+                        # Continue from the earliest latest-change baseline.
+                        baseline=latest['files'][name]['baseline_sha256']
+                        if manifest=='LOCAL_GEMMA_CHANGE.json':
+                            prior=json.loads((root/'Automation/INVOICE_NUMBER_GUARD_CHANGE.json').read_text())['files']
+                            if name in prior:baseline=prior[name]['baseline_sha256']
+                        after_boxed_ui(root,name,baseline)
+                        actual=baseline
+                        break
                 ocr=json.loads((root/'Automation/OCR_REVIEW_GUARD_CHANGE.json').read_text())['files']
                 if name in ocr:
                     from test_buyer_ledger_guard import assert_after_guard
@@ -92,6 +99,10 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
             root.update();time.sleep(.02)
             if not app.busy and app.records==[]:break
         assert not app.busy
+        assert tuple(app.provider_choice.cget('values'))==('Groq','Gemma (local — free)')
+        app.provider_display.set('Gemma (local — free)');app.provider_choice.event_generate('<<ComboboxSelected>>');root.update()
+        assert app.ai_primary.get()=='Gemma (local)'
+        app.ai_primary.set('Groq');assert app.provider_display.get()=='Groq'
         app.client_scope.set('Folder: Client');app.refresh_clients()
         assert app.client_display.get()=='Client'
         app.upload_paths(fixture)

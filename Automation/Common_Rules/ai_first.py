@@ -1,7 +1,7 @@
 """AI extracts invoice meaning first; the existing Python writer converts it later."""
 from pathlib import Path
 
-from .ai_providers import ACTIVE_PROVIDERS
+from .ai_providers import ACTIVE_PROVIDERS,LOCAL_PROVIDER
 from .engine import read_json, write_json
 from .source_documents import verify_source
 
@@ -12,11 +12,11 @@ def configured_primary(root):
         provider = read_json(path).get('primary', 'Groq') if path.exists() else 'Groq'
     except (ValueError, OSError, TypeError):
         provider = 'Groq'
-    return provider if provider in ACTIVE_PROVIDERS else 'Groq'
+    return provider if provider in ACTIVE_PROVIDERS+(LOCAL_PROVIDER,) else 'Groq'
 
 
 def save_primary(root, provider):
-    if provider not in ACTIVE_PROVIDERS:
+    if provider not in ACTIVE_PROVIDERS+(LOCAL_PROVIDER,):
         raise ValueError('Choose an active invoice AI provider.')
     write_json(Path(root)/'.invoice_app'/'ai_first_settings.json', {'version': 1, 'primary': provider})
 
@@ -46,11 +46,13 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
     from .tally_review_export import enable
     root = Path(root)
     primary = primary or configured_primary(root)
-    if primary not in ACTIVE_PROVIDERS:
+    if primary not in ACTIVE_PROVIDERS+(LOCAL_PROVIDER,):
         raise ValueError('Choose an active invoice AI provider.')
     progress('Preparing PDF text/OCR for AI; XML conversion has not started.')
     records = inspect_sources(root, client_names, demo, auto_units)
     from .tally_master_matching import context,match_cached
+    if primary==LOCAL_PROVIDER:
+        from .ollama_reader import match_cached
     approved_paths = None if selected_paths is None else {str(Path(p).resolve()) for p in selected_paths}
     if approved_paths is not None:
         present = {str(Path(r.get('source_path', r['path'])).resolve()) for r in records}

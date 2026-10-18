@@ -67,7 +67,14 @@ def test_installer_and_backup_record_exact_authorized_change():
     with zipfile.ZipFile(root/change['backup']) as archive:
         for name,entry in change['files'].items():
             assert hashlib.sha256(archive.read(name)).hexdigest()==entry['baseline_sha256']
-            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==entry['authorized_sha256']
+            expected=entry['authorized_sha256']
+            latest=json.loads((root/'Automation/LOCAL_GEMMA_CHANGE.json').read_text())
+            if name in latest['files']:
+                update=latest['files'][name];assert update['baseline_sha256']==expected
+                with zipfile.ZipFile(root/latest['backup']) as previous:
+                    assert hashlib.sha256(previous.read(name)).hexdigest()==expected
+                expected=update['authorized_sha256']
+            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
     for name,digest in change['new_files'].items():
         assert hashlib.sha256((root/name).read_bytes()).hexdigest()==digest
         assert package['FILES'][name.removeprefix('Automation/')].encode()==(root/name).read_bytes()

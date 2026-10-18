@@ -1,6 +1,7 @@
 """Explicit batch extraction with a paced queue and durable per-PDF results."""
 import time
 import os
+import threading
 from pathlib import Path
 from .engine import read_json, write_json
 from .source_documents import verify_source, confirm_test_document
@@ -31,6 +32,8 @@ def retained_result(root, record, provider=None):
 
 def find_retained(root,record,primary):
     """Recover orphaned saved reads before spending quota with any provider."""
+    # An explicit local choice never switches to a cloud provider's extraction.
+    if primary=='Gemma (local)':return retained_result(root,record,primary)
     saved=retained_result(root,record)
     if saved:return saved
     from .ai_providers import ACTIVE_PROVIDERS
@@ -49,14 +52,18 @@ def save_report(path,data,progress):
 class RequestBudget:
     """Conservative cap on fresh extraction attempts, shared by all providers."""
     def __init__(self,limit):
-        self.limit=max(0,int(limit));self.used=0
+        self.limit=max(0,int(limit));self.used=0;self._lock=threading.Lock()
     def claim(self):
-        if self.used>=self.limit:return False
-        self.used+=1;return True
+        with self._lock:
+            if self.used>=self.limit:return False
+            self.used+=1;return True
 
 
 def read_batch(root, records, progress=lambda message: None, extract=None,
-               wait=time.sleep, clock=time.monotonic, provider='Gemini', confirm_test=False, stop_event=None,on_result=None,request_budget=None):
+               wait=time.sleep, clock=time.monotonic, provider='Gemini', confirm_test=False, stop_event=None,on_result=None,request_budget=None,*,_parallel=True,_save_report=True):
+    if provider=='Gemma (local)' and _parallel and len(records)>1:
+        from .local_parallel import read_local_batch
+        return read_local_batch(root,records,progress,extract,wait,clock,confirm_test,stop_event,on_result,request_budget)
     from .ai_providers import reader as get_reader,INTERVALS
     reader=get_reader(provider)
     extract=extract or reader.extract_selected
@@ -107,7 +114,7 @@ def read_batch(root, records, progress=lambda message: None, extract=None,
         if on_result is not None:on_result(record,result)
         if any(provider+' HTTP '+str(code) in result.get('error','') for code in (401,402,403,404,429)):
             stopped=True  # Keep applying cached successes without more API calls.
-    save_report(Path(root)/'.invoice_app'/(provider.lower().replace(' ','_')+'_batch_results.json'),{'provider':provider,'results':results},progress)
+    if _save_report:save_report(Path(root)/'.invoice_app'/(provider.lower().replace(' ','_')+'_batch_results.json'),{'provider':provider,'results':results},progress)
     return results
 
 
@@ -119,7 +126,7 @@ def read_with_fallback(root,records,primary='Gemini',progress=lambda message:Non
     for client in {r['client'] for r in records}:enable(root,client)
     from .ai_providers import PROVIDERS,ACTIVE_PROVIDERS,KEY_VARIABLES,reader as get_reader
     if primary not in PROVIDERS:raise ValueError('Unknown invoice API provider')
-    providers=[primary]+[p for p in ACTIVE_PROVIDERS if p!=primary];remaining=list(records);results={}
+    providers=([primary] if primary=='Gemma (local)' else [primary]+[p for p in ACTIVE_PROVIDERS if p!=primary]);remaining=list(records);results={}
     # Never replace a successful selected read just because another button was used.
     notified=set()
     def notify(record,result):

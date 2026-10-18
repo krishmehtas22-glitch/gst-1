@@ -19,7 +19,7 @@ from Export_Refund_Review import summary as refund_summary,load_review as load_r
 from Export_Refund_Dialog import open_refund_review
 
 BG='#f2f5fb';NAV='#111d35';BLUE='#315ee7';INK='#182641';MUTED='#687a96';BORDER='#bfcde2'
-UI_VERSION='BillSync UI 3.2'
+UI_VERSION='BillSync UI 3.3'
 
 
 class ActivityLabel(ttk.Label):
@@ -125,10 +125,17 @@ class BillSyncApp(InvoiceApp):
         self.process_card=RoundedCard(self.toolbar,fill='#f4f7ff',border='#c8d5f4');self.process_card.grid(row=0,column=0,sticky='nsew')
         self.processing_group=self.process_card.panel
         ttk.Label(self.processing_group,text='02   INVOICE PROCESSING',style='Section.TLabel',background='#f4f7ff',foreground=BLUE).pack(anchor='w',pady=(0,7))
+        provider_row=tk.Frame(self.processing_group,bg='#f4f7ff');provider_row.pack(anchor='w',pady=(0,8))
+        ttk.Label(provider_row,text='AI reader',background='#f4f7ff').pack(side='left',padx=(0,8))
+        self.provider_display=tk.StringVar(value='Groq')
+        self.provider_choice=ttk.Combobox(provider_row,textvariable=self.provider_display,values=('Groq','Gemma (local — free)'),state='readonly',width=24)
+        self.provider_choice.pack(side='left')
+        self.ai_primary.trace_add('write',lambda *args:self.provider_display.set('Gemma (local — free)' if self.ai_primary.get()=='Gemma (local)' else 'Groq'))
+        self.provider_choice.bind('<<ComboboxSelected>>',lambda event:self.ai_primary.set('Gemma (local)' if self.provider_display.get().startswith('Gemma') else 'Groq'))
         process=tk.Frame(self.processing_group,bg='#f4f7ff');process.pack(anchor='w')
         self.process_menu=tk.Menu(window,tearoff=False)
         self.process_menu.add_command(label='Process selected invoices',command=self.analyse_selected)
-        self.process_menu.add_command(label='Process all client invoices',command=lambda:self.read_gemini_batch('Groq'))
+        self.process_menu.add_command(label='Process all client invoices',command=lambda:self.read_gemini_batch(self.ai_primary.get()))
         self.process_menu.add_command(label='Process this invoice',command=self.analyse_one_pdf)
         ActionButton(process,text='Process selected',command=self.analyse_selected,style='Primary.TButton').pack(side='left')
         self.process_more=ActionButton(process,text='⌄',command=self.show_process_menu,style='Primary.TButton',width=25)
@@ -289,6 +296,16 @@ class BillSyncApp(InvoiceApp):
         annotate(self.records)
         super().details(event)
         self.selection_label.config(text=f'{len(self.table.selection())} selected · AI runs only when you choose Process.')
+
+    def analyse_one_pdf(self):
+        if self.busy:return
+        selection=self.table.selection()
+        focused=self.table.focus()
+        target=focused if focused in selection else (selection[0] if len(selection)==1 else None)
+        if target is None:
+            messagebox.showinfo('Analyse ONE PDF','Click the single PDF you want to analyse, then use this button. No AI request was sent.')
+            return
+        self.analyse_selected(self.ai_primary.get(),records=[self.records[int(target)]])
 
     def show_process_menu(self):
         self.process_menu.tk_popup(self.process_more.winfo_rootx(),self.process_more.winfo_rooty()+self.process_more.winfo_height())

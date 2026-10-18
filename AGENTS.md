@@ -1,3 +1,19 @@
+# Local Gemma integration — latest user request, 18 October 2026
+
+Authorize an explicit local Gemma provider using the installed gemma3:4b model
+on Ollama localhost:11434. Add a visible Groq/local selector; honor it for one,
+selected and client-batch processing. No startup/upload/refresh/watch AI; retain
+selection, confirmation, budgets, stop and saved human review behavior. Local
+Gemma must never fall back to cloud providers or fetch models automatically.
+Preserve existing Groq payload/output, XML/accounting, units, masters, Tally
+transport and numbering guard. Reuse the existing normalizer and processing
+pipeline. Back up all changed files and record a separate narrow exception.
+Authorize at most two concurrent local invoice requests for confirmed batches.
+Keep one request per invoice, ordered results, per-source cache serialization,
+thread-safe shared budgets, main-thread result callbacks and stop without retries.
+Cloud-provider pacing and scheduling remain unchanged.
+Tests use mock local HTTP replies; no live AI requests or Tally writes.
+
 # Invoice voucher number retention — latest user request, 18 October 2026
 
 Authorize a read-only, selected-company Sales numbering prerequisite before

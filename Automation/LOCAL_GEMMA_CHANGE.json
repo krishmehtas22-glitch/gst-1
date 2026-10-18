@@ -1,0 +1,31 @@
+{
+  "baseline_commit": "0f105b4ab8b35f1d9732f777d0c00521be5498d4",
+  "backup": "Backups/Before_Local_Gemma.zip",
+  "policy": "Explicit local Gemma provider and bounded two-request local batches; Groq behavior and financial XML/units/masters/Tally unchanged.",
+  "files": {
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "944d5fa6b270ac6cb4e30405b9e6cd5b555ee4a08309eee0f76fc0a0f143ea68",
+      "authorized_sha256": "9b4ac9dde3f2db416c0b17cf10df50213ddc3106fc0625e00c0e995719ef9234"
+    },
+    "Automation/Common_Rules/ai_providers.py": {
+      "baseline_sha256": "ffa6e2fa0f45a06d15a0b0b3edfd95873b0a16c5d1d3f66d477147c98e2d3906",
+      "authorized_sha256": "1bfd35b55ce8768b073fc2a9045f2164f6ef31c0549692a36667a06c1ff61c33"
+    },
+    "Automation/Common_Rules/ai_first.py": {
+      "baseline_sha256": "9240da8437eacc880385a6b96c17517dbb69092a939fe0dd9e75a466cfe78b92",
+      "authorized_sha256": "6f38a11ce9f0e266a4ad15d6bd1262f47deb49aeef19417239fe7335a63d92ac"
+    },
+    "Automation/Common_Rules/gemini_batch.py": {
+      "baseline_sha256": "24b43b3f2c81d2e7ab64d4637a11043e9ceed863f8a3b4983947d210ecd8b5a0",
+      "authorized_sha256": "44283d1a167ac60bc00b68f06e75891e9d52aae3d7798a2efaad7c597ca57f9c"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "47a84a9f2c9232e37b1ad078ed1b23fb00a54553a9b5bbafc45df7c31ad954a2",
+      "authorized_sha256": "bd8bca98352feebcbd23e19b33d3416c83b83a5ea24fe46ec0cd60455f0331e1"
+    }
+  },
+  "new_files": {
+    "Automation/Common_Rules/ollama_reader.py": "090b2cd60694466bbe4306e04dbff0163dcd6f53ea1f6f1effd3b5eca077618d",
+    "Automation/Common_Rules/local_parallel.py": "7c734591d00455d6900e8f7ce149727341df3b6bdcd3e9f25f7c18b89d45c9ae"
+  }
+}
