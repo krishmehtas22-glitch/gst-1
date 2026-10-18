@@ -423,6 +423,7 @@ class InvoiceApp:
             subprocess.Popen(['xdg-open',path])
 
     def import_tally(self):
+        import gc
         if self.busy:return
         record=self.selected()
         if not record or not record.get('output_path'):
@@ -483,6 +484,8 @@ class InvoiceApp:
             def worker():
                 try:messages.put(('companies',loaded_companies(lambda data:post_xml(data,timeout=3))))
                 except Exception as exc:messages.put(('connection',str(exc)))
+            # Dispose of prior Tk dialog cycles on the UI thread, never in a worker.
+            gc.collect()
             threading.Thread(target=worker,daemon=True).start()
         def import_now():
             if running[0]:return
@@ -523,6 +526,8 @@ class InvoiceApp:
                     except OSError:pass
                     messages.put(('import_cancelled',(results,edit_issue)) if cancelled else ('imported',results))
                 except Exception as exc:messages.put(('import_error',str(exc)))
+            # Dispose of prior Tk dialog cycles on the UI thread, never in a worker.
+            gc.collect()
             threading.Thread(target=worker,daemon=True).start()
         buttons=ttk.Frame(footer);buttons.pack(anchor='w',padx=12,pady=8)
         ttk.Button(buttons,text='Refresh companies',command=refresh).pack(side='left')

@@ -9,11 +9,11 @@
     },
     "Automation/Invoice_Desktop.py": {
       "baseline_sha256": "7bf0435f896d167ccc9fe92034ab4202923d304032fa2c72fa12c8594b4f24e2",
-      "authorized_sha256": "bc9f059f5e6d46de4dc963b42fadb0878aa99c8c90389e8aea92b6ea43a372c7"
+      "authorized_sha256": "a3dfd9f0e5bd8abfa99ee4fb85b7fff9c5b08d14620840bb30ff734f939112bf"
     },
     "Automation/Workflow_Review_Dialog.py": {
       "baseline_sha256": "3a097281b98849b33db4c6b7b9ddc9b3dd7a57ee143fc571ebba29070b4e92cd",
-      "authorized_sha256": "3543b223aff8ddcbaf56e652e98d66d29bb6ae5934d2f562fab963ad41618791"
+      "authorized_sha256": "6d5f464e52c0048badc0137463c964e5da383fbfa227882b3ee7e144c5be4968"
     },
     "Automation/Common_Rules/workflow_validation.py": {
       "baseline_sha256": "14f6345c2a79668b51faa95af301e57d33b7fcbd8cdce34f1398e7c1f1e9cdc0",
@@ -21,7 +21,7 @@
     },
     "Install_BillSync_Source.py": {
       "baseline_sha256": "f824ce18331006ecc398d761c72799ba66ad2ee298461a3074ba44844664d3cd",
-      "authorized_sha256": "cab95a4bec04d8de96899bff4684c64498be9797798836b47703de9601be0725"
+      "authorized_sha256": "80b9d9b0afd202c2290635a0e39031709ed03330d603e9c7c0634c83998ac1d7"
     }
   },
   "new_files": {}

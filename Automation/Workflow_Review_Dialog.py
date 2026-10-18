@@ -54,8 +54,10 @@ def open_workflow_review(parent,review,complete):
     text=('Import unavailable: source, saved review, extraction or master snapshot needs updating. Select the issue for instructions.' if blocked else
           'Import anyway keeps these values, including missing/invalid fields. Tally may reject them. Your decision is recorded; no values are invented.')
     explanation=ttk.Label(footer,text=text,wraplength=width-40);explanation.grid(row=0,column=0,sticky='ew',pady=(0,6))
-    consent=tk.BooleanVar(value=False)
-    ttk.Checkbutton(footer,text='I reviewed the issues and authorise importing these invoice values.',variable=consent,state='disabled' if blocked else 'normal').grid(row=1,column=0,sticky='w')
+    # Keep consent in the Tk widget: no traced Python Variable cycle can be
+    # collected by the import worker after this window closes.
+    consent=ttk.Checkbutton(footer,text='I reviewed the issues and authorise importing these invoice values.',state='disabled' if blocked else 'normal')
+    consent.grid(row=1,column=0,sticky='w')
     buttons=ttk.Frame(footer);buttons.grid(row=2,column=0,sticky='ew',pady=(10,0))
     finished=[False]
     def close(answer=False):
@@ -70,7 +72,7 @@ def open_workflow_review(parent,review,complete):
     for button in source_buttons:button.pack(side='left',padx=(0,8))
     button=ttk.Button(buttons,text='Import to Tally anyway',state='disabled',style='Primary.TButton',command=lambda:close(True));button.pack(side='right')
     ttk.Button(buttons,text='Cancel import',command=close).pack(side='right',padx=8)
-    consent.trace_add('write',lambda *a:button.config(state='normal' if consent.get() and not blocked else 'disabled'))
+    consent.config(command=lambda:button.config(state='normal' if consent.instate(['selected']) and not blocked else 'disabled'))
     table.bind('<<TreeviewSelect>>',describe)
     if review.issues:table.selection_set('0');table.focus('0')
     describe();top.protocol('WM_DELETE_WINDOW',close)

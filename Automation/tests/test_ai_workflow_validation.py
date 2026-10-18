@@ -365,7 +365,9 @@ def exercise_import_review_roundtrip(root,app,monkeypatch,mode='import'):
                     if review:break
                 if review is None:
                     footer=next(str(w.cget('text')) for w in descendants(dialog) if isinstance(w,ttk.Label))
-                    pytest.fail('Second group review absent; writes='+str(len(writes))+'; reads='+','.join(reads[-4:])+'; state='+footer+'; result='+str(notifications)[-1100:],pytrace=False)
+                    import sys,traceback
+                    stacks=[' > '.join(f.name+':'+str(f.lineno) for f in traceback.extract_stack(frame)[-8:]) for tid,frame in sys._current_frames().items() if tid!=threading.get_ident()]
+                    pytest.fail('Stacks='+str(stacks)+'; Second group review absent; writes='+str(len(writes))+'; reads='+','.join(reads[-4:])+'; state='+footer+'; result='+str(notifications)[-1100:],pytrace=False)
                 assert len(writes)==3
             if mode in ('cancel','edit','partial'):
                 if mode in ('cancel','partial'):review.tk.call(review.protocol('WM_DELETE_WINDOW'))
