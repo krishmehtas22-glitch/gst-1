@@ -73,6 +73,8 @@ def test_reused_units_skip_post_and_continue_masters_then_vouchers():
     plan=[('Units.xml',xml(unit('PCS','Pieces'))),('Masters.xml',xml()),('Sales_Vouchers.xml',original_sales)]
     posts=[];read_targets=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         root=ET.fromstring(payload)
         if root.findtext('./HEADER/TALLYREQUEST')=='Export':
             if root.findtext('./HEADER/ID')=='InvoiceReaderUnits':
@@ -91,6 +93,8 @@ def test_reused_units_skip_post_and_continue_masters_then_vouchers():
 
 def test_duplicate_original_error_still_stops_if_not_resolved():
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         root=ET.fromstring(payload)
         if root.findtext('./HEADER/TALLYREQUEST')=='Export':
             return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
@@ -108,6 +112,8 @@ def test_native_descriptive_original_names_preserved_before_tally_post():
     existing=b'<ENVELOPE><COLLECTION>'+b''.join(ET.tostring(unit(n,n)) for n in ('PCS','REAM','ROLL'))+b'</COLLECTION></ENVELOPE>'
     posted=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         root=ET.fromstring(payload)
         if root.findtext('./HEADER/TALLYREQUEST')=='Export':
             if root.findtext('./HEADER/ID')=='InvoiceReaderUnits':return existing
@@ -132,6 +138,8 @@ def test_native_descriptive_original_names_preserved_before_tally_post():
 def test_failure_diagnostic_names_exact_unit_and_preserves_earlier_counters():
     posted=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         root=ET.fromstring(payload)
         if root.findtext('./HEADER/TALLYREQUEST')=='Export':return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
         posted.append(root.find('.//UNIT').findtext('NAME'))
@@ -177,6 +185,8 @@ def test_packs_conflict_repair_reaches_masters_and_vouchers_with_same_values(exp
                       'ACTUALQTY':'17 Packs','BILLEDQTY':'17 Packs','RATE':'12.345/Packs','AMOUNT':'209.87'}.items():text(v,tag,value)
     saved=ET.tostring(sales);posts=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         doc=ET.fromstring(payload)
         if doc.findtext('./HEADER/TALLYREQUEST')=='Export':
             if doc.findtext('./HEADER/ID')=='InvoiceReaderUnits':
@@ -205,6 +215,8 @@ def test_explicit_existing_units_mode_sends_unchanged_masters_then_sales_without
     plan=[('Units.xml',xml(unit('Packs','Packs'))),('Masters.xml',ET.tostring(masters)),('Sales_Vouchers.xml',ET.tostring(sales))]
     before=list(plan);posts=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         doc=ET.fromstring(payload)
         if doc.findtext('./HEADER/TALLYREQUEST')=='Export':
             assert doc.findtext('./HEADER/ID')=='InvoiceReaderCompanies'
@@ -222,6 +234,8 @@ def test_explicit_existing_units_mode_sends_unchanged_masters_then_sales_without
 def test_existing_units_mode_does_not_ignore_master_failure_or_resend_vouchers():
     posts=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         doc=ET.fromstring(payload)
         if doc.findtext('./HEADER/TALLYREQUEST')=='Export':
             return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
@@ -246,6 +260,8 @@ def test_import_all_continues_after_reported_unit_and_master_errors_and_sends_al
     plan=[('Units.xml',source),('Masters.xml',ET.tostring(masters)),('Sales_Vouchers.xml',ET.tostring(sales))]
     original=list(plan);posts=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         doc=ET.fromstring(payload)
         if doc.findtext('./HEADER/TALLYREQUEST')=='Export':
             if doc.findtext('./HEADER/ID')=='InvoiceReaderUnits':return b'<ENVELOPE><COLLECTION>'+ET.tostring(unit('PCS','PCS'))+b'</COLLECTION></ENVELOPE>'
@@ -273,6 +289,8 @@ def test_import_all_continues_after_reported_unit_and_master_errors_and_sends_al
 def test_import_all_still_stops_unknown_responses_without_retry(failure):
     posts=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         doc=ET.fromstring(payload)
         if doc.findtext('./HEADER/TALLYREQUEST')=='Export':return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
         posts.append(payload);return failure
@@ -284,6 +302,8 @@ def test_import_all_still_stops_unknown_responses_without_retry(failure):
 def test_import_all_stops_after_master_timeout_preserves_unit_counts_and_attempted_request():
     posts=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         doc=ET.fromstring(payload)
         if doc.findtext('./HEADER/TALLYREQUEST')=='Export':return b'<ENVELOPE><COLLECTION><COMPANY NAME="Chosen"/></COLLECTION></ENVELOPE>'
         posts.append(payload)
@@ -311,6 +331,8 @@ def test_real_native_export_schema_repairs_legacy_packs_request_and_imports_all_
     plan=[('Units.xml',source),('Masters.xml',ET.tostring(masters)),('Sales_Vouchers.xml',ET.tostring(sales))]
     originals=list(plan);posts=[];accepted=False
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         nonlocal accepted
         doc=ET.fromstring(payload)
         if doc.findtext('./HEADER/TALLYREQUEST')=='Export':

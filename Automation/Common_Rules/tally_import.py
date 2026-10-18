@@ -304,6 +304,8 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
     from .tally_master_xml import check_company
     check_company(plan,company)
     if company not in loaded_companies(transport):raise ValueError('The selected company is no longer available in Tally. Open it in Tally and refresh the company list.')
+    from .voucher_number_guard import check_numbering
+    check_numbering(plan,company,transport)
     results=[]
     for name,data in plan:
         if name=='Units.xml' and units_already_available:

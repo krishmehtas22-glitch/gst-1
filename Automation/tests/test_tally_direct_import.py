@@ -23,6 +23,8 @@ def test_direct_import_order_exact_business_output_and_files_unchanged(tmp_path)
     before={file.name:file.read_bytes() for file in folder.glob('*.xml')}
     posts=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         document=ET.fromstring(payload)
         if document.findtext('./HEADER/TALLYREQUEST')=='Export':return COMPANIES
         posts.append(payload);return OK
@@ -45,6 +47,8 @@ def test_direct_import_order_exact_business_output_and_files_unchanged(tmp_path)
 def test_master_rejection_does_not_send_dependent_vouchers(tmp_path):
     plan=import_plan(prepared(tmp_path));calls=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         if ET.fromstring(payload).findtext('./HEADER/TALLYREQUEST')=='Export':return COMPANIES
         calls.append(payload)
         return OK if ET.fromstring(payload).find('.//UNIT') is not None else b'<RESPONSE><ERRORS>1</ERRORS><LINEERROR>Missing stock unit</LINEERROR></RESPONSE>'
@@ -57,6 +61,8 @@ def test_master_rejection_does_not_send_dependent_vouchers(tmp_path):
 def test_unknown_or_failure_result_is_not_retried(tmp_path,failure):
     plan=import_plan(prepared(tmp_path));calls=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         if ET.fromstring(payload).findtext('./HEADER/TALLYREQUEST')=='Export':return COMPANIES
         calls.append(payload);return failure
     result=send_plan(plan,'Other Company',transport)
@@ -66,6 +72,8 @@ def test_unknown_or_failure_result_is_not_retried(tmp_path,failure):
 def test_network_failure_keeps_completed_stage_and_never_retries(tmp_path):
     plan=import_plan(prepared(tmp_path));calls=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         if ET.fromstring(payload).findtext('./HEADER/TALLYREQUEST')=='Export':return COMPANIES
         calls.append(payload)
         if len(calls)==2:raise OSError('Connection lost after request')
@@ -188,6 +196,8 @@ def test_all_folders_included_with_destinations_for_distinct_sellers(tmp_path):
     assert sum(voucher_count(g['plan']) for g in groups)==12
     posts=[]
     def transport(payload):
+        if ET.fromstring(payload).findtext("./HEADER/ID")=="InvoiceReaderVoucherNumbering":
+            return b'<ENVELOPE><COLLECTION><VOUCHERTYPE NAME="Sales"><NUMBERINGMETHOD>Manual</NUMBERINGMETHOD></VOUCHERTYPE></COLLECTION></ENVELOPE>'
         document=ET.fromstring(payload)
         if document.findtext('./HEADER/TALLYREQUEST')=='Export':return COMPANIES
         posts.append(document)

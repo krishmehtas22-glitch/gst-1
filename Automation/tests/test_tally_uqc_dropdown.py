@@ -60,7 +60,9 @@ def test_unit_transport_is_unchanged_and_company_guard_exception_is_recorded():
         if name=='tally_import.py':
             import json,zipfile,ast
             change=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']['Automation/Common_Rules/tally_import.py']
-            assert change['baseline_sha256']==digest and change['authorized_sha256']==actual
+            assert change['baseline_sha256']==digest
+            from test_premium_ui import after_boxed_ui
+            after_boxed_ui(root,'Automation/Common_Rules/tally_import.py',change['authorized_sha256'])
             with zipfile.ZipFile(root/'Backups/Before_Tally_Master_Matching.zip') as archive:
                 original=archive.read('Automation/Common_Rules/tally_import.py')
             assert hashlib.sha256(original).hexdigest()==digest
@@ -68,6 +70,7 @@ def test_unit_transport_is_unchanged_and_company_guard_exception_is_recorded():
             after={n.name:n for n in ast.parse((root/'Automation/Common_Rules'/name).read_bytes()).body if isinstance(n,ast.FunctionDef)}
             # Only the pre-dispatch guard is added; the complete original
             # unit protocol, ordering, counters and error/retry body remain.
+            after['send_plan'].body[4:6]=[]  # authorized read-only numbering prerequisite
             after['send_plan'].body[1:3]=[]
             assert ast.dump(before['send_plan'])==ast.dump(after['send_plan'])
             for function in before.keys()-{'send_plan','company_payload','consolidated_import_groups'}:

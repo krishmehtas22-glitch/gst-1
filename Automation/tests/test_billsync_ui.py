@@ -24,6 +24,11 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
+                numbering=json.loads((root/'Automation/INVOICE_NUMBER_GUARD_CHANGE.json').read_text())
+                if name in numbering['files']:
+                    from test_premium_ui import after_boxed_ui
+                    after_boxed_ui(root,name,numbering['files'][name]['baseline_sha256'])
+                    actual=numbering['files'][name]['baseline_sha256']
                 ocr=json.loads((root/'Automation/OCR_REVIEW_GUARD_CHANGE.json').read_text())['files']
                 if name in ocr:
                     from test_buyer_ledger_guard import assert_after_guard

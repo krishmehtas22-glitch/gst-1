@@ -5,7 +5,7 @@ import hashlib,json,runpy,zipfile
 
 
 def after_boxed_ui(root,name,expected):
-    for filename in ('BOXED_UI_CHANGE.json','UNIFIED_UI_CHANGE.json'):
+    for filename in ('BOXED_UI_CHANGE.json','UNIFIED_UI_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json'):
         change=json.loads((root/'Automation'/filename).read_text())
         if name in change['files']:
             entry=change['files'][name];assert entry['baseline_sha256']==expected
@@ -16,7 +16,7 @@ def after_boxed_ui(root,name,expected):
 
 def test_entire_processing_engine_is_identical_to_pre_redesign_baseline():
     root=Path(__file__).parents[2];change=json.loads((root/'Automation/PREMIUM_UI_CHANGE.json').read_text())
-    for name,expected in change['processing_sha256'].items():assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected,name
+    for name,expected in change['processing_sha256'].items():after_boxed_ui(root,name,expected)
 
 
 def test_presentation_backup_and_installer_include_exact_new_files():

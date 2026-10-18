@@ -1,0 +1,18 @@
+{
+  "baseline_commit": "c5ffa5d5ad79aaa7a44adfc00e174b5868bf4578",
+  "backup": "Backups/Before_Invoice_Number_Guard.zip",
+  "policy": "Read-only destination Manual numbering prerequisite; no financial XML, company settings, existing vouchers or import stages changed.",
+  "files": {
+    "Automation/Common_Rules/tally_import.py": {
+      "baseline_sha256": "9bdd653f0e79380f9d21504265c877a9b94045e0e621301ba768d1b444e8e854",
+      "authorized_sha256": "2e46e6601c1e904117c727ae689c324483b948b18562f818f49a9e8d370e22bf"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "c31ec5e57c313bef7fb757ae535c8e38c8be98e0f42a9204a92653df9d51c602",
+      "authorized_sha256": "47a84a9f2c9232e37b1ad078ed1b23fb00a54553a9b5bbafc45df7c31ad954a2"
+    }
+  },
+  "new_files": {
+    "Automation/Common_Rules/voucher_number_guard.py": "c0d3b73c6346d0a76721ede341c0fa8c5e8f083971eb4c7c8bd54b7dcc44c251"
+  }
+}

@@ -1,3 +1,14 @@
+# Invoice voucher number retention — latest user request, 18 October 2026
+
+Authorize a read-only, selected-company Sales numbering prerequisite before
+Import ALL writes. Preserve the exact invoice number already in voucher XML.
+Require unambiguous Manual numbering; show actionable Tally instructions for
+automatic/unknown settings instead of sending silently renumbered vouchers.
+Do not alter company voucher types or existing vouchers automatically. Preserve
+all UI, financial XML bytes, unit/master handling, dispatch ordering and retry
+semantics after this prerequisite. Back up baseline and record separate exception.
+No live Tally writes or AI calls in testing.
+
 # Unified main page and all inner windows — latest request, 17 October 2026
 
 Authorize a consistent navy/royal-blue/amber visual refinement of the main page,
