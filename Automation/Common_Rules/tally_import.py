@@ -194,6 +194,7 @@ def company_payload(data,company):
     check_company([('XML',data)],company)
     document=response_xml(data)
     document.attrib.pop('BILLSYNCMASTERS',None)
+    document.attrib.pop('BILLSYNCREVIEW',None)
     desc=document.find('./BODY/IMPORTDATA/REQUESTDESC')
     if desc is None:raise ValueError('XML import descriptor is missing')
     variables=desc.find('STATICVARIABLES')
@@ -303,6 +304,8 @@ def send_plan(plan,company,transport=post_xml,progress=lambda text:None,*,units_
     """
     from .tally_master_xml import check_company
     check_company(plan,company)
+    from .workflow_validation import require_plan
+    require_plan(plan,company,transport)
     if company not in loaded_companies(transport):raise ValueError('The selected company is no longer available in Tally. Open it in Tally and refresh the company list.')
     from .voucher_number_guard import check_numbering
     check_numbering(plan,company,transport)

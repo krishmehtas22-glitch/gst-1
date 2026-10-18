@@ -45,6 +45,8 @@ def precise(value):
 
 
 def export_all(root,records,demo):
+    from .workflow_validation import enabled as workflow_enabled
+    modern=workflow_enabled(root)
     from .quantity_precision import validate_records
     validate_records(records)
     from .foreign_currency import for_record
@@ -129,9 +131,9 @@ def export_all(root,records,demo):
                         if amounts['total'] is None:
                             amounts['total']=amounts['taxable']+tax;notes.append('Invoice total derived; printed total missing/invalid')
                         items=inv.get('items') or []
-                        inventory=bool(items) and inv.get('supply')!='EXPORT' and all(number(i.get('value')) is not None and precise(i.get('quantity',1)) is not None and precise(i.get('quantity',1))>0 for i in items)
-                        if inventory and (inv.get('classification') not in ('taxable','exempt','nil_rated','non_gst') or any(precise(i.get(t+'_rate')) is None for i in items for t in ('cgst','sgst','igst'))):inventory=False
-                        if inventory and all(amounts[t]==0 for t in ('cgst','sgst','igst')) and any(precise(i.get(t+'_rate'))!=0 for i in items for t in ('cgst','sgst','igst')):
+                        inventory=bool(items) and (modern or inv.get('supply')!='EXPORT') and all(number(i.get('value')) is not None and precise(i.get('quantity',1)) is not None and precise(i.get('quantity',1))>0 for i in items)
+                        if inventory and (inv.get('classification') not in (('taxable','exempt','nil_rated','non_gst','export_lut','export_igst') if modern else ('taxable','exempt','nil_rated','non_gst')) or any(precise(i.get(t+'_rate')) is None for i in items for t in ('cgst','sgst','igst'))):inventory=False
+                        if inventory and not (modern and inv.get('classification')=='export_lut') and all(amounts[t]==0 for t in ('cgst','sgst','igst')) and any(precise(i.get(t+'_rate'))!=0 for i in items for t in ('cgst','sgst','igst')):
                             inventory=False;notes.append('Zero invoice GST conflicts with item rates; no tax posted, accounting voucher used')
                         if inventory and sum(number(i['value']) for i in items)!=amounts['taxable']:inventory=False
                         if not inventory:notes.append('Accounting voucher: item inventory not posted; all extracted items retained in manifest')
@@ -156,6 +158,7 @@ def export_all(root,records,demo):
                         if is_export(inv):
                             for tag,value in voucher_country_fields(inv).items():text(voucher,tag,value)
                             notes.append('Export country supplied; verify export GST nature/GSTR-1 treatment in Tally. Refund eligibility is not established by this XML.')
+                            if modern:notes.append('Printed export treatment: '+str(inv.get('export_mode') or 'Unresolved')+'; source tax amounts retained; item stock movement included when complete.')
                         elif pos:text(voucher,'PLACEOFSUPPLY',STATES.get(pos,pos))
                         entries_tag='LEDGERENTRIES.LIST' if inventory else 'ALLLEDGERENTRIES.LIST'
                         allocation(voucher,{'ledger':party,'debit':amounts['total'],'credit':0},no,True,entries_tag=entries_tag)
@@ -185,7 +188,7 @@ def export_all(root,records,demo):
                                     known[('stock',name)]=sig
                                     stock=ET.SubElement(message(md),'STOCKITEM',{'NAME':name,'ACTION':'Create'});display_name(stock,name);text(stock,'BASEUNITS',unit)
                                     text(stock,'GSTAPPLICABLE','Applicable');text(stock,'GSTTYPEOFSUPPLY','Goods')
-                                    gst_details(stock,{'hsn':clean(item.get('hsn')),'classification':inv['classification'],**{t+'_rate':str(precise(item[t+'_rate'])) for t in ('cgst','sgst','igst')}},date)
+                                    gst_details(stock,{'hsn':clean(item.get('hsn')),'classification':('taxable' if modern and is_export(inv) else inv['classification']),**{t+'_rate':str(precise(item[t+'_rate'])) for t in ('cgst','sgst','igst')}},date)
                                 node=ET.SubElement(voucher,'ALLINVENTORYENTRIES.LIST')
                                 for tag,val in {'STOCKITEMNAME':name,'ISDEEMEDPOSITIVE':'No','ISLASTDEEMEDPOSITIVE':'No','ACTUALQTY':str(quantity)+' '+unit,'BILLEDQTY':str(quantity)+' '+unit,'AMOUNT':str(value),'RATE':str(rate)+'/'+unit}.items():text(node,tag,val)
                                 batch=ET.SubElement(node,'BATCHALLOCATIONS.LIST')
@@ -235,6 +238,8 @@ def export_all(root,records,demo):
                 from .tally_master_xml import apply_matches
                 ordered=[row for _,_,part in sellers for row in part]
                 apply_matches(root,ordered,report,units,masters,vouchers)
+                from .workflow_validation import attach
+                attach(root,ordered,report,masters,vouchers)
                 verify_vouchers(vouchers)
                 if len(vouchers.findall('.//VOUCHER'))!=len(group):raise ValueError('Consolidated voucher count differs from source count')
                 save_document(units,run/'Units.xml');save_document(masters,run/'Masters.xml');save_document(vouchers,run/'Sales_Vouchers.xml')

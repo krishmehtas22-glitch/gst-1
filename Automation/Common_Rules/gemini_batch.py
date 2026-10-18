@@ -61,6 +61,10 @@ class RequestBudget:
 
 def read_batch(root, records, progress=lambda message: None, extract=None,
                wait=time.sleep, clock=time.monotonic, provider='Gemini', confirm_test=False, stop_event=None,on_result=None,request_budget=None,*,_parallel=True,_save_report=True):
+    from .workflow_validation import enabled as workflow_enabled
+    if workflow_enabled(root) and provider in ('Groq','Gemma (local)') and _parallel and len(records)>1:
+        from .parallel_batches import read_parallel_batch
+        return read_parallel_batch(root,records,provider,progress,extract,wait,clock,confirm_test,stop_event,on_result,request_budget)
     if provider=='Gemma (local)' and _parallel and len(records)>1:
         from .local_parallel import read_local_batch
         return read_local_batch(root,records,progress,extract,wait,clock,confirm_test,stop_event,on_result,request_budget)
@@ -126,7 +130,8 @@ def read_with_fallback(root,records,primary='Gemini',progress=lambda message:Non
     for client in {r['client'] for r in records}:enable(root,client)
     from .ai_providers import PROVIDERS,ACTIVE_PROVIDERS,KEY_VARIABLES,reader as get_reader
     if primary not in PROVIDERS:raise ValueError('Unknown invoice API provider')
-    providers=([primary] if primary=='Gemma (local)' else [primary]+[p for p in ACTIVE_PROVIDERS if p!=primary]);remaining=list(records);results={}
+    from .workflow_validation import enabled as workflow_enabled
+    providers=([primary] if primary=='Gemma (local)' or workflow_enabled(root) else [primary]+[p for p in ACTIVE_PROVIDERS if p!=primary]);remaining=list(records);results={}
     # Never replace a successful selected read just because another button was used.
     notified=set()
     def notify(record,result):

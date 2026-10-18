@@ -438,6 +438,8 @@ class InvoiceApp:
             plan=groups[selected_group]['plan']
             all_folder_count=len({p for g in groups for p in g['folders']})
             all_voucher_count=sum(voucher_count(g['plan']) for g in groups)
+            from Common_Rules.workflow_validation import enabled as workflow_enabled,selected_invoice_plan
+            if workflow_enabled(self.root):selected_plan=selected_invoice_plan(selected_plan,record)
         except (OSError,ValueError) as exc:
             messagebox.showerror('Import to Tally',str(exc));return
         self.auto.set(False);self.busy=True
@@ -446,7 +448,7 @@ class InvoiceApp:
         ttk.Label(dialog,text='Current XML: '+str(folder),wraplength=680).pack(anchor='w',padx=12,pady=10)
         ttk.Label(dialog,text='Open the destination company in Tally, then choose it below.\nOrder: '+ ' → '.join(name for name,_ in plan)).pack(anchor='w',padx=12)
         include_all=tk.BooleanVar(value=True)
-        if all_folder_count>1 or len(groups)>1:
+        if all_folder_count>1 or len(groups)>1 or voucher_count(selected_plan)<all_voucher_count:
             ttk.Checkbutton(dialog,text=f'Include complete client batch: {all_voucher_count} invoices',variable=include_all).pack(anchor='w',padx=12,pady=6)
             ttk.Label(dialog,text=f'Untick to import only this selected set ({voucher_count(selected_plan)} invoices), when completing an earlier partial import.',wraplength=760).pack(anchor='w',padx=12)
         else:
@@ -485,7 +487,20 @@ class InvoiceApp:
                 try:
                     results=[]
                     for group,target in zip(chosen_groups,targets):
-                        try:received=send_plan(group['plan'],target,progress=lambda text:messages.put(('progress',text)),submit_all=True)
+                        try:
+                            from Common_Rules.workflow_validation import WorkflowReviewRequired,acknowledge,enabled as workflow_enabled,MARKER
+                            if workflow_enabled(self.root) and any(name=='Sales_Vouchers.xml' and MARKER.encode() not in data for name,data in group['plan']):
+                                raise ValueError('Re-process this client to apply invoice workflow validation. Saved AI reads and human reviews are reused; no import sent.')
+                            try:
+                                received=send_plan(group['plan'],target,progress=lambda text:messages.put(('progress',text)),submit_all=True)
+                            except WorkflowReviewRequired as review:
+                                decision=queue.Queue()
+                                messages.put(('workflow_review',(review,decision)))
+                                if decision.get():
+                                    approved_plan=acknowledge(group['plan'],review,receipt_folder)
+                                    received=send_plan(approved_plan,target,progress=lambda text:messages.put(('progress',text)),submit_all=True)
+                                else:
+                                    received=[{'file':'Invoice workflow review','company':target,'errors':['Import cancelled for review. No units, masters or vouchers sent for this company.'],'status':'not sent','request_attempted':False}]
                         except (ValueError,OSError) as exc:
                             received=[{'file':'Company/connection check','company':target,'errors':[str(exc)],'status':'unknown'}]
                         for result in received:result['xml_folders']=[str(p) for p in group['folders']]
@@ -507,6 +522,11 @@ class InvoiceApp:
                 while True:
                     kind,value=messages.get_nowait()
                     if kind=='progress':state.config(text=value);continue
+                    if kind=='workflow_review':
+                        from Workflow_Review_Dialog import open_workflow_review
+                        review,decision=value
+                        open_workflow_review(dialog,review,lambda answer:decision.put(answer))
+                        continue
                     running[0]=False
                     if kind=='companies':
                         for choice,variable in zip(company_choices,company_variables):

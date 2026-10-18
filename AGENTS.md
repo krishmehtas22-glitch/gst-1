@@ -1,3 +1,22 @@
+# Complete AI-first workflow — latest user request, 18 October 2026
+
+User authorizes implementing the audited invoice-to-Tally workflow and explicitly
+excludes Python-first extraction. Preserve upload/list-only startup and explicit
+AI consent, Groq/local choice, exact money/quantity/source facts, backups and
+single-attempt Units -> Masters -> Sales dispatch. Add draft/ready validation,
+mandatory number/date/state/POS corrections, identity/GST/master conflict review
+and an explicit user acknowledgement to proceed with printed invoice details.
+Never silently change printed GSTINs or force a conflicting existing master.
+Bind acknowledgements to exact XML/source/snapshot and selected company facts.
+Improve case/minor spelling matches with compatible identity/product evidence;
+validate GST components individually. Add bounded Groq concurrency with existing
+pacing, stop, shared budget and quota handling. Local mode remains local only.
+The user explicitly selected export item quantities and stock reduction.
+Authorize export inventory XML with preserved printed LUT/IGST/currency treatment;
+require complete reconciled item data and never substitute today's date or a serial invoice number. Add no background AI or automatic Tally writes.
+Record new exceptions separately and retain all previous locks/manifests.
+Tests use mocked providers and Tally replies; no live writes or billable calls.
+
 # Local Gemma integration — latest user request, 18 October 2026
 
 Authorize an explicit local Gemma provider using the installed gemma3:4b model

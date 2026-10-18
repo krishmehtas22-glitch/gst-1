@@ -1,0 +1,52 @@
+{
+  "baseline_commit": "5b24d1004dfeba5a04393b7fbd20738e5e7e69b7",
+  "backup": "Backups/Before_AI_Workflow_Validation.zip",
+  "policy": "AI-first workflow requirements authorized by user; exact source facts retained, review before writes, mandatory-field correction, export stock movement, bounded provider scheduling. Legacy non-workflow entry points retain their previous output.",
+  "files": {
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "9b4ac9dde3f2db416c0b17cf10df50213ddc3106fc0625e00c0e995719ef9234",
+      "authorized_sha256": "84bc5a6152178bb9c4231e8f42e9cd44bea994a3cbafeace3a93a115f2b2887b"
+    },
+    "Automation/Invoice_Desktop.py": {
+      "baseline_sha256": "d4fb06abed12ccb734ce291e948d7e83bd038fc79ba7aa31902779e653b5f51d",
+      "authorized_sha256": "7bf0435f896d167ccc9fe92034ab4202923d304032fa2c72fa12c8594b4f24e2"
+    },
+    "Automation/Tally_Master_Dialog.py": {
+      "baseline_sha256": "31ab87a886d01d62ce46ebc2379d154d03b0e5b59d55ab4f6c75cf3f1701e40e",
+      "authorized_sha256": "0974db3a20658845ea7ec7790a6f320a68329d3fa3f5964a44b84118ab886377"
+    },
+    "Automation/Common_Rules/tally_review_export.py": {
+      "baseline_sha256": "977ed91bf73456360a7aa2aa74604ed73ece88f8a2be4e18c529188d82849a9d",
+      "authorized_sha256": "77d1a1968af1543351e566697c0a02ec327ef7a47307ec10d56a311325b1cee2"
+    },
+    "Automation/Common_Rules/tally_import.py": {
+      "baseline_sha256": "2e46e6601c1e904117c727ae689c324483b948b18562f818f49a9e8d370e22bf",
+      "authorized_sha256": "38b8cdff1e482b7169ef151de82789506f192b30ce04ab463976c5420d0c0953"
+    },
+    "Automation/Common_Rules/tally_master_matching.py": {
+      "baseline_sha256": "73cd8e0f9fe0077001db011cc6f43ec80ab2d2bdd2c1c9ebac3eeb33968f3b93",
+      "authorized_sha256": "967eb1e34ef3b6aaa9636edcd7c09ae349ff59a0c9934cec4d27d7b375f80eea"
+    },
+    "Automation/Common_Rules/gemini_batch.py": {
+      "baseline_sha256": "44283d1a167ac60bc00b68f06e75891e9d52aae3d7798a2efaad7c597ca57f9c",
+      "authorized_sha256": "7e7cb22e71148c83e77b1f065230f3f83c59e4a4421bfb8667ca7e3f7d79fb38"
+    },
+    "Automation/Common_Rules/ai_first.py": {
+      "baseline_sha256": "6f38a11ce9f0e266a4ad15d6bd1262f47deb49aeef19417239fe7335a63d92ac",
+      "authorized_sha256": "d742c1330cda372ccc56827596b96f56862836775fc4ae15450918659a395a64"
+    },
+    "Automation/Common_Rules/workflow_status.py": {
+      "baseline_sha256": "65a4c03d62c551832a1fe18d5e234d71f7ced42d97023324212851c9693fd0ea",
+      "authorized_sha256": "ee79a921539a57a4681e4d6e17c48a51991d4e017b777c2d04e68440caa3aff9"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "bd8bca98352feebcbd23e19b33d3416c83b83a5ea24fe46ec0cd60455f0331e1",
+      "authorized_sha256": "f824ce18331006ecc398d761c72799ba66ad2ee298461a3074ba44844664d3cd"
+    }
+  },
+  "new_files": {
+    "Automation/Workflow_Review_Dialog.py": "3a097281b98849b33db4c6b7b9ddc9b3dd7a57ee143fc571ebba29070b4e92cd",
+    "Automation/Common_Rules/workflow_validation.py": "14f6345c2a79668b51faa95af301e57d33b7fcbd8cdce34f1398e7c1f1e9cdc0",
+    "Automation/Common_Rules/parallel_batches.py": "3eb43d1a771f20cfdc15b3d828df562121232b5d89be08e0a2293b98d5c75d94"
+  }
+}

@@ -70,6 +70,7 @@ def test_unit_transport_is_unchanged_and_company_guard_exception_is_recorded():
             after={n.name:n for n in ast.parse((root/'Automation/Common_Rules'/name).read_bytes()).body if isinstance(n,ast.FunctionDef)}
             # Only the pre-dispatch guard is added; the complete original
             # unit protocol, ordering, counters and error/retry body remain.
+            after['send_plan'].body[3:5]=[]  # workflow validation before the original dispatch
             after['send_plan'].body[4:6]=[]  # authorized read-only numbering prerequisite
             after['send_plan'].body[1:3]=[]
             assert ast.dump(before['send_plan'])==ast.dump(after['send_plan'])

@@ -67,7 +67,7 @@ def details(ctx):
                     except InvalidOperation:rates.setdefault(head,set()).add('unresolved')
             result[prefix+str(index)]={'id':prefix+str(index),'name':row['name'],'kind':kind,
                 'parent':field(row,'PARENT'),'gstin':field(row,'PARTYGSTIN'),
-                'address':norm(field(row,'ADDRESS.LIST')),'country':field(row,'COUNTRYNAME'),
+                'address':norm(field(row,'ADDRESS.LIST')),'country':field(row,'COUNTRYNAME'),'state':field(row,'LEDSTATENAME'),
                 'base_unit':field(row,'BASEUNITS'),'uqc':field(row,'GSTREPUOM'),
                 'decimals':field(row,'DECIMALPLACES'),'simple':field(row,'ISSIMPLEUNIT'),
                 'hsn':sorted(hsn),'taxability':node.findtext('.//TAXABILITY') or '', 'rates':{k:sorted(v) for k,v in rates.items()}}
@@ -173,16 +173,35 @@ def assignments(root,record,ctx):
     catalog={k:v for k,v in all_entries.items() if k in raw.get('_offered_ids',[])}
     unit_index={v['name']:v for v in all_entries.values() if v['kind']=='units'}
     party=selected(raw.get('party'),catalog,'ledgers')
+    from .workflow_validation import enabled as workflow_enabled,state as workflow_state
+    modern=workflow_enabled(root)
+    if modern and party is None:
+        candidates=[e for e in all_entries.values() if e['kind']=='ledgers' and
+            (norm(e['name'])==norm(inv.get('buyer_name')) or
+             (inv.get('buyer_gstin') and norm(e['gstin'])==norm(inv['buyer_gstin'])))]
+        if len(candidates)==1:party=candidates[0]
     from .buyer_ledger_guard import party_conflict
     conflict=party_conflict(party)
     if conflict:party=None
     if party:
         gstin=norm(inv.get('buyer_gstin'));existing=norm(party['gstin'])
         if (gstin or existing) and gstin!=existing:party=None
-        elif not gstin and (norm(inv.get('buyer_name'))!=norm(party['name']) or not norm(inv.get('buyer_name'))):party=None
+        elif not gstin and (norm(inv.get('buyer_name'))!=norm(party['name']) or not norm(inv.get('buyer_name'))):
+            similarity=SequenceMatcher(None,norm(inv.get('buyer_name')),norm(party['name'])).ratio()
+            rivals=[e for e in all_entries.values() if e['kind']=='ledgers' and e['id']!=party['id'] and
+                    SequenceMatcher(None,norm(inv.get('buyer_name')),norm(e['name'])).ratio()>=similarity-.02]
+            digits=lambda value:re.findall(r'\d+(?:\.\d+)?',str(value))
+            if not modern or similarity<.96 or rivals or digits(inv.get('buyer_name'))!=digits(party['name']):party=None
         elif not gstin and party['address'] and inv.get('buyer_address') and party['address']!=norm(inv['buyer_address']):party=None
         elif norm(party['parent']) in ('sales accounts','duties taxes','bank accounts','cash in hand','purchase accounts'):party=None
         elif party['country'] and inv.get('buyer_country') and norm(party['country'])!=norm(inv['buyer_country']):party=None
+        if modern and party:
+            if (not gstin and party['address'] and inv.get('buyer_address') and party['address']!=norm(inv['buyer_address'])) or (party['country'] and inv.get('buyer_country') and norm(party['country'])!=norm(inv['buyer_country'])):
+                party=None
+        if modern and party:
+            printed=workflow_state(inv.get('buyer_state'),inv.get('buyer_gstin'))
+            known=workflow_state(party.get('state'),party.get('gstin'))
+            if printed and known and printed!=known:party=None
     by_index={};duplicates=set()
     for choice in raw.get('items',[]) if isinstance(raw.get('items'),list) else []:
         if not isinstance(choice,dict) or type(choice.get('index')) is not int:continue
@@ -195,6 +214,12 @@ def assignments(root,record,ctx):
         unit=selected(choice.get('unit'),catalog,'units')
         if not compatible_unit(unit,item):unit=None
         stock=selected(choice.get('stock'),catalog,'stock_items')
+        if modern and stock is None:
+            exact=[e for e in all_entries.values() if e['kind']=='stock_items' and norm(e['name'])==norm(item.get('name'))]
+            if len(exact)==1:stock=exact[0]
+        if modern and unit is None:
+            exact=[e for e in all_entries.values() if e['kind']=='units' and norm(e['name'])==norm(item.get('unit')) and compatible_unit(e,item)]
+            if len(exact)==1:unit=exact[0]
         if stock:
             hsn=str(item.get('hsn') or '').strip()
             target=unit_index.get(stock['base_unit'])
@@ -208,7 +233,13 @@ def assignments(root,record,ctx):
                     if any(len(values)!=1 for values in rates):stock=None
                     else:
                         c,s,i=[Decimal(values[0]) for values in rates];total=sum(components)
-                        if c<0 or s<0 or i<0 or (i and c+s and i!=c+s) or max(c+s,i)!=total:stock=None
+                        lut=modern and inv.get('classification')=='export_lut' and inv.get('export_mode')=='LUT_without_payment'
+                        if c<0 or s<0 or i<0 or (i and c+s and i!=c+s) or (max(c+s,i)!=total and not (lut and total==0)):stock=None
+                        if modern and stock:
+                            source=inv.get('supply')
+                            if lut:pass  # Invoice LUT treatment changes transaction tax, not the existing stock's standard rate.
+                            elif source=='INTRA' and (components[0]!=c or components[1]!=s or components[2]!=0):stock=None
+                            elif source in ('INTER','EXPORT') and (components[2]!=i or components[0]!=0 or components[1]!=0):stock=None
                         if stock and total==0 and norm(stock['taxability'])!=norm({'exempt':'Exempt','nil_rated':'Nil Rated','non_gst':'Non GST'}.get(inv.get('classification'),'Taxable')):stock=None
                         if stock and total>0 and stock['taxability'] and norm(stock['taxability'])!='taxable':stock=None
                     sizes=lambda text:re.findall(r'\d+(?:\.\d+)?',str(text))

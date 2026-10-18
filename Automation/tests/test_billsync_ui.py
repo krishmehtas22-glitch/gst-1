@@ -24,7 +24,7 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
-                for manifest in ('LOCAL_GEMMA_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json'):
+                for manifest in ('LOCAL_GEMMA_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json','AI_WORKFLOW_CHANGE.json'):
                     latest=json.loads((root/'Automation'/manifest).read_text())
                     if name in latest['files']:
                         from test_premium_ui import after_boxed_ui
@@ -168,5 +168,9 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         exercise_ocr_review_ui(root,app,monkeypatch)
         from test_premium_ui import exercise_premium_ui
         exercise_premium_ui(root,app,tmp_path,monkeypatch)
+        from test_ai_workflow_validation import exercise_workflow_review_dialog
+        exercise_workflow_review_dialog(root)
+        from test_ai_workflow_validation import exercise_import_review_roundtrip
+        exercise_import_review_roundtrip(root,app,monkeypatch)
         assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

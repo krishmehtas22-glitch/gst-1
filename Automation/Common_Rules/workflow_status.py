@@ -3,6 +3,8 @@ from collections import Counter
 
 
 def invoice_status(record):
+    issues=record.get('workflow_issues') or []
+    if issues:return 'Correction required' if any(p['blocking'] for p in issues) else 'Review conflicts before import'
     errors=record.get('errors',[])
     if not errors:
         status=record.get('display_status',record.get('export','Invoice read'))

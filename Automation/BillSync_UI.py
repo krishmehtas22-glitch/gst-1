@@ -19,7 +19,7 @@ from Export_Refund_Review import summary as refund_summary,load_review as load_r
 from Export_Refund_Dialog import open_refund_review
 
 BG='#f2f5fb';NAV='#111d35';BLUE='#315ee7';INK='#182641';MUTED='#687a96';BORDER='#bfcde2'
-UI_VERSION='BillSync UI 3.3'
+UI_VERSION='BillSync UI 3.4'
 
 
 class ActivityLabel(ttk.Label):
@@ -48,6 +48,8 @@ class BillSyncApp(InvoiceApp):
                 elif (storage.parent/'Invoice_Desktop.py').is_file():storage=storage.parent
             except (ValueError,OSError,KeyError,TypeError):pass
         self.root=Path(data_root) if data_root is not None else storage
+        from Common_Rules.workflow_validation import enable as enable_workflow
+        enable_workflow(self.root)
         self.refund_reviews={};self.records=[];self.busy=False;self.ai_stop=None;self.events=queue.Queue()
         self.last=None;self.observed=None;self.closing=False;self.activity=[];self._view_signature=None
         self.demo=tk.BooleanVar(value=True);self.auto_units=tk.BooleanVar(value=True)
@@ -232,6 +234,8 @@ class BillSyncApp(InvoiceApp):
     def choose(self):
         if self.busy:return
         super().choose()
+        from Common_Rules.workflow_validation import enable as enable_workflow
+        enable_workflow(self.root)
         config=self._configuration_root/'.invoice_app'/'billsync_ui_settings.json'
         try:
             config.parent.mkdir(parents=True,exist_ok=True)
@@ -322,7 +326,7 @@ class BillSyncApp(InvoiceApp):
         menu.tk_popup(event.x_root,event.y_root)
 
     def update_summary(self):
-        counts=[len(self.records),sum(bool(r.get('listing_only')) for r in self.records),sum(bool(r.get('errors') or r.get('tally_review_warnings') or r.get('duplicate_warning')) for r in self.records),sum(bool(r.get('output_path')) for r in self.records)]
+        counts=[len(self.records),sum(bool(r.get('listing_only')) for r in self.records),sum(bool(r.get('workflow_issues') or r.get('errors') or r.get('tally_review_warnings') or r.get('duplicate_warning')) for r in self.records),sum(bool(r.get('output_path')) and r.get('workflow_ready',True) for r in self.records)]
         for label,value in zip(self.count_labels,counts):label.config(text=str(value))
         self.test_badge.config(text='  Test workspace  ' if self.demo.get() else '  Real invoices  ',background='#fff5de' if self.demo.get() else '#e5f6ed')
         if hasattr(self,'list_count'):self.list_count.config(text=f'{len(self.table.get_children())} of {len(self.records)} invoices')
@@ -340,8 +344,8 @@ class BillSyncApp(InvoiceApp):
             inv=row.get('invoice') or {};haystack=' '.join(str(inv.get(f,'')) for f in ('number','seller_name','buyer_name'))+' '+Path(row['path']).name
             match=(not text or text in haystack.casefold())
             if status=='Awaiting processing':match=match and bool(row.get('listing_only'))
-            elif status=='Needs review':match=match and bool(row.get('errors') or row.get('tally_review_warnings') or row.get('duplicate_warning'))
-            elif status=='XML prepared':match=match and bool(row.get('output_path'))
+            elif status=='Needs review':match=match and bool(row.get('workflow_issues') or row.get('errors') or row.get('tally_review_warnings') or row.get('duplicate_warning'))
+            elif status=='XML prepared':match=match and bool(row.get('output_path')) and row.get('workflow_ready',True)
             info=refund_summary(row,self.root)
             if not row.get('listing_only'):
                 from Common_Rules.foreign_currency import for_record

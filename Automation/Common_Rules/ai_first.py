@@ -159,6 +159,10 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
         updated = process_sources(root, demo, client_names, auto_units, summary_accounting,
                                   reading_status=status_map)
         summary['xml_prepared'] = sum(bool(r.get('output_path')) and not r.get('errors') for r in updated)
+        from .workflow_validation import enabled as workflow_enabled
+        if workflow_enabled(root):
+            summary['xml_ready']=sum(bool(r.get('output_path')) and r.get('workflow_ready',False) for r in updated)
+            summary['workflow_review_required']=sum(bool(r.get('workflow_issues')) for r in updated)
     except Exception as exc:
         summary['xml_error_type'] = type(exc).__name__
         try:
@@ -177,4 +181,5 @@ def summary_text(summary):
     return (f'AI-first: {summary["ai_read_invoices"]} AI reads; '
             f'{summary["approved_reviews_retained"]} approved reviews reused; '
             f'{summary["local_or_review_fallbacks"]} Python/review fallbacks. '
-            f'Python prepared {summary["xml_prepared"]} XML vouchers. No Tally import sent.')
+            f'Python prepared {summary["xml_prepared"]} XML vouchers. No Tally import sent.'+
+            (f' {summary["xml_ready"]} ready; {summary["workflow_review_required"]} need workflow review/correction.' if 'workflow_review_required' in summary else ''))

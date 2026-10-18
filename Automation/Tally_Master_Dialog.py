@@ -22,7 +22,7 @@ class TallyMasterDialog(tk.Toplevel):
         panel=ttk.Frame(self,padding=18);panel.pack(fill='both',expand=True)
         ttk.Label(panel,text='Import masters from Tally',font=('Segoe UI',14,'bold')).pack(anchor='w')
         ttk.Label(panel,text='Ledgers · Inventory items · Units',padding=(0,6)).pack(anchor='w')
-        ttk.Label(panel,text=('Use masters for '+client+'. Relevant names, GSTINs, HSNs and units are sent to Groq only when you explicitly process invoices. Unmatched entries use the existing creation method.' if client else 'Read-only review copy. No AI analysis starts here.'),wraplength=900).pack(anchor='w')
+        ttk.Label(panel,text=('Use masters for '+client+'. Relevant names, GSTINs, HSNs and units are sent to your chosen AI only when you explicitly process invoices. Unmatched entries use the existing creation method.' if client else 'Read-only review copy. No AI analysis starts here.'),wraplength=900).pack(anchor='w')
         connection=ttk.Frame(panel);connection.pack(fill='x',pady=12)
         self.connect_button=ttk.Button(connection,text='Connect / refresh companies',command=self.connect)
         self.connect_button.pack(side='left')
