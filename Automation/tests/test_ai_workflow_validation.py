@@ -363,7 +363,10 @@ def exercise_import_review_roundtrip(root,app,monkeypatch,mode='import'):
                     root.update();time.sleep(.01)
                     review=next((w for w in descendants(dialog) if w.winfo_class()=='Toplevel' and w.title()=='Invoice workflow review'),None)
                     if review:break
-                assert review is not None and len(writes)==3, ('second group review',reads,len(writes),notifications,[str(w.cget('text')) for w in descendants(dialog) if isinstance(w,ttk.Label)])
+                if review is None:
+                    footer=next(str(w.cget('text')) for w in descendants(dialog) if isinstance(w,ttk.Label))
+                    pytest.fail('Second group review absent; writes='+str(len(writes))+'; reads='+','.join(reads[-4:])+'; state='+footer+'; result='+str(notifications)[-1100:],pytrace=False)
+                assert len(writes)==3
             if mode in ('cancel','edit','partial'):
                 if mode in ('cancel','partial'):review.tk.call(review.protocol('WM_DELETE_WINDOW'))
                 else:next(w for w in descendants(review) if isinstance(w,ttk.Button) and w.cget('text')=='Edit invoice').invoke()
