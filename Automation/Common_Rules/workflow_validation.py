@@ -229,7 +229,8 @@ def attach(root,records,report,masters,vouchers):
                         'Same-name stock exists but its HSN/GST/unit/variant could not be reused. Review before creating a separate master.'))
         status=record.get('ai_first_status')
         if status and status not in ('extracted','approved_review'):
-            problems.append(issue(no,'AI extraction',status,'','This invoice has not completed AI extraction or a human review.',True))
+            reason=record.get('ai_failure_reason') or 'No completed AI extraction or human review is available. The earlier run did not retain its provider error.'
+            problems.append(issue(no,'AI extraction',status,'',reason+' Correct the provider problem and explicitly analyse this invoice, or edit every field against the source and save a human review.',True))
         source=Path(record.get('source_path') or record['path'])
         from .source_documents import verify_source
         try:verify_source(Path(root),record)

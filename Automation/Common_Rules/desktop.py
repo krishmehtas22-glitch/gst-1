@@ -219,11 +219,27 @@ def save_review(root, record, invoice, resolve_warnings=True):
 def process_sources(root, demo=True, client_names=None, auto_units=True, summary_accounting=False,
                     reading_status=None):
     records = inspect_sources(root,client_names,demo,auto_units)
+    from .workflow_validation import enabled as workflow_enabled
+    if reading_status is None and workflow_enabled(root):
+        # Manual correction must not accidentally approve unreviewed neighbours.
+        from .ai_first import approved_result,configured_primary,token
+        from .gemini_batch import find_retained
+        from .ai_failure_diagnostics import prior_failure
+        reading_status={}
+        for record in records:
+            try:
+                approved=approved_result(root,record)
+                retained=None if approved else find_retained(root,record,configured_primary(root))
+                status=approved or retained or {'status':'awaiting_review',**prior_failure(root,record)}
+            except (ValueError,OSError,KeyError,TypeError):status={'status':'saved_review_needs_attention'}
+            reading_status[token(record)]=status
     if reading_status:
         for record in records:
             status=reading_status.get((record['client'],record.get('digest'),record['path']))
             if status:
                 record['ai_first_status']=status['status']
+                for field in ('ai_failure_reason','ai_failure_provider'):
+                    if status.get(field):record[field]=status[field]
                 if status['status'] not in ('extracted','approved_review'):
                     record['errors'].append('AI-first extraction was not completed for this PDF; Python/saved data retained for review. Status: '+status['status'])
     from .tally_review_export import enabled, export_all

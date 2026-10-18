@@ -1,0 +1,30 @@
+{
+  "baseline_commit": "06b1f5c1a11b9a5fac06d35d824c3dcbdd200c79",
+  "backup": "Backups/Before_AI_Failure_Diagnostics.zip",
+  "policy": "User reports Groq local-fallback import block. Retain actual provider error through report, UI and workflow review. Manual edits approve only the reviewed source; unreviewed neighbours stay blocked. No hidden bypass, retries, live AI or Tally writes. Existing transport and units unchanged.",
+  "files": {
+    "Automation/Common_Rules/ai_first.py": {
+      "baseline_sha256": "d742c1330cda372ccc56827596b96f56862836775fc4ae15450918659a395a64",
+      "authorized_sha256": "d44175b0329ffc5f4ccc23e3f3fa96370cd212272c1391f1fbc492dc13804f86"
+    },
+    "Automation/Common_Rules/desktop.py": {
+      "baseline_sha256": "c7e2272a32b151e9be132cd40ae49aa68616936e8ee7d71de6166adcdf4a52b1",
+      "authorized_sha256": "ce8f05ead95d356b17d1d237ac8137cd84df14d0b7718649d38896da8c690f28"
+    },
+    "Automation/Common_Rules/workflow_validation.py": {
+      "baseline_sha256": "5c921b2a38f316870dc9c18bfbc5e2464814f5ac05a0e93661e542f382f71bc4",
+      "authorized_sha256": "330c0405db2926eb6b055aba39275b272c8ca8d3beb5489ecea8cb05002664d5"
+    },
+    "Automation/Workflow_Review_Dialog.py": {
+      "baseline_sha256": "6d5f464e52c0048badc0137463c964e5da383fbfa227882b3ee7e144c5be4968",
+      "authorized_sha256": "f8b375dd809206057717cec1cad06817b509f81ae850293e6f5058fa33c4ff23"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "ba254b056bced06cb334c79d5ac5921bc79675055640e5b213cdd59654ecb6a4",
+      "authorized_sha256": "ab31f179e4f083e7a7eb99086ca70ab166c223e864b1cff16aa38d5c78c8e681"
+    }
+  },
+  "new_files": {
+    "Automation/Common_Rules/ai_failure_diagnostics.py": "dcb9a0e42b413ddcfb5be6f4518b76ba7b13d4559061aeb1b7e08dc58c95acc0"
+  }
+}

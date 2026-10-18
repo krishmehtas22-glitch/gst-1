@@ -46,12 +46,14 @@ def open_workflow_review(parent,review,complete):
         return review.issues[int(ids[0])] if ids else {}
     def describe(event=None):
         row=selected();text=row.get('reason','')+'\nSource: '+str(row.get('source') or 'Unavailable — re-process this invoice to link its source.')
-        text+='\nNext step: '+('Restore/re-process the source and prepare fresh XML.' if cannot_override(row) else 'Open the source to compare. Edit invoice to correct it, or acknowledge the listed issues and import the unchanged XML.')
+        from Common_Rules.ai_failure_diagnostics import recovery_instruction
+        text+='\nNext step: '+recovery_instruction(row.get('field'))
         detail.config(state='normal');detail.delete('1.0','end');detail.insert('1.0',text);detail.config(state='disabled')
         for b in source_buttons:b.config(state='normal' if row.get('source') else 'disabled')
     footer=ttk.Frame(top,padding=(16,10));footer.grid(row=2,column=0,sticky='ew');footer.columnconfigure(0,weight=1)
     blocked=any(cannot_override(p) for p in review.issues)
-    text=('Import unavailable: source, saved review, extraction or master snapshot needs updating. Select the issue for instructions.' if blocked else
+    blocked_fields=', '.join(dict.fromkeys(p['field'] for p in review.issues if cannot_override(p)))
+    text=('Import unavailable: '+blocked_fields+'. Select that issue for its error and recovery steps. Edit invoice can record a human review without AI.' if blocked else
           'Import anyway keeps these values, including missing/invalid fields. Tally may reject them. Your decision is recorded; no values are invented.')
     explanation=ttk.Label(footer,text=text,wraplength=width-40);explanation.grid(row=0,column=0,sticky='ew',pady=(0,6))
     # Keep consent in the Tk widget: no traced Python Variable cycle can be

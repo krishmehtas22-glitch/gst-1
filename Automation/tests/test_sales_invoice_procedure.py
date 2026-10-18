@@ -20,6 +20,11 @@ def after_sales_procedure(root,name,expected):
         with zipfile.ZipFile(root/change['backup']) as backup:
             assert hashlib.sha256(backup.read(name)).hexdigest()==expected
         expected=entry['authorized_sha256']
+    later=json.loads((root/'Automation/AI_FAILURE_DIAGNOSTICS_CHANGE.json').read_text())
+    if name in later['files']:
+        entry=later['files'][name];assert entry['baseline_sha256']==expected
+        with zipfile.ZipFile(root/later['backup']) as backup:assert hashlib.sha256(backup.read(name)).hexdigest()==expected
+        expected=entry['authorized_sha256']
     assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
 
 
@@ -163,7 +168,7 @@ def test_new_procedure_backup_manifest_and_installer_are_exact():
     with zipfile.ZipFile(root/change['backup']) as backup:
         for name,entry in change['files'].items():
             assert hashlib.sha256(backup.read(name)).hexdigest()==entry['baseline_sha256']
-            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==entry['authorized_sha256']
+            after_sales_procedure(root,name,entry['baseline_sha256'])
     for name in [*change['files'],*change['new_files']]:
         if name.startswith('Automation/') and name.endswith('.py'):
             assert package['FILES'][name.removeprefix('Automation/')].encode()==(root/name).read_bytes()

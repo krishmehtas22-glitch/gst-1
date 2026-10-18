@@ -105,6 +105,8 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
                     'status': answer.get('status', 'local fallback'),
                     'provider': answer.get('provider', 'Python'),
                     'cached': bool(answer.get('cached') or answer.get('status') == 'extracted' and not answer.get('attempts'))}
+                from .ai_failure_diagnostics import failure_details
+                decisions[token(record)].update(failure_details(answer,primary,bool(stop_event and stop_event.is_set())))
     except Exception as exc:
         groq_unavailable=any('Groq HTTP '+str(code) in str(exc) for code in (401,402,403,404,429))
         warnings.append('AI stage ended with '+type(exc).__name__+'; saved reads are retained.')
@@ -129,6 +131,10 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
                 decisions[token(record)] = {'status': 'extracted', 'provider': retained['provider'], 'cached': True}
             else:
                 decisions.setdefault(token(record), {'status': 'local fallback', 'provider': 'Python', 'cached': False})
+                from .ai_failure_diagnostics import failure_details
+                decision=decisions[token(record)]
+                if not decision.get('ai_failure_reason'):
+                    decision.update(failure_details(decision,primary,bool(stop_event and stop_event.is_set())))
     for client in {r['client'] for r in records}:
         enable(root, client)
     if confirm_test:
@@ -154,6 +160,10 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
         'xml_prepared': 0, 'tally_imports': 0,
         'sources': [{'client': r['client'], 'path': r['path'], 'digest': r.get('digest'),
                      **decisions[token(r)]} for r in records]}
+    summary['extraction_failures']=[{'client':r['client'],'path':r['path'],
+        'provider':decisions[token(r)].get('ai_failure_provider',primary),
+        'reason':decisions[token(r)]['ai_failure_reason']}
+        for r in records if decisions[token(r)].get('ai_failure_reason')]
     progress('AI stage finished. Python is now validating retained/extracted values and preparing client XML.')
     try:
         updated = process_sources(root, demo, client_names, auto_units, summary_accounting,
@@ -182,4 +192,5 @@ def summary_text(summary):
             f'{summary["approved_reviews_retained"]} approved reviews reused; '
             f'{summary["local_or_review_fallbacks"]} Python/review fallbacks. '
             f'Python prepared {summary["xml_prepared"]} XML vouchers. No Tally import sent.'+
-            (f' {summary["xml_ready"]} ready; {summary["workflow_review_required"]} need workflow review/correction.' if 'workflow_review_required' in summary else ''))
+            (f' {summary["xml_ready"]} ready; {summary["workflow_review_required"]} need workflow review/correction.' if 'workflow_review_required' in summary else '')+
+            (' First extraction failure: '+summary['extraction_failures'][0]['reason'] if summary.get('extraction_failures') else ''))
