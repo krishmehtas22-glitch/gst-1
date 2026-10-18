@@ -43,12 +43,24 @@ def state(value,gstin=''):
 
 def checks(inv):
     no=inv.get('number');result=[];export=is_export(inv)
+    from .sales_invoice_procedure import reverse_charge,check_document,validate_rcm
     def add(field,value,reason,blocking=False,master=''):
         result.append(issue(no,field,value,master,reason,blocking))
+    try:check_document(inv)
+    except ValueError as exc:add('Document type',inv.get('document_type'),str(exc),True)
+    try:validate_rcm(inv)
+    except ValueError as exc:add('Reverse charge',inv.get('reverse_charge'),str(exc),True)
+    rcm_value=str(inv.get('reverse_charge') or '').strip().casefold()
+    if rcm_value and rcm_value not in ('yes','y','true','1','no','n','false','0'):
+        add('Reverse charge',inv.get('reverse_charge'),'Confirm Yes or No from the invoice; ambiguous RCM is not a zero-GST instruction.',True)
     if not str(no or '').strip() or str(no).startswith('UNREAD-'):add('Invoice number',no,'Enter the printed invoice number.',True)
     if not normalize_date(inv.get('date')):add('Invoice date',inv.get('date'),'Enter the printed invoice date.',True)
     if not str(inv.get('buyer_name') or '').strip():add('Buyer name','','Enter the printed buyer name.',True)
     if not str(inv.get('seller_name') or '').strip():add('Seller name','','Enter the printed supplier name.',True)
+    if inv.get('document_type'):
+        for role in ('seller','buyer'):
+            if not str(inv.get(role+'_address') or '').strip():add(role.title()+' address','','Read the party address from its own panel; do not copy the other party or a separate consignee.',True)
+        if not inv.get('items'):add('Sold items','','Read the sold stock/service rows for XML and master planning.',True)
     for role in ('seller','buyer'):
         gstin=str(inv.get(role+'_gstin') or '').strip().upper();printed=inv.get(role+'_state')
         if gstin and not gstin_valid(gstin):add(role.title()+' GSTIN',gstin,'GSTIN fails format/checksum validation; printed value is retained.')
@@ -61,6 +73,15 @@ def checks(inv):
     if not export and not state(inv.get('place_of_supply')):
         add('Place of supply',inv.get('place_of_supply'),'Enter the invoice place of supply separately from buyer state.',True)
     for index,item in enumerate(inv.get('items') or [],1):
+        # New structured reads receive full row validation; old caches stay reusable.
+        if inv.get('document_type'):
+            if not str(item.get('hsn') or '').strip():add('Item '+str(index)+' HSN/SAC','','Read HSN/SAC from the invoice or correct it in review.',True)
+            from decimal import Decimal,InvalidOperation
+            for head in ('cgst','sgst','igst'):
+                try:
+                    rate=Decimal(str(item.get(head+'_rate','')))
+                    if not rate.is_finite() or not 0<=rate<=100:raise ValueError()
+                except (InvalidOperation,ValueError):add('Item '+str(index)+' '+head.upper()+' rate',item.get(head+'_rate'),'Complete the separate GST component rate; no rate is guessed.',True)
         if not str(item.get('name') or '').strip():add('Item '+str(index)+' name','','Complete the printed product/service name.',True)
         if not str(item.get('unit') or '').strip():add('Item '+str(index)+' unit','','Complete the printed or AI-inferred selling unit.',True)
         from decimal import Decimal,InvalidOperation
@@ -76,7 +97,7 @@ def checks(inv):
         values=[cents(i['value']) for i in inv.get('items') or []]
         if values and sum(values)!=taxable:add('Item totals',str(sum(values)),'Item values do not match the taxable total; review the source.',master=str(taxable))
         items=inv.get('items') or []
-        if inv.get('classification') in ('taxable','export_igst') and items:
+        if not reverse_charge(inv) and inv.get('classification') in ('taxable','export_igst') and items:
             for head in ('cgst','sgst','igst'):
                 if all(i.get(head+'_rate') not in (None,'') for i in items):
                     expected=sum(cents(money(i['value'])*money(i[head+'_rate'])/100) for i in items)
@@ -194,7 +215,7 @@ def attach(root,records,report,masters,vouchers):
                 if proposed_stock and proposed_stock['kind']=='stock_items' and not reused:
                     reported.add(index)
                     problems.append(issue(no,'Item '+str(index+1)+' master',inv['items'][index].get('name'),proposed_stock['name'],
-                        'Proposed stock was incompatible or ambiguous (HSN, GST components, unit, precision or variant). Current new-master creation is used.'))
+                        'Proposed stock was incompatible or ambiguous (HSN, GST components, reverse charge, unit, precision or variant). Current new-master creation is used.'))
                 proposed_unit=catalog.get(choice_id(item_choice.get('unit')))
                 reused_unit=next((i.get('unit') for i in matched if i['index']==index),None)
                 if proposed_unit and proposed_unit['kind']=='units' and not reused_unit:

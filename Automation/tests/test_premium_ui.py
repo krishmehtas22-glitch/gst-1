@@ -11,7 +11,8 @@ def after_boxed_ui(root,name,expected):
             entry=change['files'][name];assert entry['baseline_sha256']==expected
             with zipfile.ZipFile(root/change['backup']) as backup:assert hashlib.sha256(backup.read(name)).hexdigest()==expected
             expected=entry['authorized_sha256']
-    assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
+    from test_sales_invoice_procedure import after_sales_procedure
+    after_sales_procedure(root,name,expected)
 
 
 def test_entire_processing_engine_is_identical_to_pre_redesign_baseline():

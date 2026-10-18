@@ -148,7 +148,9 @@ def test_source_installer_installs_country_helpers_and_can_repeat_without_changi
     assert (backup/'Invoice_Desktop.py').read_bytes()==original
     latest=json.loads((root/'Automation/IMPORT_REVIEW_UX_CHANGE.json').read_text())['files']['Automation/Invoice_Desktop.py']
     assert latest['baseline_sha256']==update['authorized_sha256']
-    assert hashlib.sha256((tmp_path/'Invoice_Desktop.py').read_bytes()).hexdigest()==latest['authorized_sha256']
+    from test_sales_invoice_procedure import after_sales_procedure
+    after_sales_procedure(root,'Automation/Invoice_Desktop.py',latest['authorized_sha256'])
+    assert (tmp_path/'Invoice_Desktop.py').read_bytes()==(root/'Automation/Invoice_Desktop.py').read_bytes()
     target=tmp_path/'Common_Rules/tally_import.py';target.write_bytes(target.read_bytes()+b'\n# local change\n')
     before=(tmp_path/'BillSync_UI.py').read_bytes()
     with pytest.raises(ValueError,match='No files changed'):installer['install'](tmp_path)

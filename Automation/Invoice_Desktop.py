@@ -16,16 +16,18 @@ from Common_Rules.watcher import source_signature
 from Common_Rules.runtime_paths import default_data_root
 from Common_Rules.supplier_editor import open_layout_editor
 
-FIELDS = ['number','date','seller_name','seller_gstin','seller_state','seller_address',
+FIELDS = ['document_type','reverse_charge','number','date','seller_name','seller_gstin','seller_state','seller_address',
           'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address',
           'place_of_supply','supply','classification','buyer_country',
           'export_mode','shipping_bill_port',
           'foreign_currency','exchange_rate','foreign_invoice_value',
-          'taxable','cgst','sgst','igst','round_off','total']
+          'taxable','cgst','sgst','igst','cess','round_off','total']
 ITEM_FIELDS = ['name','hsn','quantity','unit','rate','value','cgst_rate','sgst_rate','igst_rate',
                'list_rate','discount_rate','foreign_rate','foreign_value',
                'printed_cgst','printed_sgst','printed_igst','printed_total']
 REVIEW_CHOICES = {
+    'document_type': ('sales_invoice','credit_note','debit_note','purchase_order','quotation','delivery_note','unknown'),
+    'reverse_charge': ('','Yes','No'),
     'classification': ('taxable','exempt','nil_rated','non_gst','export_lut','export_igst'),
     'buyer_registration': ('Regular','Composition','Unregistered','Consumer'),
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
@@ -676,7 +678,7 @@ class InvoiceApp:
         form = ttk.Frame(canvas,padding=10)
         canvas.create_window((0,0),window=form,anchor='nw')
         form.bind('<Configure>',lambda event:canvas.configure(scrollregion=canvas.bbox('all')))
-        ttk.Label(form,text='Compare all fields with the PDF. Export vouchers have no inventory movement; verify export GST reporting in Tally.').grid(row=0,column=0,columnspan=4,sticky='w')
+        ttk.Label(form,text='Check number/date, buyer and seller, state/POS, RCM, items and GST against the source. Save corrections to regenerate XML locally.').grid(row=0,column=0,columnspan=4,sticky='w')
         values = {}
         invoice = record['invoice']
         if invoice.get('source_unit_note'):

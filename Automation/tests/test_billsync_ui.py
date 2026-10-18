@@ -24,6 +24,11 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
+                procedure=json.loads((root/'Automation/SALES_INVOICE_PROCEDURE_CHANGE.json').read_text())
+                if name in procedure['files']:
+                    from test_sales_invoice_procedure import after_sales_procedure
+                    actual=procedure['files'][name]['baseline_sha256']
+                    after_sales_procedure(root,name,actual)
                 for manifest in ('LOCAL_GEMMA_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json','AI_WORKFLOW_CHANGE.json'):
                     latest=json.loads((root/'Automation'/manifest).read_text())
                     if name in latest['files']:

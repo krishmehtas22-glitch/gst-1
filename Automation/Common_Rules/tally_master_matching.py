@@ -70,7 +70,9 @@ def details(ctx):
                 'address':norm(field(row,'ADDRESS.LIST')),'country':field(row,'COUNTRYNAME'),'state':field(row,'LEDSTATENAME'),
                 'base_unit':field(row,'BASEUNITS'),'uqc':field(row,'GSTREPUOM'),
                 'decimals':field(row,'DECIMALPLACES'),'simple':field(row,'ISSIMPLEUNIT'),
-                'hsn':sorted(hsn),'taxability':node.findtext('.//TAXABILITY') or '', 'rates':{k:sorted(v) for k,v in rates.items()}}
+                'hsn':sorted(hsn),'taxability':node.findtext('.//TAXABILITY') or '',
+                'reverse_charge':sorted({str(n.text or '').strip().casefold() for n in node.iter('ISREVERSECHARGEAPPLICABLE')}),
+                'rates':{k:sorted(v) for k,v in rates.items()}}
     ctx['_catalog']=result
     return result
 
@@ -220,6 +222,11 @@ def assignments(root,record,ctx):
         if modern and unit is None:
             exact=[e for e in all_entries.values() if e['kind']=='units' and norm(e['name'])==norm(item.get('unit')) and compatible_unit(e,item)]
             if len(exact)==1:unit=exact[0]
+        if stock:
+            from .sales_invoice_procedure import reverse_charge
+            flags=stock.get('reverse_charge',[])
+            if (reverse_charge(inv) and flags!=['yes']) or (not reverse_charge(inv) and any(f not in ('no','false','0','') for f in flags)):
+                stock=None  # Never reuse a forward-charge stock for RCM (or the reverse).
         if stock:
             hsn=str(item.get('hsn') or '').strip()
             target=unit_index.get(stock['base_unit'])

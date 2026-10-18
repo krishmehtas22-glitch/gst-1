@@ -189,13 +189,15 @@ class DialogPresentation:
             if label not in [p[0] for p in pairs.values()]:
                 label.grid(in_=notice,row=len(notice.grid_slaves()),column=0,sticky='w',pady=2);label.configure(wraplength=930,foreground=MUTED)
         tabs=ttk.Notebook(form);tabs.grid(row=2,column=0,sticky='nsew',padx=24)
-        definitions=[('Invoice details',[('Document',['number','date','supply','classification','place_of_supply']),('Amounts & tax',['taxable','cgst','sgst','igst','round_off','total'])]),('Seller & buyer',[('Seller',['seller_name','seller_gstin','seller_state','seller_address']),('Buyer',['buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address'])]),('Items',[]),('Export & currency',[('Export details',['buyer_country','export_mode','shipping_bill_port']),('Currency & exchange',['foreign_currency','exchange_rate','foreign_invoice_value'])])]
+        definitions=[('Invoice details',[('Document',['number','date','document_type','reverse_charge','supply','classification','place_of_supply']),('Amounts & tax',['taxable','cgst','sgst','igst','cess','round_off','total'])]),('Seller & buyer',[('Seller',['seller_name','seller_gstin','seller_state','seller_address']),('Buyer',['buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address'])]),('Items',[]),('Export & currency',[('Export details',['buyer_country','export_mode','shipping_bill_port']),('Currency & exchange',['foreign_currency','exchange_rate','foreign_invoice_value'])])]
         top.review_tabs=tabs;top.review_fields={key:pair[1] for key,pair in pairs.items()}
         for field,(label,entry) in pairs.items():
             label.configure(text={'number':'Invoice number','date':'Invoice date','taxable':'Taxable amount','cgst':'CGST','sgst':'SGST','igst':'IGST','seller_gstin':'Seller GSTIN','buyer_gstin':'Buyer GSTIN','place_of_supply':'Place of supply','export_mode':'Export treatment'}.get(field,field.replace('_',' ').capitalize()))
         for name,groups in definitions:
             page=ttk.Frame(tabs,style='Dialog.TFrame',padding=(0,12,0,4));tabs.add(page,text=name)
             if name=='Items':
+                from Invoice_Item_Table import InvoiceItemTable
+                table=InvoiceItemTable(page);table.pack(side='top',fill='x',pady=(0,10));top.invoice_item_table=table
                 scroller=tk.Canvas(page,bg='white',highlightthickness=0);scroller.pack(side='left',fill='both',expand=True)
                 scrollbar=ttk.Scrollbar(page,command=scroller.yview);scrollbar.pack(side='right',fill='y');scroller.configure(yscrollcommand=scrollbar.set)
                 host=ttk.Frame(scroller,style='Dialog.TFrame');item=scroller.create_window(0,0,window=host,anchor='nw')
@@ -204,6 +206,7 @@ class DialogPresentation:
                 copies={}
                 def sync_items():
                     originals={str(w):w for w in items.winfo_children() if isinstance(w,ttk.LabelFrame)}
+                    table.sync(originals)
                     for key in list(copies):
                         if key not in originals:copies.pop(key).destroy()
                     for key,old_frame in originals.items():

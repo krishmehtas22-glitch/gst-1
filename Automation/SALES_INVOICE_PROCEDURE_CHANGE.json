@@ -1,0 +1,47 @@
+{
+  "baseline_commit": "052dbf220f54dd6731a07d85593a578ea6febe88",
+  "backup": "Backups/Before_Sales_Invoice_Procedure.zip",
+  "policy": "User requests ordered AI sales invoice reading, editable identity/state/POS and item/GST review, RCM zero supplier-payable GST, compatible stock reuse/new masters with unchanged unit and import rules. No live AI or Tally calls in tests. Historical locks and manifests retained.",
+  "files": {
+    "Automation/Common_Rules/ai_invoice_rules.py": {
+      "baseline_sha256": "fbc43635681be05efea8e8188b52a1ce4f4ed245521ab618aeca4abf88d6bb8e",
+      "authorized_sha256": "b036357488bbb0c693b68c19b17958d7962c103168227280332090ca560f5dcb"
+    },
+    "Automation/Common_Rules/gemini_reader.py": {
+      "baseline_sha256": "a37875b52af43128415cb78f027e8db47d9fd0b618e71286c4cebbbe6cbe5557",
+      "authorized_sha256": "43b907ef06ebc498f07df037fd12d1d99101fd04fa5a72010ba4ae496fa5c380"
+    },
+    "Automation/Common_Rules/workflow_validation.py": {
+      "baseline_sha256": "134b3de49e3ff8e6af906ee484efbf287cc342a5b12646154ffc067d983b162a",
+      "authorized_sha256": "5c921b2a38f316870dc9c18bfbc5e2464814f5ac05a0e93661e542f382f71bc4"
+    },
+    "Automation/Common_Rules/tally_review_export.py": {
+      "baseline_sha256": "77d1a1968af1543351e566697c0a02ec327ef7a47307ec10d56a311325b1cee2",
+      "authorized_sha256": "34058ac2095f4d8acc7f54d731f6b882b3cd10593d8dce97ef059bce11eb8d8d"
+    },
+    "Automation/Common_Rules/plain_master_names.py": {
+      "baseline_sha256": "14926d2cfa6b1701f678153e86daa22d8cca45fee775bda72f61c90d8d0950ad",
+      "authorized_sha256": "ca0744827ed527d9d44aea4864d10b7f6e43708ca1badf798aaea216f1d2db5d"
+    },
+    "Automation/Common_Rules/tally_master_matching.py": {
+      "baseline_sha256": "967eb1e34ef3b6aaa9636edcd7c09ae349ff59a0c9934cec4d27d7b375f80eea",
+      "authorized_sha256": "80eeb28cc56f6537cf3c5b7565e78a610ad096d5538514ad1f4318e6c5a4624a"
+    },
+    "Automation/Invoice_Desktop.py": {
+      "baseline_sha256": "a3dfd9f0e5bd8abfa99ee4fb85b7fff9c5b08d14620840bb30ff734f939112bf",
+      "authorized_sha256": "9a87f9922e5f1be9972d14763838a1b237e6693ded94680cae056bba8e20e0ee"
+    },
+    "Automation/BillSync_Theme.py": {
+      "baseline_sha256": "fea7fc0295fc0e4336490f387d4b9dff20aad83b45c3242d864e914f0780a274",
+      "authorized_sha256": "acf89a241a09d4830678f9cded212d0ee2658471e18003212fa198889edaa2bb"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "80b9d9b0afd202c2290635a0e39031709ed03330d603e9c7c0634c83998ac1d7",
+      "authorized_sha256": "ba254b056bced06cb334c79d5ac5921bc79675055640e5b213cdd59654ecb6a4"
+    }
+  },
+  "new_files": {
+    "Automation/Common_Rules/sales_invoice_procedure.py": "a18b42149e933407478c0ec238bb59309460761a37b564b5a0f9018d597adfa9",
+    "Automation/Invoice_Item_Table.py": "7a10a220e97a56005f3a75f1252f6e964227234e4a8eac7bed6f7b6214050073"
+  }
+}

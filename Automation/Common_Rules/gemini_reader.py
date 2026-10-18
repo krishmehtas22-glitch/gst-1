@@ -9,13 +9,13 @@ from .engine import read_json, write_json
 
 REVISION='gemini-pdf-v1'
 DEFAULT_MODEL='gemini-2.5-flash'
-FIELDS=('number','date','seller_name','seller_gstin','seller_state','seller_address',
+FIELDS=('document_type','reverse_charge','number','date','seller_name','seller_gstin','seller_state','seller_address',
         'buyer_name','buyer_gstin','buyer_registration','buyer_state','buyer_address',
         'buyer_country','place_of_supply','classification','supply','export_mode',
         'currency','taxable','cgst','sgst','igst','cess','round_off','total',
         'foreign_currency','exchange_rate','exchange_rate_basis','exchange_rate_units','foreign_invoice_value')
 ITEM_FIELDS=('name','hsn','quantity','unit','rate','value','gst_rate',
-             'cgst_rate','sgst_rate','igst_rate','unit_basis','unit_reason')
+             'cgst_rate','sgst_rate','igst_rate','unit_basis','unit_reason','printed_total')
 WARNING='Gemini extracted fields: compare with the source PDF and approve in Review'
 
 
@@ -157,6 +157,8 @@ def normalize_invoice_result(inv,record,provider='Gemini'):
     inv['dummy_document']=bool(record.get('source_invoice',record['invoice']).get('dummy_document'))
     from .extraction import normalize_basic_fields
     normalize_basic_fields(inv,[])
+    from .sales_invoice_procedure import normalize_rcm
+    normalize_rcm(inv)
     from .accounting import state_code,money
     for item in inv['items']:
         if item.get('gst_rate') not in (None,''):

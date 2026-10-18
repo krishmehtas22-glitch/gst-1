@@ -218,7 +218,11 @@ def test_ui_controller_changes_are_confined_to_import_workflow_and_backed_up():
     import ast,zipfile
     root=Path(__file__).parents[2]
     with zipfile.ZipFile(root/'Backups/Before_AI_Workflow_Validation.zip') as archive:before=ast.parse(archive.read('Automation/Invoice_Desktop.py'))
-    after=ast.parse((root/'Automation/Invoice_Desktop.py').read_bytes())
+    source=(root/'Automation/Invoice_Desktop.py').read_text()
+    # The new sales procedure authorizes this explanatory review-label update.
+    source=source.replace('Check number/date, buyer and seller, state/POS, RCM, items and GST against the source. Save corrections to regenerate XML locally.',
+                          'Compare all fields with the PDF. Export vouchers have no inventory movement; verify export GST reporting in Tally.')
+    after=ast.parse(source)
     previous=next(n for n in before.body if isinstance(n,ast.ClassDef) and n.name=='InvoiceApp')
     current=next(n for n in after.body if isinstance(n,ast.ClassDef) and n.name=='InvoiceApp')
     old_methods={n.name:n for n in previous.body if isinstance(n,ast.FunctionDef)}
@@ -441,6 +445,7 @@ def test_import_review_change_manifest_preserves_baseline_and_installer_payload(
     with zipfile.ZipFile(root/change['backup']) as archive:
         for name,entry in change['files'].items():
             assert hashlib.sha256(archive.read(name)).hexdigest()==entry['baseline_sha256']
-            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==entry['authorized_sha256']
+            from test_sales_invoice_procedure import after_sales_procedure
+            after_sales_procedure(root,name,entry['authorized_sha256'])
             if name.startswith('Automation/'):
                 assert package['FILES'][name.removeprefix('Automation/')].encode()==(root/name).read_bytes()

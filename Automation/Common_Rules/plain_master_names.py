@@ -1,5 +1,6 @@
 """Readable master identities; no batch IDs and no changes to invoice values."""
 from collections import defaultdict
+from .sales_invoice_procedure import reverse_charge
 
 
 class PlainMasterNames:
@@ -30,7 +31,7 @@ class PlainMasterNames:
     def stock_identity(self,item,invoice):
         return (self.clean(item.get('unit')) or 'Units', self.clean(item.get('hsn')),
                 *(str(item.get(t+'_rate')) for t in ('cgst','sgst','igst')),
-                str(invoice.get('classification')))
+                str(invoice.get('classification'))+(' reverse charge' if reverse_charge(invoice) else ''))
 
     @staticmethod
     def _stock_description(token):
