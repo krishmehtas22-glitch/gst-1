@@ -1,12 +1,21 @@
 # BillSync — Main Rules
 
 **Purpose:** The main reference for developers and AI assistants maintaining the
-invoice-to-Tally app. Covers the current BillSync UI 3.5 / Reader 7.30 workflow
-for TallyPrime 6.2. Consolidated on 20 October 2026.
+invoice-to-Tally app. Covers the current BillSync UI 4.0 / Reader 8.0 workflow
+for TallyPrime 6.2. Consolidated and clarified on 20 October 2026.
 
 Read this file before changing the app. This document consolidates approved
 requirements; it does not itself change application behavior or prove that every
 invoice will be read correctly.
+
+**Status:** The user explicitly authorized an entire invoice-structure overhaul
+on 20 October 2026. The active V2 model, prompt and migration are documented in
+[INVOICE_STRUCTURE_V2.md](Automation/docs/INVOICE_STRUCTURE_V2.md). The companion
+[BillSync_Extraction_Prompt.md](BillSync_Extraction_Prompt.md) describes the active
+new contract. Existing accounting/editor components consume validated compatibility
+views of the nested domain; old caches/reviews are retained and migrate locally.
+Section 17 separates implemented additions from remaining proposals. This is not
+a claim of universal extraction accuracy or statutory acceptance.
 
 ## 1. Authority and change control
 
@@ -110,6 +119,57 @@ export country, LUT/IGST treatment, currency and exchange-rate details.
 - An AI confidence score is not measured extraction accuracy. Unknown layouts,
   unclear scans, conflicting labels and incomplete pages may require human review.
 
+### 5.1 Reading labels and party roles
+
+- Identify seller from issuer evidence and buyer from Bill To/Buyer/Customer/Sold
+  To. Do not use a bank, signatory, transporter or Ship To/Consignee as the buyer
+  merely because that block is prominent. A GSTIN/company disagreement requires
+  review; it does not by itself prove which party the AI swapped.
+- Use the invoice-labelled number/date. Do not substitute PO/order/challan,
+  due/delivery/acknowledgement dates, IRN, e-way bill or page numbers.
+- Preserve the number's meaningful case, punctuation and leading zeros. XML
+  escaping must preserve the value. Regulatory or technical restrictions, where
+  applicable, are separate review findings, never permission to truncate it.
+- Use the established date normalizer and Indian day/month/year convention;
+  conflicting conventions need review. Do not define a new rule that all
+  two-digit years use the current century: the implementation has its own
+  normalization behavior and must not be changed by a prompt document.
+- A future date or a date outside a selected reporting period is contextual
+  evidence for review, not proof of a wrong date. Do not infer a Tally company's
+  allowed posting range, financial year or locked periods without actual facts.
+  Automatic company-period enforcement is a proposed feature in Section 17.
+
+### 5.2 GSTIN, HSN, tax and line interpretation
+
+- Validate a GSTIN without silently changing it. A checksum-valid spelling is
+  not proof of a real registration or of the right party. Multiple OCR edits can
+  produce valid checksums. Proposed alternatives require evidence and explicit
+  human confirmation; automatic checksum repair is not approved behavior.
+- Missing buyer GSTIN is not automatically an error for an unregistered buyer
+  or foreign buyer. It also does not prove a B2C classification if other evidence
+  indicates a registered party whose GSTIN was not read.
+- Read HSN/SAC from the appropriate printed column/group; do not confuse it with
+  a product code or generate it from a description. Missing or unusual length
+  needs contextual review, not a universal 4/6/8-digit hard block. A compatible
+  existing master is a separate source, not evidence that HSN was printed.
+- Supplier state, buyer state and POS stay separate. A GSTIN prefix can resolve
+  the corresponding party state; **it must not be used to invent POS**.
+- Ordinary intra/inter-state tax patterns help identify disagreements, but SEZ,
+  exports, reverse charge, jurisdiction and other special cases need context.
+  Do not silently rewrite tax amounts to force the ordinary pattern.
+- Validate quantity/rate/value only after accounting for rate basis (such as per
+  100), percentage versus fixed discounts, tax-inclusive prices, allowances and
+  rounding. A mismatch is review evidence; do not assume which value is wrong.
+- Freight/packing/insurance can be charges or actual goods/services sold. Preserve
+  source meaning and tax treatment; never remove them categorically from item
+  rows or convert unsupported charges into invented stock. Separate charge
+  allocation/schema support is a proposed extension, not a current guarantee.
+- Bill of supply can represent a legitimate exempt/composition sale. It must
+  not be rejected just because it is not headed Tax Invoice. Documents outside
+  the supported sales flow (purchase bills relative to this company, credit/debit
+  notes, proformas, quotations, challans, receipts) require explicit handling;
+  a reliable automatic document-type gate is not yet established by these rules.
+
 ## 6. Manual review and accounting values
 
 - Double-click/review opens the exact invoice for editing, including its parties,
@@ -170,6 +230,10 @@ These rules apply to existing and newly encountered units, not just examples.
 - Ignore case/spacing differences for compatible identity matching. Minor
   spelling differences require unique, strong evidence and no known conflicts.
   Do not merge numeric product variants or competing party identities.
+- Exact GSTIN, exact name and fuzzy similarity identify candidates; none can
+  bypass the remaining checks. Every reused master must pass all applicable
+  role, identity, variant, HSN, GST, unit and precision checks. Multiple competing
+  candidates require review/fallback, not first-match selection.
 - A major GSTIN/state/identity disagreement must be visible. Do not silently
   overwrite an existing master to force the invoice to match.
 - A buyer must use a verified party ledger. Sales, CGST, SGST, IGST and other
@@ -286,6 +350,23 @@ These rules apply to existing and newly encountered units, not just examples.
 - Keep source/reason content scrollable and action buttons visible on smaller
   screens. Keep Tk widget/variable lifecycle work on the UI thread.
 
+### Review decision matrix
+
+| Finding | Current policy |
+| --- | --- |
+| Missing/unreadable invoice number or date | Correction required; where reviewable XML exists, latest user-authorized import-anyway can acknowledge existing data errors. Never fabricate a replacement. Generation prerequisites still apply. |
+| GSTIN, state/POS, tax or amount disagreement | Compare source and Tally; correct or explicitly acknowledge existing values where supported. Tally can reject them. |
+| Missing/changed source, altered XML, stale saved facts/snapshot, unfinished extraction | No acknowledgement bypass; restore/review/reprocess and prepare current XML. |
+| Wrong dependency company, unverified destination, unavailable connection, non-Manual/unknown numbering | Resolve the applicable prerequisite; import-anyway is not a transport/company/numbering bypass. |
+| Unsupported generation data, missing currency rate/country, insufficient unit precision | Resolve generation prerequisite; preserve previous output and do not label it newly ready. |
+| Duplicate number + date | Warning only; user can keep/process/import both. |
+| X / Cancel import | Stop remaining groups; preserve and disclose any earlier completed writes. |
+
+These are behavioral categories, not a claim that the current UI exposes a
+universal BLOCK/REVIEW/INFO field-status API. Do not introduce a new nonoverrideable
+number/date policy from an attached draft. Such a policy needs explicit user
+authorization and matching code, UI and test changes.
+
 ## 14. Tally connection, dispatch and receipts
 
 - Use the local Tally HTTP/XML connection, normally `127.0.0.1:9000`, with explicit
@@ -343,15 +424,64 @@ These rules apply to existing and newly encountered units, not just examples.
 - Documentation-only work must not change runtime code, extraction output,
   AI request behavior, XML or Tally imports.
 
+## 17. Structure V2 additions and remaining proposals
+
+| Capability | Current status and limits |
+| --- | --- |
+| Versioned nested extraction and domain | Implemented: schema_version 2; separate seller, buyer, ship_to, items, charges, totals, export and evidence. Strict parser rejects unsupported shapes/types instead of silently dropping fields. |
+| Per-field evidence and status | Implemented with missing/unverified/source_observed/uncertain/derived/human_reviewed/human_corrected statuses. A quote/value match is not factual verification or independently verified page geometry. |
+| Raw and normalized date | Implemented: separate raw/ISO fields, disagreement findings, source review. Does not add automatic company-financial-year enforcement. |
+| Delivery and reverse charge | Delivery retained in the domain/editor; current XML country mapping remains buyer-based. Reverse-charge accounting is held where unsupported, rather than silently posted as ordinary sales. |
+| Document-type gate | Implemented for explicit model document types: tax/sales invoices and bill of supply can enter this sales path. Unsupported types hold XML; model classification still needs source review. |
+| Multiple invoices/continuations/copies | Existing source preparation remains. Each prepared model response must contain one invoice; uncertain/multiple responses require splitting/review. Arbitrary automatic segmentation is not claimed. |
+| Charges and discounts | Ordinary explicitly allocated charges and typed discounts are represented through XML. Ambiguous inclusion/discount/rate basis, TCS and unsupported special treatment hold generation; destination ledger GST reporting still needs review. |
+| Existing reads and manual reviews | Local migration/reuse; no automatic paid re-analysis, deletion of old approvals or installation-time XML rewrite. Raw extraction and effective reviewed facts remain distinct. |
+| Company posting-period validation | Proposed: needs actual company/date restrictions and approved blocking semantics. Do not guess a period. |
+| Near-duplicate notices | Proposed only; preserve the current number+date warning-only duplicate policy. |
+| GSTIN OCR correction suggestions | Proposed only; no automatic checksum-based identity repair. |
+
+The V2 exception is recorded in
+[INVOICE_STRUCTURE_V2_CHANGE.json](Automation/INVOICE_STRUCTURE_V2_CHANGE.json).
+Historical locks remain unchanged; this explicit authorization covers the listed
+new structure/integration changes, not unrelated monetary, unit or Tally changes.
+
+### Accuracy measurement plan
+
+- “Never silently wrong” is a design objective, not an achievable guarantee for
+  arbitrary invoices. Wrong values can look plausible, have valid checksums and
+  reconcile arithmetically. Evidence can also be misattributed.
+- Build a consented/anonymized golden set with human-checked expected facts:
+  ordinary/exempt/export/foreign-currency sales, diverse suppliers/layouts,
+  poor scans, ambiguous dates, complex rate bases, charges and multipage cases.
+  Keep customer data out of public commits.
+- Keep held-out suppliers/layouts separate from examples used to tune the prompt.
+  Compare old and candidate prompt/model outputs on the same source fixtures.
+- Measure per-field correctness, critical-field silent errors, missing/abstained
+  fields, false warnings, master-match precision, review rate, request count,
+  latency and cost. Include the denominator and test-set scope.
+- A useful silent-error metric is wrong accepted critical fields divided by
+  evaluated critical fields; report abstentions/review coverage separately so
+  mass rejection cannot masquerade as high accuracy.
+- Final XML/reference/amount correctness and actual Tally acceptance need their
+  own checks. Offline mocked-model tests verify pipeline behavior, not live
+  extraction accuracy. Live provider benchmarks require explicit cost/data scope
+  and must not bypass the existing consent or request budgets.
+- A new prompt version requires regression checks and deliberate cache/revision
+  compatibility handling. Do not silently replace a locked production prompt,
+  reinterpret old caches as new evidence, or add automatic retries.
+
 ## Reference map
 
 | Topic | Reference |
 | --- | --- |
+| Active V2 extraction contract and prompt | [BillSync_Extraction_Prompt.md](BillSync_Extraction_Prompt.md) |
 | Dated instructions and locks | [AGENTS.md](AGENTS.md) |
 | Original Import ALL lock | [IMPORT_ALL_LOCK.json](Automation/IMPORT_ALL_LOCK.json) |
 | Original reader lock | [WORKING_READER_LOCK.json](Automation/WORKING_READER_LOCK.json) |
 | Approved UI design record | [APPROVED_UI_DESIGN_LOCK.json](Automation/APPROVED_UI_DESIGN_LOCK.json) |
 | AI-first workflow, historical 3.4 description | [AI_FIRST_WORKFLOW.md](Automation/docs/AI_FIRST_WORKFLOW.md) |
+| Nested model/schema, migration and structured editor | [INVOICE_STRUCTURE_V2.md](Automation/docs/INVOICE_STRUCTURE_V2.md) |
+| Machine-readable extraction schema | [invoice-v2.schema.json](Automation/schemas/invoice-v2.schema.json) |
 | Current review/override/cancel behavior | [IMPORT_REVIEW.md](Automation/docs/IMPORT_REVIEW.md) |
 | Master matching, historical initial release | [TALLY_MASTER_MATCHING.md](Automation/docs/TALLY_MASTER_MATCHING.md) |
 | Local Gemma | [LOCAL_GEMMA.md](Automation/docs/LOCAL_GEMMA.md) |

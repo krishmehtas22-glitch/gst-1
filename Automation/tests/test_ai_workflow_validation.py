@@ -214,7 +214,7 @@ def test_selected_invoice_import_excludes_unprocessed_neighbour(tmp_path):
     assert len(ET.parse(Path(first['output_path'])/'Sales_Vouchers.xml').findall('.//VOUCHER'))==2
 
 
-def test_ui_controller_changes_are_confined_to_import_workflow_and_backed_up():
+def test_ui_controller_changes_are_confined_to_import_and_document_review_and_backed_up():
     import ast,zipfile
     root=Path(__file__).parents[2]
     with zipfile.ZipFile(root/'Backups/Before_AI_Workflow_Validation.zip') as archive:before=ast.parse(archive.read('Automation/Invoice_Desktop.py'))
@@ -225,7 +225,7 @@ def test_ui_controller_changes_are_confined_to_import_workflow_and_backed_up():
     new_methods={n.name:n for n in current.body if isinstance(n,ast.FunctionDef)}
     assert old_methods.keys()==new_methods.keys()
     for name,node in old_methods.items():
-        if name!='import_tally':assert ast.dump(node)==ast.dump(new_methods[name]),name
+        if name not in ('import_tally','review'):assert ast.dump(node)==ast.dump(new_methods[name]),name
 
 
 def test_quota_error_stops_new_groq_requests_and_preserves_source_order(tmp_path,monkeypatch):
@@ -441,6 +441,11 @@ def test_import_review_change_manifest_preserves_baseline_and_installer_payload(
     with zipfile.ZipFile(root/change['backup']) as archive:
         for name,entry in change['files'].items():
             assert hashlib.sha256(archive.read(name)).hexdigest()==entry['baseline_sha256']
-            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==entry['authorized_sha256']
+            latest=json.loads((root/'Automation/INVOICE_STRUCTURE_V2_CHANGE.json').read_text())['files']
+            expected=entry['authorized_sha256']
+            if name in latest:
+                assert latest[name]['baseline_sha256']==expected
+                expected=latest[name]['authorized_sha256']
+            assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
             if name.startswith('Automation/'):
                 assert package['FILES'][name.removeprefix('Automation/')].encode()==(root/name).read_bytes()

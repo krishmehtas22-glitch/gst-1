@@ -5,7 +5,7 @@ import hashlib,json,runpy,zipfile
 
 
 def after_boxed_ui(root,name,expected):
-    for filename in ('BOXED_UI_CHANGE.json','UNIFIED_UI_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json','LOCAL_GEMMA_CHANGE.json','AI_WORKFLOW_CHANGE.json','IMPORT_REVIEW_UX_CHANGE.json'):
+    for filename in ('BOXED_UI_CHANGE.json','UNIFIED_UI_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json','LOCAL_GEMMA_CHANGE.json','AI_WORKFLOW_CHANGE.json','IMPORT_REVIEW_UX_CHANGE.json','INVOICE_STRUCTURE_V2_CHANGE.json'):
         change=json.loads((root/'Automation'/filename).read_text())
         if name in change['files']:
             entry=change['files'][name];assert entry['baseline_sha256']==expected

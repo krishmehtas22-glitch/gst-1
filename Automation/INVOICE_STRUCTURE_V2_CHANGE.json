@@ -1,0 +1,70 @@
+{
+  "baseline_commit": "359cc318b50b2d54a592361f7e8dc6e3fa22aa4f",
+  "backup": "Backups/Before_Invoice_Structure_V2.zip",
+  "policy": "Explicit entire invoice-structure overhaul authorized 20 October 2026. Nested canonical V2 documents, strict new model contract, local saved-read migration, source evidence, structured editing and charge/XML integration. Preserve provider consent, budgets, exact facts, approved data-error overrides, source integrity, master compatibility and Tally dispatch/numbering.",
+  "files": {
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "bd917b7414d03a69a6d40eb24609c227de3dc3b29ba754b52a73d3fa81755fad",
+      "authorized_sha256": "c70a0e726a26d992f47cea506a105df1393e4b89b938604db58e0f28d9fc9cd1"
+    },
+    "Automation/Common_Rules/desktop.py": {
+      "baseline_sha256": "c7e2272a32b151e9be132cd40ae49aa68616936e8ee7d71de6166adcdf4a52b1",
+      "authorized_sha256": "acbe21894801aece026f7676883f712d9549ce6743c174e534a4c2e95d69c402"
+    },
+    "Automation/Common_Rules/foreign_currency.py": {
+      "baseline_sha256": "2271b83eadb0225cbab69e3caec42ce3bed3b0bc0f3d7fcc58d3b8b64883573e",
+      "authorized_sha256": "e60228476a3d44a3bcb8abbbd9960ff3154670e170ab7dd3c03aaa70a50ba767"
+    },
+    "Automation/Common_Rules/gemini_reader.py": {
+      "baseline_sha256": "a37875b52af43128415cb78f027e8db47d9fd0b618e71286c4cebbbe6cbe5557",
+      "authorized_sha256": "27a71cc896c9b9d8818a39ac5d20705ccaf1c6b3f74ba4b121cb19e74c92b93d"
+    },
+    "Automation/Common_Rules/groq_reader.py": {
+      "baseline_sha256": "362493efe387e6c3c94b732cf83de9864037f77e87a84892027d2139b85ff2c7",
+      "authorized_sha256": "5357eff4f014076562aee51940f4fcf6d2b2b7c369760fac123c649b89e5012d"
+    },
+    "Automation/Common_Rules/ollama_reader.py": {
+      "baseline_sha256": "090b2cd60694466bbe4306e04dbff0163dcd6f53ea1f6f1effd3b5eca077618d",
+      "authorized_sha256": "045efd20c01df28375085ab4091e49f9bb45483be9f174c9ab5e2e431213dd75"
+    },
+    "Automation/Common_Rules/tally_master_matching.py": {
+      "baseline_sha256": "967eb1e34ef3b6aaa9636edcd7c09ae349ff59a0c9934cec4d27d7b375f80eea",
+      "authorized_sha256": "9e5c29e28b372a369672d5cc9e3b65aa47c1929dc958299965170581d5d72d8c"
+    },
+    "Automation/Common_Rules/tally_review_export.py": {
+      "baseline_sha256": "77d1a1968af1543351e566697c0a02ec327ef7a47307ec10d56a311325b1cee2",
+      "authorized_sha256": "f228f4cbfedf3a01ea2b0d3cfe9f80ee8b9673bca916fdf04bc8282fbb5f4683"
+    },
+    "Automation/Common_Rules/workflow_validation.py": {
+      "baseline_sha256": "134b3de49e3ff8e6af906ee484efbf287cc342a5b12646154ffc067d983b162a",
+      "authorized_sha256": "c7091158244a369a7ff6c8ce84c41567b33b66eaa4cd85d0ea3219c0739fdb2e"
+    },
+    "Automation/Invoice_Desktop.py": {
+      "baseline_sha256": "a3dfd9f0e5bd8abfa99ee4fb85b7fff9c5b08d14620840bb30ff734f939112bf",
+      "authorized_sha256": "996b37cf92fbe3b4471b1971b07a00a6454e0f704536c82eee31957fd6a1584d"
+    },
+    "Automation/Windows_Entry.py": {
+      "baseline_sha256": "aeaf5e952a3626a209039ce1c01c39c26f4247356b766f05dfcbc58e9cf6ebef",
+      "authorized_sha256": "d56a3a4ac848328a34c5db80709262092fe1c2182ab032c88942bf565f1a0e51"
+    },
+    "Automation/InvoiceReader.spec": {
+      "baseline_sha256": "bfbbe10cc1725eeb993fa5121e6afc08982ba8539fdc368d373244fb1ad3cfe0",
+      "authorized_sha256": "cbddf8ce3dc2b0ed6962fe22d16599200cfd3732e80af2b2e67e4427a6bf8284"
+    },
+    ".github/workflows/windows-invoice-reader.yml": {
+      "baseline_sha256": "83ff80df286fc00c5d3028b43716b3b8107acd9c9d36db4e534a534aaf8a682d",
+      "authorized_sha256": "3ef5444cb96b69d4e900bb6955958b116af559c4f4546f90037af817c29c0d30"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "80b9d9b0afd202c2290635a0e39031709ed03330d603e9c7c0634c83998ac1d7",
+      "authorized_sha256": "5e76a431f4c140e2a8c533de798a27be9674a6f7bdd794d3dbd5abd8cdea02c7"
+    }
+  },
+  "new_files": {
+    "Automation/Common_Rules/invoice_document.py": "49ccc911a98dcde58785816fe0a8c894a6ae7f73467360f409838eb5bc47d4f4",
+    "Automation/Common_Rules/invoice_prompt.py": "7d47f24a8b3302c7d7ca842dea016602d4ced62df8889443961dd4e262a1cd1d",
+    "Automation/Invoice_Document_Editor.py": "added1f3b861d7f93aef4e416819ccab95e71c9fbfd559448b30cbac461936fe",
+    "Automation/schemas/invoice-v2.schema.json": "b42afa60e8c5f6285062ff643c81e1121dfbd74c76a03f5656e84eb3288f1c1e",
+    "Automation/docs/INVOICE_STRUCTURE_V2.md": "9c1c5c6d36af2ae915158fbda775bb8f406038e031aa356a5ec4adb8a4f6cd65"
+  }
+}

@@ -72,16 +72,21 @@ def checks(inv):
     try:
         total=cents(inv['total']);taxable=cents(inv['taxable'])
         tax=sum(cents(inv.get(t) or '0') for t in ('cgst','sgst','igst','cess','round_off'))
-        if total!=taxable+tax:add('Invoice totals',str(total),'Printed total differs from taxable value plus taxes/round-off; values are not changed.',master=str(taxable+tax))
+        extra=sum(cents(c['amount']) for c in inv.get('_other_charges') or [] if c.get('included_in_taxable_total')=='no')
+        included=sum(cents(c['amount']) for c in inv.get('_other_charges') or [] if c.get('included_in_taxable_total')=='yes')
+        if total!=taxable+tax+extra:add('Invoice totals',str(total),'Printed total differs from taxable value plus taxes/round-off; values are not changed.',master=str(taxable+tax+extra))
         values=[cents(i['value']) for i in inv.get('items') or []]
-        if values and sum(values)!=taxable:add('Item totals',str(sum(values)),'Item values do not match the taxable total; review the source.',master=str(taxable))
+        if values and sum(values)+included!=taxable:add('Item totals',str(sum(values)),'Item values do not match the taxable total; review the source.',master=str(taxable))
         items=inv.get('items') or []
         if inv.get('classification') in ('taxable','export_igst') and items:
             for head in ('cgst','sgst','igst'):
-                if all(i.get(head+'_rate') not in (None,'') for i in items):
+                charges=inv.get('_other_charges') or []
+                charge_rates_known=all(c.get(head+'_amount') not in (None,'') or c.get(head+'_rate') not in (None,'') for c in charges)
+                if all(i.get(head+'_rate') not in (None,'') for i in items) and charge_rates_known:
                     expected=sum(cents(money(i['value'])*money(i[head+'_rate'])/100) for i in items)
+                    expected+=sum(cents(c[head+'_amount']) if c.get(head+'_amount') not in (None,'') else cents(money(c['amount'])*money(c[head+'_rate'])/100) for c in charges)
                     actual=cents(inv.get(head) or '0')
-                    if abs(expected-actual)>money('.01')*len(items):add(head.upper()+' reconciliation',str(actual),'Printed invoice tax differs from its item tax components; values are preserved.',master=str(expected))
+                    if abs(expected-actual)>money('.01')*(len(items)+len(charges)):add(head.upper()+' reconciliation',str(actual),'Printed invoice tax differs from its item tax components; values are preserved.',master=str(expected))
     except (ValueError,KeyError,TypeError,ArithmeticError):add('Invoice amounts','','Provide valid taxable, total and item amounts.',True)
     if inv.get('ocr_reading_evidence'):add('OCR evidence','Uncertain characters','Compare unclear text with the source before import.')
     if export:
@@ -120,6 +125,9 @@ def attach(root,records,report,masters,vouchers):
     entries=[]
     for record,row,voucher in zip(records,report,vouchers.findall('.//VOUCHER')):
         inv=for_record(root,record);no=inv.get('number') or '';problems=checks(inv)
+        from .invoice_document import sync_record,findings,field_label
+        document=sync_record(record)
+        problems.extend(issue(no,field_label(p['field']),'','',p['reason']) for p in findings(document))
         from .tally_review_export import clean
         # Supplier registration is a company field; never put it in PARTYGSTIN.
         supplier_gstin=clean(inv.get('seller_gstin')).strip().upper()
@@ -163,6 +171,10 @@ def attach(root,records,report,masters,vouchers):
                 if node is None:node=ET.SubElement(voucher,'PLACEOFSUPPLY')
                 node.text=pos
         ctx=context(root,record);snapshot=ctx['sha256'] if ctx else ''
+        document['master_assignments']=deepcopy(row.get('tally_master_matching') or {})
+        document['accounting']={'currency':inv.get('currency'),'taxable':inv.get('taxable'),'total':inv.get('total'),'taxes':{head:inv.get(head) for head in ('cgst','sgst','igst','cess','round_off')},'charges':deepcopy(inv.get('_other_charges') or []),'conversion':deepcopy(inv.get('currency_conversion'))}
+        document['provenance']['master_snapshot_sha256']=snapshot
+        row['invoice_document']=document
         if ctx:
             catalog=details(ctx);raw=loaded_choices(root,record,ctx) or {}
             proposed=catalog.get(choice_id(raw.get('party')))
@@ -214,7 +226,7 @@ def attach(root,records,report,masters,vouchers):
         try:verify_source(Path(root),record)
         except (ValueError,OSError):problems.append(issue(no,'Source invoice',str(source),'','Source is missing, changed or outside the invoice folder; re-process it.',True))
         source_hash=record.get('source_sha256',record.get('digest',''))
-        data={'guid':voucher.findtext('GUID'),'invoice':deepcopy(inv),'issues':problems,
+        data={'guid':voucher.findtext('GUID'),'invoice':deepcopy(inv),'document':deepcopy(document),'issues':problems,
               'client':record['client'],'root':str(Path(root).resolve()),'snapshot_sha256':snapshot,
               'source':str(source.resolve()),'source_sha256':source_hash,'read_path':str(Path(record['path']).resolve()),
               'read_sha256':record.get('digest',''),'input_state':input_state(root,record),'voucher_sha256':voucher_hash(voucher)}

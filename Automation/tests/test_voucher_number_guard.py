@@ -68,7 +68,7 @@ def test_installer_and_backup_record_exact_authorized_change():
         for name,entry in change['files'].items():
             assert hashlib.sha256(archive.read(name)).hexdigest()==entry['baseline_sha256']
             expected=entry['authorized_sha256']
-            for filename in ('LOCAL_GEMMA_CHANGE.json','AI_WORKFLOW_CHANGE.json','IMPORT_REVIEW_UX_CHANGE.json'):
+            for filename in ('LOCAL_GEMMA_CHANGE.json','AI_WORKFLOW_CHANGE.json','IMPORT_REVIEW_UX_CHANGE.json','INVOICE_STRUCTURE_V2_CHANGE.json'):
                 latest=json.loads((root/'Automation'/filename).read_text())
                 if name in latest['files']:
                     update=latest['files'][name];assert update['baseline_sha256']==expected

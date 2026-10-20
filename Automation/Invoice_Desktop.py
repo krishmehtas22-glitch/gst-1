@@ -31,7 +31,7 @@ REVIEW_CHOICES = {
     'supply': ('INTRA','INTER','EXEMPT','EXPORT'),
     'export_mode': ('','LUT_without_payment','with_payment_of_IGST'),
 }
-APP_VERSION='Reader 7.30'
+APP_VERSION='Reader 8.0'
 
 
 def quantity_unit_summary(invoice):
@@ -676,7 +676,7 @@ class InvoiceApp:
         form = ttk.Frame(canvas,padding=10)
         canvas.create_window((0,0),window=form,anchor='nw')
         form.bind('<Configure>',lambda event:canvas.configure(scrollregion=canvas.bbox('all')))
-        ttk.Label(form,text='Compare all fields with the PDF. Export vouchers have no inventory movement; verify export GST reporting in Tally.').grid(row=0,column=0,columnspan=4,sticky='w')
+        ttk.Label(form,text='Compare fields with the source. Export items can reduce stock; verify the export GST treatment in Tally.').grid(row=0,column=0,columnspan=4,sticky='w')
         values = {}
         invoice = record['invoice']
         if invoice.get('source_unit_note'):
@@ -714,6 +714,20 @@ class InvoiceApp:
         buttons = ttk.Frame(form)
         buttons.grid(row=base+1,column=0,columnspan=4,pady=12)
         ttk.Button(buttons,text='Open source PDF',command=self.open_source).pack(side='left',padx=8)
+        def document_details():
+            # Carry unsaved ordinary edits into the structured form; do not write
+            # XML or approve the draft merely because a tab was opened.
+            from copy import deepcopy
+            from Common_Rules.invoice_document import from_legacy
+            pending=deepcopy(invoice)
+            pending.update({field:var.get().strip() for field,var in values.items()})
+            pending['items']=[{**old,**{field:var.get().strip() for field,var in variables.items()}} for old,variables,_ in item_values]
+            draft={**record,'invoice':pending}
+            draft['document']=from_legacy(pending,record,record.get('document') or invoice.get('_document_v2'))
+            top.destroy()
+            from Invoice_Document_Editor import open_document_editor
+            open_document_editor(self.window,self.root,draft,lambda ignored,edited:self.save_manual_edits(record,edited),on_close=lambda:self.auto.set(watching))
+        ttk.Button(buttons,text='Details & evidence',command=document_details).pack(side='left',padx=6)
         ttk.Button(buttons,text='Add item',command=add_item).pack(side='left')
         def remove_item():
             if item_values:

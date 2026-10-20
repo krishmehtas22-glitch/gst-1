@@ -9,6 +9,8 @@ on:
       - 'Automation/requirements-build.txt'
       - 'Automation/Common_Rules/**'
       - 'Automation/Invoice_Desktop.py'
+      - 'Automation/Invoice_Document_Editor.py'
+      - 'Automation/schemas/**'
       - 'Automation/BillSync_UI.py'
       - 'Automation/Document_Upload.py'
       - 'Automation/BillSync_Controls.py'
@@ -39,7 +41,7 @@ jobs:
       - name: Install build and verification dependencies
         run: python -m pip install -r Automation/requirements-build.txt -r Automation/requirements-dev.txt
       - name: Verify unchanged output and executable paths
-        run: python Automation/Run_Windows_Checks.py Automation/tests/test_windows_packaging.py Automation/tests/test_document_upload.py Automation/tests/test_document_format_reading.py Automation/tests/test_billsync_ui.py Automation/tests/test_export_country_refund.py Automation/tests/test_tally_master_matching.py Automation/tests/test_tally_master_snapshot.py Automation/tests/test_complete_batch_output.py Automation/tests/test_tally_direct_import.py Automation/tests/test_voucher_number_guard.py Automation/tests/test_ollama_reader.py Automation/tests/test_ai_workflow_validation.py Automation/tests/test_large_ai_batch.py Automation/tests/test_openrouter_reader.py Automation/tests/test_shared_groq_reading.py Automation/tests/test_ai_identity_fallback.py Automation/tests/test_tally_unit_reuse.py -q
+        run: python Automation/Run_Windows_Checks.py Automation/tests/test_windows_packaging.py Automation/tests/test_document_upload.py Automation/tests/test_document_format_reading.py Automation/tests/test_billsync_ui.py Automation/tests/test_export_country_refund.py Automation/tests/test_tally_master_matching.py Automation/tests/test_tally_master_snapshot.py Automation/tests/test_complete_batch_output.py Automation/tests/test_tally_direct_import.py Automation/tests/test_voucher_number_guard.py Automation/tests/test_ollama_reader.py Automation/tests/test_ai_workflow_validation.py Automation/tests/test_invoice_document_v2.py Automation/tests/test_large_ai_batch.py Automation/tests/test_openrouter_reader.py Automation/tests/test_shared_groq_reading.py Automation/tests/test_ai_identity_fallback.py Automation/tests/test_tally_unit_reuse.py -q
       - name: Build Windows executable
         working-directory: Automation
         run: python -m PyInstaller --noconfirm --clean InvoiceReader.spec
@@ -52,6 +54,7 @@ jobs:
           if ($process.ExitCode -ne 0) { throw 'Frozen executable self-test failed' }
           $check = Get-Content $report -Raw | ConvertFrom-Json
           if (-not $check.frozen -or -not $check.ocr_initialized -or -not $check.ui_initialized -or -not $check.drag_drop_available) { throw 'Frozen OCR self-test incomplete' }
+          if ($check.invoice_structure_version -ne 2 -or -not $check.document_editor_available -or -not $check.schema_contract_checked) { throw 'Frozen invoice structure self-test incomplete' }
           Copy-Item Automation/docs/BILLSYNC_UI.md Automation/dist/InvoiceReader/README.txt
           Copy-Item Backups/Reader_Before_BillSync_UI.zip Automation/dist/InvoiceReader/Original_Reader_Backup.zip
           Copy-Item Backups/BillSync_UI_Before_Tally_Masters.zip Automation/dist/InvoiceReader/Previous_UI_Backup.zip
@@ -64,6 +67,8 @@ jobs:
           Copy-Item Backups/Before_AI_Workflow_Validation.zip Automation/dist/InvoiceReader/Before_AI_Workflow_Validation.zip
           Copy-Item Backups/Before_Import_Review_UX.zip Automation/dist/InvoiceReader/Before_Import_Review_UX.zip
           Copy-Item Automation/docs/IMPORT_REVIEW.md Automation/dist/InvoiceReader/Import_Review.txt
+          Copy-Item Automation/docs/INVOICE_STRUCTURE_V2.md Automation/dist/InvoiceReader/Invoice_Structure_V2.txt
+          Copy-Item Backups/Before_Invoice_Structure_V2.zip Automation/dist/InvoiceReader/Before_Invoice_Structure_V2.zip
           Copy-Item Backups/Before_Export_Country_Refund.zip Automation/dist/InvoiceReader/Before_Export_Country_Refund.zip
           Copy-Item Automation/docs/EXPORT_COUNTRY_REFUND.md Automation/dist/InvoiceReader/Export_Country_Refund.txt
           Copy-Item Automation/Open_BillSync_EXE.bat Automation/dist/InvoiceReader/Open_BillSync.bat

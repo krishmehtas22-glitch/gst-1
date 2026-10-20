@@ -189,6 +189,9 @@ def inspect_sources(root, client_names=None, demo=True, auto_units=True):
                 record['errors'].append(str(exc))
             except Exception as exc:
                 record['errors'].append(f'PDF extraction failed: {exc}')
+            if record.get('digest'):
+                from .invoice_document import sync_record
+                sync_record(record,human=bool(record.get('reviewed')) and not record['invoice'].get('_document_v2'))
             records.append(record)
     return records
 
@@ -210,8 +213,11 @@ def save_review(root, record, invoice, resolve_warnings=True):
             item.update(unit_origin='manual',unit_auto=False,unit_confidence=1.0,
                 unit_evidence='Confirmed/changed by you',unit_correction_reviewed=True)
     if resolve_warnings:edited['extraction_warnings'] = []
+    from .invoice_document import from_legacy
+    document=from_legacy(edited,record,previous=edited.get('_document_v2') or record.get('document') or record.get('invoice',{}).get('_document_v2'),human=True)
+    edited['_document_v2']=document
     write_json(root/'.invoice_app'/'reviews'/(digest+'.json'),
-               {'source_sha256':digest,'approved':True,'invoice':edited,
+               {'schema_version':2,'document':document,'source_sha256':digest,'approved':True,'invoice':edited,
                 'original_extraction':record.get('source_invoice',record['invoice'])})
     remember_units(root,record,edited)
 

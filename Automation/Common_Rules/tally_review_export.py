@@ -45,6 +45,8 @@ def precise(value):
 
 
 def export_all(root,records,demo):
+    from .invoice_document import require_exportable
+    require_exportable(records)
     from .workflow_validation import enabled as workflow_enabled
     modern=workflow_enabled(root)
     from .quantity_precision import validate_records
@@ -131,11 +133,15 @@ def export_all(root,records,demo):
                         if amounts['total'] is None:
                             amounts['total']=amounts['taxable']+tax;notes.append('Invoice total derived; printed total missing/invalid')
                         items=inv.get('items') or []
-                        inventory=bool(items) and (modern or inv.get('supply')!='EXPORT') and all(number(i.get('value')) is not None and precise(i.get('quantity',1)) is not None and precise(i.get('quantity',1))>0 for i in items)
+                        charges=inv.get('_other_charges') or []
+                        included_charges=sum((number(c['amount']) for c in charges if c['included_in_taxable_total']=='yes'),Decimal('0'))
+                        excluded_charges=sum((number(c['amount']) for c in charges if c['included_in_taxable_total']=='no'),Decimal('0'))
+                        item_taxable=amounts['taxable']-included_charges
+                        inventory=bool(items) and (modern or inv.get('supply')!='EXPORT') and all(number(i.get('value')) is not None and (i.get('quantity') not in (None,'') or not inv.get('_document_v2')) and precise(i.get('quantity',1)) is not None and precise(i.get('quantity',1))>0 for i in items)
                         if inventory and (inv.get('classification') not in (('taxable','exempt','nil_rated','non_gst','export_lut','export_igst') if modern else ('taxable','exempt','nil_rated','non_gst')) or any(precise(i.get(t+'_rate')) is None for i in items for t in ('cgst','sgst','igst'))):inventory=False
                         if inventory and not (modern and inv.get('classification')=='export_lut') and all(amounts[t]==0 for t in ('cgst','sgst','igst')) and any(precise(i.get(t+'_rate'))!=0 for i in items for t in ('cgst','sgst','igst')):
                             inventory=False;notes.append('Zero invoice GST conflicts with item rates; no tax posted, accounting voucher used')
-                        if inventory and sum(number(i['value']) for i in items)!=amounts['taxable']:inventory=False
+                        if inventory and sum(number(i['value']) for i in items)!=item_taxable:inventory=False
                         if not inventory:notes.append('Accounting voucher: item inventory not posted; all extracted items retained in manifest')
                         remote=str(uuid.uuid5(uuid.NAMESPACE_URL,client+'|'+identity+'|'+no))
                         binding=Path(root)/'.invoice_app'/'routing'/(identity+'.json')
@@ -188,28 +194,34 @@ def export_all(root,records,demo):
                                     known[('stock',name)]=sig
                                     stock=ET.SubElement(message(md),'STOCKITEM',{'NAME':name,'ACTION':'Create'});display_name(stock,name);text(stock,'BASEUNITS',unit)
                                     text(stock,'GSTAPPLICABLE','Applicable');text(stock,'GSTTYPEOFSUPPLY','Goods')
-                                    gst_details(stock,{'hsn':clean(item.get('hsn')),'classification':('taxable' if modern and is_export(inv) else inv['classification']),**{t+'_rate':str(precise(item[t+'_rate'])) for t in ('cgst','sgst','igst')}},date)
+                                    gst_details(stock,{'hsn':clean(item.get('hsn')),'classification':('taxable' if modern and is_export(inv) else item.get('classification') or inv['classification']),**{t+'_rate':str(precise(item[t+'_rate'])) for t in ('cgst','sgst','igst')}},date)
                                 node=ET.SubElement(voucher,'ALLINVENTORYENTRIES.LIST')
                                 for tag,val in {'STOCKITEMNAME':name,'ISDEEMEDPOSITIVE':'No','ISLASTDEEMEDPOSITIVE':'No','ACTUALQTY':str(quantity)+' '+unit,'BILLEDQTY':str(quantity)+' '+unit,'AMOUNT':str(value),'RATE':str(rate)+'/'+unit}.items():text(node,tag,val)
+                                if item.get('discount_rate') not in (None,''):
+                                    text(node,'DISCOUNT',clean(item['discount_rate']))
                                 batch=ET.SubElement(node,'BATCHALLOCATIONS.LIST')
                                 for tag,val in {'GODOWNNAME':'Main Location','BATCHNAME':'Primary Batch','DESTINATIONGODOWNNAME':'Main Location','AMOUNT':str(value),'ACTUALQTY':str(quantity)+' '+unit,'BILLEDQTY':str(quantity)+' '+unit}.items():text(batch,tag,val)
                                 account=ET.SubElement(node,'ACCOUNTINGALLOCATIONS.LIST')
                                 for tag,val in {'LEDGERNAME':'Sales','ISDEEMEDPOSITIVE':'No','AMOUNT':str(value)}.items():text(account,tag,val)
-                        else:allocation(voucher,{'ledger':'Sales','debit':0,'credit':amounts['taxable']},no,entries_tag=entries_tag)
+                        else:allocation(voucher,{'ledger':'Sales','debit':0,'credit':item_taxable},no,entries_tag=entries_tag)
+                        for charge in charges:
+                            charge_name=clean(charge['label'])
+                            ledger(charge_name,'Direct Incomes')
+                            allocation(voucher,{'ledger':charge_name,'debit':0,'credit':number(charge['amount'])},no,entries_tag=entries_tag)
                         for kind in ('cgst','sgst','igst','cess','round_off'):
                             if not amounts[kind]:continue
                             name={'cgst':'CGST','sgst':'SGST','igst':'IGST','cess':'Cess','round_off':'Round Off'}[kind]
                             extra={'TAXTYPE':'GST','GSTDUTYHEAD':HEADS.get(kind,'Cess')} if kind!='round_off' else {}
                             ledger(name,'Duties & Taxes' if kind!='round_off' else 'Indirect Expenses',**extra)
                             allocation(voucher,{'ledger':name,'debit':0,'credit':amounts[kind]},no,entries_tag=entries_tag)
-                        delta=amounts['total']-amounts['taxable']-tax
+                        delta=amounts['total']-amounts['taxable']-tax-excluded_charges
                         if delta:
                             allocation(voucher,{'ledger':'Invoice differences - review','debit':0,'credit':delta},no,entries_tag=entries_tag)
                             notes.append('Unreconciled difference '+str(delta)+' posted to Invoice differences - review; printed amounts retained')
                         text(voucher,'NARRATION',clean(('TEST DATA; ' if demo else '')+'Review in Tally; seller '+row_seller+'; seller GSTIN '+row_seller_gstin+'; source '+str(source)+'; '+ '; '.join(dict.fromkeys(notes))))
                         record.update(errors=[],output_path=str(current),group_output_path=str(current),output_generation=generation,output_seller_group=index,batch_voucher_count=len(group),display_status='XML prepared; review in Tally',tally_review_warnings=list(dict.fromkeys(notes)))
                         record.setdefault('notices',[]).extend(record['tally_review_warnings'])
-                        report.append({'client':client,'source':str(source),'digest':identity,'invoice_number':no,'provider':inv.get('api_provider','Python'),'seller':row_seller,'seller_group':index,'seller_group_label':seller,'seller_group_gstin':seller_gstin,'buyer':buyer,'buyer_ledger':party,'xml_folder':str(current),'voucher_guid':remote,'inventory_posted':inventory,'warnings':record['tally_review_warnings'],'extracted_invoice':inv})
+                        report.append({'client':client,'source':str(source),'digest':identity,'invoice_number':no,'provider':inv.get('api_provider','Python'),'seller':row_seller,'seller_group':index,'seller_group_label':seller,'seller_group_gstin':seller_gstin,'buyer':buyer,'buyer_ledger':party,'xml_folder':str(current),'voucher_guid':remote,'inventory_posted':inventory,'warnings':record['tally_review_warnings'],'extracted_invoice':inv,'invoice_document':record.get('document')})
                     referenced={node.text for node in vouchers.findall('.//LEDGERNAME')}
                     declared={node.attrib['NAME'] for node in masters.findall('.//LEDGER')}
                     if not referenced.issubset(declared):raise ValueError('Internal batch error: voucher ledger reference has no exported master')

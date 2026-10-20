@@ -19,7 +19,7 @@ from Export_Refund_Review import summary as refund_summary,load_review as load_r
 from Export_Refund_Dialog import open_refund_review
 
 BG='#f2f5fb';NAV='#111d35';BLUE='#315ee7';INK='#182641';MUTED='#687a96';BORDER='#bfcde2'
-UI_VERSION='BillSync UI 3.5'
+UI_VERSION='BillSync UI 4.0'
 
 
 class ActivityLabel(ttk.Label):

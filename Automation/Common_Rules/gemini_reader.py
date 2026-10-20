@@ -143,6 +143,9 @@ def extract_selected(root,record,transport=None):
 
 
 def normalize_invoice_result(inv,record,provider='Gemini'):
+    if isinstance(inv,dict) and ('schema_version' in inv or 'invoices' in inv):
+        from .invoice_document import normalize_document_result
+        return normalize_document_result(inv,record,provider)
     if not isinstance(inv,dict) or set(inv)-set(FIELDS)-{'items'}:
         raise ValueError(provider+' returned unexpected invoice fields')
     if any(inv.get(field) is not None and not isinstance(inv.get(field),str) for field in FIELDS):

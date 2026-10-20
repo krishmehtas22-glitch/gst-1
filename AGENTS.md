@@ -1,3 +1,19 @@
+# Invoice structure overhaul — latest user authorization, 20 October 2026
+
+The user explicitly requests overhauling the entire invoice-processing structure,
+rather than retaining the flat extraction JSON. Authorize a versioned nested
+invoice domain model, structured evidence/status/issues, new AI prompt/schema,
+validated migration of saved reads/manual reviews, and integration through master
+matching, editing and XML. Keep existing UI actions and explicit AI consent,
+provider choice, request budgets/pacing/concurrency, source identity, exact money
+and quantities, approved unit protocol, Tally dispatch and numbering requirements.
+Retain the current user-authorized invoice-data override policy; do not silently
+replace it with nonoverrideable date/number rules from attached proposals.
+Treat unsupported structures or accounting semantics as actionable review/generation
+failures, never drop source lines, invent values or claim unimplemented support.
+Back up prior code; preserve original manifests and record a new narrow exception.
+Tests use fake providers/Tally. No billable calls or live Tally writes.
+
 # Main rulebook — 20 October 2026
 
 Read [MAIN_RULES.md](MAIN_RULES.md) before making changes. It consolidates the

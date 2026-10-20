@@ -58,8 +58,11 @@ def decimal(value,label):
 
 
 def facts(invoice):
-    return {**{k:invoice.get(k) for k in (*MONEY,'currency','foreign_currency','exchange_rate','exchange_rate_basis','exchange_rate_units','foreign_invoice_value')},
+    result={**{k:invoice.get(k) for k in (*MONEY,'currency','foreign_currency','exchange_rate','exchange_rate_basis','exchange_rate_units','foreign_invoice_value')},
             'items':[{k:i.get(k) for k in (*ITEM_MONEY,'quantity','name','hsn','unit')} for i in invoice.get('items',[])]}
+
+    if invoice.get('_other_charges'):result['other_charges']=deepcopy(invoice['_other_charges'])
+    return result
 
 
 def fingerprint(invoice):
@@ -134,6 +137,9 @@ def convert(invoice,settings=None):
         for item in inv.get('items',[]):
             for key in ITEM_MONEY:
                 if item.get(key) not in (None,''):item[key]=scaled(item[key],key,key not in ('rate','list_rate'))
+        for charge in inv.get('_other_charges',[]):
+            for key in ('amount','cgst_amount','sgst_amount','igst_amount'):
+                if charge.get(key) not in (None,''):charge[key]=scaled(charge[key],key)
         inv.update(currency='INR',foreign_currency=source,exchange_rate=format(rate,'f'),
                    foreign_invoice_value=invoice.get('total'),
                    currency_conversion={'source_currency':source,'inr_per_unit':format(rate,'f'),

@@ -22,6 +22,12 @@ def self_test(destination):
     import tempfile
     from tkinterdnd2 import TkinterDnD
     from BillSync_UI import BillSyncApp,UI_VERSION
+    from Invoice_Document_Editor import open_document_editor
+    from Common_Rules.invoice_document import VERSION,EXTRACTION_SCHEMA,validate
+    schema_file=Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parent))/'schemas'/'invoice-v2.schema.json'
+    schema=json.loads(schema_file.read_text(encoding='utf-8'));schema.pop('$schema',None)
+    if schema!=EXTRACTION_SCHEMA:raise RuntimeError('Bundled invoice schema does not match the reader')
+    validate({'schema_version':VERSION,'invoices':[{'items':[]}]},EXTRACTION_SCHEMA)
     callbacks=[]
     window=TkinterDnD.Tk();window.withdraw()
     window.report_callback_exception=lambda *args:callbacks.append(str(args[1]))
@@ -31,7 +37,7 @@ def self_test(destination):
         ui_initialized=app.drop_supported
         window.destroy()
     if callbacks or not ui_initialized:raise RuntimeError('BillSync UI self-test failed: '+str(callbacks))
-    result={'ui_version':UI_VERSION,'ui_initialized':ui_initialized,'drag_drop_available':app.drop_supported,'version':Invoice_Desktop.APP_VERSION,'frozen':bool(getattr(sys,'frozen',False)),
+    result={'invoice_structure_version':VERSION,'document_editor_available':callable(open_document_editor),'schema_contract_checked':True,'ui_version':UI_VERSION,'ui_initialized':ui_initialized,'drag_drop_available':app.drop_supported,'version':Invoice_Desktop.APP_VERSION,'frozen':bool(getattr(sys,'frozen',False)),
             'data_root':str(default_data_root(Invoice_Desktop.__file__)),
             'parser_revision':PARSER_REVISION,'ocr_initialized':engine is not None,
             'providers':list(ACTIVE_PROVIDERS)}

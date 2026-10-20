@@ -24,7 +24,7 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
-                for manifest in ('LOCAL_GEMMA_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json','AI_WORKFLOW_CHANGE.json'):
+                for manifest in ('LOCAL_GEMMA_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json','AI_WORKFLOW_CHANGE.json','INVOICE_STRUCTURE_V2_CHANGE.json'):
                     latest=json.loads((root/'Automation'/manifest).read_text())
                     if name in latest['files']:
                         from test_premium_ui import after_boxed_ui
@@ -173,5 +173,8 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
         from test_ai_workflow_validation import exercise_import_review_roundtrip
         for mode in ('import','cancel','edit','partial'):
             with monkeypatch.context() as scoped:exercise_import_review_roundtrip(root,app,scoped,mode)
+        from test_invoice_document_v2 import exercise_document_editor,exercise_pending_editor_changes
+        with monkeypatch.context() as scoped:exercise_document_editor(root,app,scoped)
+        with monkeypatch.context() as scoped:exercise_pending_editor_changes(root,app,scoped)
         assert not errors and not list(tmp_path.rglob('*.xml'))
     finally:root.destroy()

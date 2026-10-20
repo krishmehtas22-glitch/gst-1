@@ -4,6 +4,7 @@ from PyInstaller.utils.hooks import collect_all,collect_submodules
 
 root=Path(SPECPATH)
 datas=[(str(p),'Common_Rules') for p in sorted((root/'Common_Rules').glob('*.py'))]
+datas+=[(str(p),'schemas') for p in sorted((root/'schemas').glob('*.json'))]
 binaries=[]
 hiddenimports=collect_submodules('Common_Rules')
 for package in ('rapidocr','onnxruntime','pypdfium2','pypdfium2_raw','tkinterdnd2'):
