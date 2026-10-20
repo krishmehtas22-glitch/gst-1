@@ -1,3 +1,20 @@
+# GSTIN review policy — latest user request, 20 October 2026
+
+User explicitly requests no GSTIN checksum rejection and reports misleading company
+registration errors. Application validation retains GSTIN shape/state checks but
+does not reject solely for its check digit or correct printed identity. Missing
+Tally company GSTIN is an acknowledgement-capable verification warning, not proof
+of unregistered status. Preserve failed-extraction/source-integrity import gates.
+
+# OpenRouter provider — latest user authorization, 20 October 2026
+
+User requests adding OpenRouter. Restore it as an explicit free-only provider
+choice alongside Groq and local Gemma. Integrate the current nested extraction
+contract, verified caches and master matching on the chosen provider; no hidden
+provider fallback, paid routing, extra requests or live-provider tests. Preserve
+unit, financial/XML and Tally import/numbering behavior and original lock files.
+Back up prior code and record a narrow new authorized manifest.
+
 # Invoice structure overhaul — latest user authorization, 20 October 2026
 
 The user explicitly requests overhauling the entire invoice-processing structure,

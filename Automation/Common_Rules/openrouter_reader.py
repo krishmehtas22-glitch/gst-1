@@ -8,7 +8,8 @@ from .source_documents import verify_source
 from .gemini_reader import FIELDS, ITEM_FIELDS, normalize_invoice_result, safe_provider_error,infer_api_units
 from .api_selection import activate
 
-REVISION='openrouter-text-v1'
+REVISION='openrouter-invoice-document-v2'
+CACHE_REVISIONS=('openrouter-text-v1',REVISION)
 DEFAULT_MODEL='openrouter/free'
 WARNING='OpenRouter extracted fields: compare with the source PDF and approve in Review'
 
@@ -52,17 +53,23 @@ def candidate(root,record):
     path=cache_path(root,record)
     if not path.exists():return None
     data=read_json(path)
-    if data.get('source_sha256')!=record['digest'] or data.get('revision')!=REVISION:
+    if data.get('source_sha256')!=record['digest'] or data.get('revision') not in CACHE_REVISIONS:
         raise ValueError('OpenRouter cache does not match this PDF or reader revision')
-    inv=data.get('invoice')
+    from .invoice_document import cached_invoice
+    inv=cached_invoice(data,record)
     if not isinstance(inv,dict) or not isinstance(inv.get('items'),list):
         raise ValueError('Invalid OpenRouter extraction cache')
     from copy import deepcopy
     inv=deepcopy(inv)
     infer_api_units(inv,record,'OpenRouter')
+    warnings=[] if data.get('review_mode')=='tally' else [WARNING]
+    evidence=data.get('ocr_evidence') or []
+    if evidence:
+        from .ocr import review_warning
+        warnings.append(review_warning(evidence));inv['ocr_reading_evidence']=evidence
     return {**inv,'source_api':True,'api_provider':'OpenRouter','api_model':data['model'],
             'api_review_mode':data.get('review_mode','desktop'),
-            'extraction_warnings':[] if data.get('review_mode')=='tally' else [WARNING]}
+            'extraction_warnings':warnings}
 
 
 def api_json(path,key,payload=None,timeout=120):
@@ -107,7 +114,7 @@ def extract_selected(root,record,transport=None):
     verify_source(root,record);model=configured_model();old=cache_path(root,record)
     if old.exists():
         saved=read_json(old)
-        if saved.get('model')==model and saved.get('revision')==REVISION:
+        if saved.get('model')==model and saved.get('revision') in CACHE_REVISIONS:
             result=candidate(root,record);activate(root,record,'OpenRouter');return result
     key=os.environ.get('OPENROUTER_API_KEY','').strip()
     if not key:raise ValueError('Set OPENROUTER_API_KEY privately in Windows User environment variables, then reopen the app. Do not paste the key into chat.')
@@ -115,12 +122,50 @@ def extract_selected(root,record,transport=None):
     if len(data)>8*1024*1024:raise ValueError('OpenRouter extraction supports PDFs up to 8 MiB')
     from .groq_reader import prepare_invoice_payload
     payload=prepare_invoice_payload(record,model)
-    payload['max_tokens']=min(payload.pop('max_completion_tokens'),4000)
+    payload['max_tokens']=payload.pop('max_completion_tokens')
     payload['provider']={'max_price':{'prompt':0,'completion':0}}
-    inv=normalize_invoice_result((transport or request_invoice)(payload,key,model),record,'OpenRouter')
+    from .tally_master_matching import context,augment_payload,save_choices,offered_ids
+    master_context=context(root,record)
+    if master_context:payload=augment_payload(payload,master_context,record.get('invoice') or {})
+    answer=(transport or request_invoice)(payload,key,model)
+    choices=answer.pop('_tally_matches',None) if isinstance(answer,dict) else None
+    from .invoice_document import normalize_document_result,cache_fields,checksum,EXTRACTION_SCHEMA
+    inv=normalize_document_result(answer,record,'OpenRouter',getattr(payload,'source_text',''))
+    inv['_document_v2']['provenance'].update(model=model,contract_sha256=checksum(EXTRACTION_SCHEMA),prompt_sha256=hashlib.sha256(payload['messages'][0]['content'].encode()).hexdigest())
     verify_source(root,record)
     if hashlib.sha256(data).hexdigest()!=record['digest']:raise ValueError('Source changed during OpenRouter extraction')
-    write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],'invoice':inv,'reading_style':'groq-text-v1'})
+    write_json(old,{'revision':REVISION,'model':model,'source_sha256':record['digest'],**cache_fields(inv),'ocr_evidence':getattr(payload,'ocr_evidence',[]),'reading_style':'groq-text-v1'})
     activate(root,record,'OpenRouter')
+    if master_context:save_choices(root,record,master_context,inv,choices,offered_ids(payload))
     return candidate(root,record)
+
+
+def match_cached(root,record,budget,stop_event=None,transport=None):
+    """Match retained selected facts using OpenRouter only and the shared budget."""
+    from .tally_master_matching import context,loaded_choices,save_choices,matching_payload,offered_ids
+    ctx=context(root,record)
+    if not ctx or loaded_choices(root,record,ctx) is not None:return False
+    inv=record.get('invoice') or {}
+    if not inv.get('buyer_name') and not inv.get('items'):return False
+    if not any(ctx['data'].get(kind) for kind in ('ledgers','stock_items','units')):return False
+    if stop_event and stop_event.is_set():return False
+    key=os.environ.get('OPENROUTER_API_KEY','').strip()
+    if not key or budget.used>=budget.limit:return False
+    model=configured_model()
+    import time
+    from .ai_providers import INTERVALS
+    delay=max(0,INTERVALS['OpenRouter']-(time.monotonic()-getattr(budget,'_master_last_request',time.monotonic()))) if transport is None else 0
+    if delay:
+        if stop_event:
+            if stop_event.wait(delay):return False
+        else:time.sleep(delay)
+    if not budget.claim():return False
+    budget._master_last_request=time.monotonic()
+    payload=matching_payload(model,inv,ctx)
+    payload['max_tokens']=payload.pop('max_completion_tokens')
+    payload['provider']={'max_price':{'prompt':0,'completion':0}}
+    answer=(transport or request_invoice)(payload,key,model)
+    verify_source(root,record)
+    save_choices(root,record,ctx,inv,answer.get('_tally_matches'),offered_ids(payload))
+    return True
 

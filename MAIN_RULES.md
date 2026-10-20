@@ -76,8 +76,9 @@ serialization after AI extraction or an authoritative saved human review.
 
 ## 4. AI providers, consent and cost limits
 
-- The visible processing choices are **Groq** and **Gemma (local)**. Do not restore
-  Gemini, OpenRouter or GitHub Models buttons without explicit authorization.
+- The visible processing choices are **Groq**, **Gemma (local)** and **OpenRouter (free)**.
+  OpenRouter was explicitly restored on 20 October 2026. Gemini and GitHub Models
+  remain hidden. OpenRouter permits only free model routes and no provider fallback.
   Legacy modules can remain; their presence does not authorize background use.
 - One-invoice processing must restrict fresh AI requests to that source. Selected
   processing must restrict them to the selected sources. Client-batch processing
@@ -141,7 +142,8 @@ export country, LUT/IGST treatment, currency and exchange-rate details.
 
 ### 5.2 GSTIN, HSN, tax and line interpretation
 
-- Validate a GSTIN without silently changing it. A checksum-valid spelling is
+- Validate GSTIN shape/state without changing it. As requested on 20 October 2026,
+  check-digit rejection is disabled; this does not verify registration. A checksum-valid spelling is
   not proof of a real registration or of the right party. Multiple OCR edits can
   produce valid checksums. Proposed alternatives require evidence and explicit
   human confirmation; automatic checksum repair is not approved behavior.

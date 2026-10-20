@@ -441,11 +441,12 @@ def test_import_review_change_manifest_preserves_baseline_and_installer_payload(
     with zipfile.ZipFile(root/change['backup']) as archive:
         for name,entry in change['files'].items():
             assert hashlib.sha256(archive.read(name)).hexdigest()==entry['baseline_sha256']
-            latest=json.loads((root/'Automation/INVOICE_STRUCTURE_V2_CHANGE.json').read_text())['files']
             expected=entry['authorized_sha256']
-            if name in latest:
-                assert latest[name]['baseline_sha256']==expected
-                expected=latest[name]['authorized_sha256']
+            for filename in ('INVOICE_STRUCTURE_V2_CHANGE.json','OPENROUTER_PROVIDER_CHANGE.json'):
+                latest=json.loads((root/'Automation'/filename).read_text())['files']
+                if name in latest:
+                    assert latest[name]['baseline_sha256']==expected
+                    expected=latest[name]['authorized_sha256']
             assert hashlib.sha256((root/name).read_bytes()).hexdigest()==expected
             if name.startswith('Automation/'):
                 assert package['FILES'][name.removeprefix('Automation/')].encode()==(root/name).read_bytes()

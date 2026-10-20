@@ -45,16 +45,12 @@ def state_code(value):
 
 
 def gstin_valid(value):
+    """Application policy: GSTIN format/state only; no check-digit rejection."""
     if not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]', value):
         return False
     if value[:2] not in STATES:
         return False
-    alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    total = 0
-    for i, char in enumerate(value[:14]):
-        product = alphabet.index(char) * (1 if i % 2 == 0 else 2)
-        total += product // 36 + product % 36
-    return alphabet[(36 - total % 36) % 36] == value[-1]
+    return True
 
 
 def invoice_key(inv):
@@ -123,7 +119,7 @@ def validate(raw, config):
         inv['seller_gstin'] = str(inv['seller_gstin']).strip().upper()
         inv['buyer_gstin'] = str(inv.get('buyer_gstin') or '').strip().upper()
         if not gstin_valid(inv['seller_gstin']):
-            errors.append('Invalid seller GSTIN (format, state or checksum)')
+            errors.append('Invalid seller GSTIN format or state code')
         if inv['seller_gstin'] != config.get('seller_gstin'):
             errors.append('Seller GSTIN does not match this client company')
         if inv['buyer_registration'] not in ('Regular','Composition','Unregistered','Consumer'):
@@ -131,7 +127,7 @@ def validate(raw, config):
         if inv['buyer_registration'] in ('Regular','Composition') and not inv['buyer_gstin']:
             errors.append('Registered buyer requires GSTIN')
         if inv['buyer_gstin'] and not gstin_valid(inv['buyer_gstin']):
-            errors.append('Invalid buyer GSTIN (format, state or checksum)')
+            errors.append('Invalid buyer GSTIN format or state code')
         if inv['buyer_gstin'] and inv['buyer_registration'] in ('Unregistered','Consumer'):
             errors.append('Buyer GSTIN conflicts with unregistered classification')
         is_export = inv['classification'] in EXPORT_MODES

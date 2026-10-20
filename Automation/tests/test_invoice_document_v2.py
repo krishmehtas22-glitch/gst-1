@@ -373,7 +373,12 @@ def test_unrelated_locked_transport_units_and_ai_budget_code_are_unchanged():
     with zipfile.ZipFile(root/'Backups/Before_Invoice_Structure_V2.zip') as archive:
         for name in ('tally_import.py','tally_units.py','unit_catalog.py','quantity_precision.py','voucher_number_guard.py','ai_first.py','gemini_batch.py','parallel_batches.py'):
             full='Automation/Common_Rules/'+name
-            assert (root/full).read_bytes()==archive.read(full)
+            if name in ('ai_first.py','gemini_batch.py'):
+                change=json.loads((root/'Automation/OPENROUTER_PROVIDER_CHANGE.json').read_text())
+                entry=change['files'][full]
+                assert hashlib.sha256(archive.read(full)).hexdigest()==entry['baseline_sha256']
+                assert hashlib.sha256((root/full).read_bytes()).hexdigest()==entry['authorized_sha256']
+            else:assert (root/full).read_bytes()==archive.read(full)
         before=ast.parse(archive.read('Automation/Invoice_Desktop.py'));after=ast.parse((root/'Automation/Invoice_Desktop.py').read_bytes())
         def method(tree):return next(n for cls in tree.body if isinstance(cls,ast.ClassDef) for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='import_tally')
         assert ast.dump(method(before))==ast.dump(method(after))

@@ -1,0 +1,58 @@
+{
+  "baseline_commit": "098820ce5d34e527f4e93fa746b5f1eb71e57e84",
+  "backup": "Backups/Before_OpenRouter_Restore.zip",
+  "policy": "Explicit OpenRouter provider request plus removal of GSTIN check-digit validation. Free-only routing, chosen-provider matching, existing shared budgets and paced two-task batching. Preserve invoice values, unit precision, Tally dispatch/numbering and source-integrity review gates.",
+  "files": {
+    "Automation/BillSync_UI.py": {
+      "baseline_sha256": "c70a0e726a26d992f47cea506a105df1393e4b89b938604db58e0f28d9fc9cd1",
+      "authorized_sha256": "c926c07405f3630a5bdd5e699115664ad13fe135ade297bdb3286b989726ef3f"
+    },
+    "Automation/Common_Rules/accounting.py": {
+      "baseline_sha256": "f1d7c21c429fe6dc048695d3a507782f73d79ff9718a676a3348a07f894db96a",
+      "authorized_sha256": "2b14521c77da3a5650170cb31be0cee3edf2fd85e597524887395ad4cc22ecf6"
+    },
+    "Automation/Common_Rules/ai_first.py": {
+      "baseline_sha256": "d742c1330cda372ccc56827596b96f56862836775fc4ae15450918659a395a64",
+      "authorized_sha256": "52f337e1f8b7e1bc227b00485c3075548c9d5e72d4e8ad7ff4cb7deec188ff52"
+    },
+    "Automation/Common_Rules/engine.py": {
+      "baseline_sha256": "ea72c16111d85bb9ec8343e9ddd8da20dcd461a1d5370d72480580e3892e2819",
+      "authorized_sha256": "eb39234d5d64a004f4a999f1441bf5b745b3a8c2e9440eaf4d4ff716a263ad0d"
+    },
+    "Automation/Common_Rules/gemini_batch.py": {
+      "baseline_sha256": "7e7cb22e71148c83e77b1f065230f3f83c59e4a4421bfb8667ca7e3f7d79fb38",
+      "authorized_sha256": "9305a9060fa406a6083de10011894d0b1e166e6ff97f6522bb2afdba8d7c07ad"
+    },
+    "Automation/Common_Rules/openrouter_reader.py": {
+      "baseline_sha256": "380304c2cd96bf4ed402a07752460fddcc5332c39ce1a0d9eefcf627a968b4d3",
+      "authorized_sha256": "45ed76ef3a0b726a5a9f3b0f715dec739fbf561b650d1fdd24704499b2f0b644"
+    },
+    "Automation/Common_Rules/workflow_validation.py": {
+      "baseline_sha256": "c7091158244a369a7ff6c8ce84c41567b33b66eaa4cd85d0ea3219c0739fdb2e",
+      "authorized_sha256": "b0b28c9e17e6bcca70dd18e9445b21a801f87f0a15489e3e81187ac8b28f1bad"
+    },
+    "Automation/Test_MD_Extraction.py": {
+      "baseline_sha256": "6dd7a5dd745bc2abfca50bf385783726a693ac463c52b747d8c5a4c72a9d9773",
+      "authorized_sha256": "c8573678462f1bd31db62b0583f2b85855fe0b2a09c7a9ef82dca9a2c665506e"
+    },
+    "Install_BillSync_Source.py": {
+      "baseline_sha256": "5e76a431f4c140e2a8c533de798a27be9674a6f7bdd794d3dbd5abd8cdea02c7",
+      "authorized_sha256": "04c27baa097f077d6ce25abb2f77b03774cd98ab2048d559b42d3faf735d78ce"
+    },
+    "AGENTS.md": {
+      "baseline_sha256": "7a5acfbecc684ce70b537be02766769aacdee2c839cabd13d8ec14b0af2b0b09",
+      "authorized_sha256": "9c5365fa98e5cc90df0bac347f3582bf06229f7d392df696554e66e8b9ddd699"
+    },
+    "MAIN_RULES.md": {
+      "baseline_sha256": "813ccc934c0ae1511a11d54771164dc1d11025001b7425692c47f02639947fd4",
+      "authorized_sha256": "c00a40a02cdea8099588000202f459bc6914f2e4d5b12ceafd072c031362bc3f"
+    },
+    ".github/workflows/windows-invoice-reader.yml": {
+      "baseline_sha256": "3ef5444cb96b69d4e900bb6955958b116af559c4f4546f90037af817c29c0d30",
+      "authorized_sha256": "2b80dab4d9172da9fd9e21b836f03971c1424fb6efe5546f94f91483de962b4c"
+    }
+  },
+  "new_files": {
+    "Automation/docs/OPENROUTER_APP.md": "6bb71d9256a68015807a64e89977e5f67b78b35b98f195f3d9e3be7cdd8c752f"
+  }
+}

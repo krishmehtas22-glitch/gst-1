@@ -22,9 +22,12 @@ def test_balanced_sales(tmp_path,kind,credit_ledgers):
     assert sum(money(r['debit']) - money(r['credit']) for r in rows) == Decimal('0')
 
 
-def test_gstin_checksum():
+def test_gstin_application_format_policy_does_not_check_final_digit():
     assert gstin_valid(gstin())
-    assert not gstin_valid(gstin()[:-1] + ('0' if gstin()[-1] != '0' else '1'))
+    changed=gstin()[:-1] + ('0' if gstin()[-1] != '0' else '1')
+    assert gstin_valid(changed)
+    assert not gstin_valid('99'+gstin()[2:])
+    assert not gstin_valid('invalid')
 
 
 @pytest.mark.parametrize('mutation,fragment', [

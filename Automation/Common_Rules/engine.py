@@ -105,7 +105,7 @@ def inspect_invoices(client):
             if not gstin_valid(seller):
                 issues.append('Seller GSTIN is missing, unassigned or invalid')
             if buyer and not gstin_valid(buyer):
-                issues.append('Invalid buyer GSTIN (format, state or checksum)')
+                issues.append('Invalid buyer GSTIN format or state code')
             for index, item in enumerate(raw.get('items', []), 1):
                 if not item.get('unit'):
                     issues.append(f'Item {index}: missing unit')

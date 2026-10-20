@@ -53,6 +53,8 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
     from .tally_master_matching import context,match_cached
     if primary==LOCAL_PROVIDER:
         from .ollama_reader import match_cached
+    elif primary=='OpenRouter':
+        from .openrouter_reader import match_cached
     approved_paths = None if selected_paths is None else {str(Path(p).resolve()) for p in selected_paths}
     if approved_paths is not None:
         present = {str(Path(r.get('source_path', r['path'])).resolve()) for r in records}
@@ -91,13 +93,13 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
     budget = RequestBudget(limit)
     progress(f'AI stage: {len(pending)} sources use saved AI reads or new extraction; '
              f'{len(records)-len(pending)} sources retain manual/source review status.')
-    groq_unavailable=False
+    provider_unavailable=False
     try:
         if pending:
             answers = (batch_runner or read_with_fallback)(root, pending, primary=primary,
                 progress=progress, confirm_test=False, stop_event=stop_event, request_budget=budget)
             import json
-            groq_unavailable=any('Groq HTTP '+str(code) in json.dumps(answers) for code in (401,402,403,404,429))
+            provider_unavailable=any(primary+' HTTP '+str(code) in json.dumps(answers) for code in (401,402,403,404,429))
             for record, answer in zip(pending, answers):
                 if (answer.get('client'), answer.get('digest'), answer.get('path')) != token(record):
                     raise ValueError('AI batch result does not match its source.')
@@ -106,13 +108,13 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
                     'provider': answer.get('provider', 'Python'),
                     'cached': bool(answer.get('cached') or answer.get('status') == 'extracted' and not answer.get('attempts'))}
     except Exception as exc:
-        groq_unavailable=any('Groq HTTP '+str(code) in str(exc) for code in (401,402,403,404,429))
+        provider_unavailable=any(primary+' HTTP '+str(code) in str(exc) for code in (401,402,403,404,429))
         warnings.append('AI stage ended with '+type(exc).__name__+'; saved reads are retained.')
         progress(warnings[-1])
     # Matching cached selected invoices shares the original confirmed budget.
     # Fresh Groq reads already receive candidate masters in the same AI call.
     matching_start=budget.used
-    if bound_clients and not groq_unavailable and not (stop_event and stop_event.is_set()):
+    if bound_clients and not provider_unavailable and not (stop_event and stop_event.is_set()):
         current=inspect_sources(root,client_names,demo,auto_units)
         for record in current:
             if selected(record) and record['client'] in bound_clients and decisions.get(token(record),{}).get('status') in ('extracted','approved_review'):
@@ -120,7 +122,7 @@ def run_ai_first(root, demo=True, client_names=None, auto_units=True,
                     if match_cached(root,record,budget,stop_event):progress('Tally master matching saved for '+str(record.get('invoice',{}).get('number') or Path(record['path']).name))
                 except (ValueError,OSError,KeyError,TypeError) as exc:
                     warnings.append('Tally master matching unavailable; current creation method retained: '+str(exc))
-                    if any('Groq HTTP '+str(code) in str(exc) for code in (401,402,403,404,429)):break
+                    if any(primary+' HTTP '+str(code) in str(exc) for code in (401,402,403,404,429)):break
     # A worker/report failure must not discard saved successes or trigger retries.
     for record in pending:
         if token(record) not in decisions or decisions[token(record)]['status'] != 'extracted':

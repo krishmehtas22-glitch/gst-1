@@ -26,11 +26,17 @@ def payload_for(name, pages, text, model):
 
 
 def request_once(payload, provider):
-    if provider == 'Groq':
-        from Common_Rules.groq_reader import api_json
-        key = os.environ.get('GROQ_API_KEY', '').strip()
+    if provider in ('Groq', 'OpenRouter'):
+        if provider == 'OpenRouter':
+            from Common_Rules.openrouter_reader import api_json
+            payload = dict(payload)
+            payload['max_tokens'] = payload.pop('max_completion_tokens')
+        else:
+            from Common_Rules.groq_reader import api_json
+        variable = 'OPENROUTER_API_KEY' if provider == 'OpenRouter' else 'GROQ_API_KEY'
+        key = os.environ.get(variable, '').strip()
         if not key:
-            raise ValueError('Set GROQ_API_KEY privately, then reopen CMD. Never paste the key into chat.')
+            raise ValueError('Set '+variable+' privately, then reopen CMD. Never paste the key into chat.')
         return api_json('chat/completions', key, payload)
     from urllib.request import Request, build_opener, ProxyHandler
     from Common_Rules.ollama_reader import ENDPOINT, NoRedirect
@@ -69,8 +75,8 @@ def run(source, provider, send=False, output_root=None, transport=None):
         raise ValueError('Document text exceeds the test limit; no truncation or AI request occurred.')
     if source.read_bytes() != data:
         raise ValueError('Source changed during preparation; no request sent.')
-    from Common_Rules import groq_reader, ollama_reader
-    model = groq_reader.configured_model() if provider == 'Groq' else ollama_reader.configured_model()
+    from Common_Rules.ai_providers import reader
+    model = reader('Gemma (local)' if provider == 'Gemma' else provider).configured_model()
     payload = payload_for(source.name, pages, text, model)
     folder = Path(output_root or Path.cwd() / 'MD_Output_Tests') / (datetime.now().strftime('%Y%m%d_%H%M%S_%f') + '_' + uuid.uuid4().hex[:6])
     folder.mkdir(parents=True)
@@ -87,7 +93,7 @@ def run(source, provider, send=False, output_root=None, transport=None):
             report['request_attempts'] = 1
             response = (transport or request_once)(payload, provider)
             save('Provider_Response.json', response)
-            if provider == 'Groq':
+            if provider in ('Groq', 'OpenRouter'):
                 choice = response['choices'][0]
                 answer = choice['message']['content']
                 complete = choice.get('finish_reason') == 'stop'
@@ -113,7 +119,7 @@ def run(source, provider, send=False, output_root=None, transport=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('source', nargs='?')
-    parser.add_argument('--provider', choices=('Groq', 'Gemma'), default='Gemma')
+    parser.add_argument('--provider', choices=('Groq', 'Gemma', 'OpenRouter'), default='Gemma')
     parser.add_argument('--run-ai', action='store_true', help='Send at most one new extraction request; Groq may use credits.')
     args = parser.parse_args()
     source = args.source

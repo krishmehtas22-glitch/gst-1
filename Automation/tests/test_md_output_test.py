@@ -24,13 +24,13 @@ def test_system_prompt_and_output_shape_match_uploaded_spec_exactly():
     assert '{if masters enabled:}' not in payload['messages'][1]['content']
 
 
-@pytest.mark.parametrize('provider', ['Groq', 'Gemma'])
+@pytest.mark.parametrize('provider', ['Groq', 'Gemma', 'OpenRouter'])
 def test_raw_invalid_gstin_is_not_checked_or_corrected(tmp_path, provider):
     source = invoice(tmp_path); original = source.read_bytes(); calls = []
     answer = '{"invoices":[{"seller":{"gstin":"27INVALID0000Z0"},"items":[]}]}'
     def transport(payload, selected):
         calls.append(selected)
-        if selected == 'Groq':
+        if selected in ('Groq', 'OpenRouter'):
             return {'choices': [{'finish_reason': 'stop', 'message': {'content': answer}}]}
         return {'done': True, 'done_reason': 'stop', 'message': {'content': answer}}
     folder = test_reader.run(source, provider, True, tmp_path / 'output', transport)

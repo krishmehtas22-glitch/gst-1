@@ -51,7 +51,7 @@ def checks(inv):
     if not str(inv.get('seller_name') or '').strip():add('Seller name','','Enter the printed supplier name.',True)
     for role in ('seller','buyer'):
         gstin=str(inv.get(role+'_gstin') or '').strip().upper();printed=inv.get(role+'_state')
-        if gstin and not gstin_valid(gstin):add(role.title()+' GSTIN',gstin,'GSTIN fails format/checksum validation; printed value is retained.')
+        if gstin and not gstin_valid(gstin):add(role.title()+' GSTIN',gstin,'GSTIN format or state code is invalid; printed value is retained. Check-digit validation is disabled.')
         if role=='seller' and not gstin:add('Seller GSTIN','','Seller GSTIN is missing; verify the supplier registration.')
         if role=='buyer' and export:continue
         resolved=state(printed,gstin)
@@ -316,7 +316,7 @@ def require_plan(plan,company,transport):
             start=len(problems)
             inv=entry['invoice'];gstin=str(inv.get('seller_gstin') or '').strip().upper()
             if not facts['gstins']:
-                problems.append(issue(inv.get('number'),'Destination GSTIN',gstin,'Not returned by Tally','Company registration could not be verified. Confirm the chosen company before proceeding.'))
+                problems.append(issue(inv.get('number'),'Destination GSTIN',gstin,'Not returned by Tally','Tally did not return a GSTIN for this company. This does not mean it is unregistered. Check the selected company GST settings; you may acknowledge this review to proceed with the printed values.'))
             elif gstin not in facts['gstins']:
                 problems.append(issue(inv.get('number'),'Destination GSTIN',gstin,', '.join(facts['gstins']),'Supplier GSTIN differs from the selected Tally company registration.'))
             seller_state=state(inv.get('seller_state'),gstin)

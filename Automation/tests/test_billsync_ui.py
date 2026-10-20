@@ -24,7 +24,7 @@ def test_engine_matches_backup_except_the_authorized_export_metadata_change():
                 matching=json.loads((root/'Automation/TALLY_MASTER_MATCHING_CHANGE.json').read_text())['files']
                 fx=json.loads((root/'Automation/FOREIGN_CURRENCY_CHANGE.json').read_text())['files']
                 actual=hashlib.sha256((root/name).read_bytes()).hexdigest()
-                for manifest in ('LOCAL_GEMMA_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json','AI_WORKFLOW_CHANGE.json','INVOICE_STRUCTURE_V2_CHANGE.json'):
+                for manifest in ('LOCAL_GEMMA_CHANGE.json','INVOICE_NUMBER_GUARD_CHANGE.json','AI_WORKFLOW_CHANGE.json','INVOICE_STRUCTURE_V2_CHANGE.json','OPENROUTER_PROVIDER_CHANGE.json'):
                     latest=json.loads((root/'Automation'/manifest).read_text())
                     if name in latest['files']:
                         from test_premium_ui import after_boxed_ui
@@ -99,9 +99,12 @@ def test_real_window_upload_refresh_filter_and_single_pdf_are_safe(tmp_path,monk
             root.update();time.sleep(.02)
             if not app.busy and app.records==[]:break
         assert not app.busy
-        assert tuple(app.provider_choice.cget('values'))==('Groq','Gemma (local — free)')
+        assert tuple(app.provider_choice.cget('values'))==('Groq','Gemma (local — free)','OpenRouter (free)')
         app.provider_display.set('Gemma (local — free)');app.provider_choice.event_generate('<<ComboboxSelected>>');root.update()
         assert app.ai_primary.get()=='Gemma (local)'
+        app.provider_display.set('OpenRouter (free)');app.provider_choice.event_generate('<<ComboboxSelected>>');root.update()
+        assert app.ai_primary.get()=='OpenRouter'
+        app.ai_primary.set('OpenRouter');assert app.provider_display.get()=='OpenRouter (free)'
         app.ai_primary.set('Groq');assert app.provider_display.get()=='Groq'
         app.client_scope.set('Folder: Client');app.refresh_clients()
         assert app.client_display.get()=='Client'

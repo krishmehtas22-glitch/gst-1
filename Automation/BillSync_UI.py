@@ -19,7 +19,7 @@ from Export_Refund_Review import summary as refund_summary,load_review as load_r
 from Export_Refund_Dialog import open_refund_review
 
 BG='#f2f5fb';NAV='#111d35';BLUE='#315ee7';INK='#182641';MUTED='#687a96';BORDER='#bfcde2'
-UI_VERSION='BillSync UI 4.0'
+UI_VERSION='BillSync UI 4.1'
 
 
 class ActivityLabel(ttk.Label):
@@ -130,10 +130,11 @@ class BillSyncApp(InvoiceApp):
         provider_row=tk.Frame(self.processing_group,bg='#f4f7ff');provider_row.pack(anchor='w',pady=(0,8))
         ttk.Label(provider_row,text='AI reader',background='#f4f7ff').pack(side='left',padx=(0,8))
         self.provider_display=tk.StringVar(value='Groq')
-        self.provider_choice=ttk.Combobox(provider_row,textvariable=self.provider_display,values=('Groq','Gemma (local — free)'),state='readonly',width=24)
+        provider_labels={'Groq':'Groq','Gemma (local)':'Gemma (local — free)','OpenRouter':'OpenRouter (free)'}
+        self.provider_choice=ttk.Combobox(provider_row,textvariable=self.provider_display,values=tuple(provider_labels.values()),state='readonly',width=24)
         self.provider_choice.pack(side='left')
-        self.ai_primary.trace_add('write',lambda *args:self.provider_display.set('Gemma (local — free)' if self.ai_primary.get()=='Gemma (local)' else 'Groq'))
-        self.provider_choice.bind('<<ComboboxSelected>>',lambda event:self.ai_primary.set('Gemma (local)' if self.provider_display.get().startswith('Gemma') else 'Groq'))
+        self.ai_primary.trace_add('write',lambda *args:self.provider_display.set(provider_labels.get(self.ai_primary.get(),'Groq')))
+        self.provider_choice.bind('<<ComboboxSelected>>',lambda event:self.ai_primary.set(next(key for key,label in provider_labels.items() if label==self.provider_display.get())))
         process=tk.Frame(self.processing_group,bg='#f4f7ff');process.pack(anchor='w')
         self.process_menu=tk.Menu(window,tearoff=False)
         self.process_menu.add_command(label='Process selected invoices',command=self.analyse_selected)
