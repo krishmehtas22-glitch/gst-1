@@ -1,3 +1,12 @@
+# Main rulebook — 20 October 2026
+
+Read [MAIN_RULES.md](MAIN_RULES.md) before making changes. It consolidates the
+current AI, units/UQC, masters, currency, XML, Tally, review, UI and release rules.
+Keep the dated authorizations and lock history below. The user's latest explicit
+instruction takes precedence; historical feature notes may be superseded by
+later authorizations identified in the main rulebook. This documentation update
+changes no application code or processing behavior.
+
 # Actionable import review — latest user request, 18 October 2026
 
 Authorize source-document access and exact-invoice editing from review, a visible
